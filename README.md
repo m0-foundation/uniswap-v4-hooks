@@ -1,16 +1,18 @@
-# Foundry template
+# Uniswap V4 Hooks
 
-Template to kickstart a Foundry project.
+This repository contains the Uniswap V4 hook contracts built by M^0 Labs for the M^0 project.
 
-## Getting started
+## Hooks
 
-The easiest way to get started is by clicking the [Use this template](https://github.com/MZero-Labs/foundry-template/generate) button at the top right of this page.
+### TickRange Hook
 
-If you prefer to go the CLI way:
+This hook allows its owner to set a tick range to limit liquidity provision and token swaps to this range.
+This is useful for projects like ours that may want to limit swaps to one tick, as is the case for stable pairs.
+One additional benefit is that a swap that would have crossed the tick range will revert, saving the user from a potential JIT (Just In Time) liquidity attack.
 
-```bash
-forge init my-project --template https://github.com/MZero-Labs/foundry-template
-```
+This contract is ownable and the owner can change the tick range at any time by calling the `setTickRange` function.
+This functionality should be used with parsimony since current liquidity providers will be affected by the change and may have to withdraw their liquidity.
+It could also impact an in-flight swap if the tick range is changed during the swap.
 
 ## Development
 
