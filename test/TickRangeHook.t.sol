@@ -78,8 +78,8 @@ contract TickRangeHookTest is BaseTest {
         );
 
         (key, poolId) = initPool(
+            tokenZero,
             tokenOne,
-            tokenTwo,
             tickRangeHook,
             SWAP_FEE,
             TICK_SPACING,
@@ -97,8 +97,8 @@ contract TickRangeHookTest is BaseTest {
         );
 
         (key, poolId) = initPool(
+            tokenZero,
             tokenOne,
-            tokenTwo,
             tickRangeHook,
             SWAP_FEE,
             TICK_SPACING,
@@ -116,8 +116,8 @@ contract TickRangeHookTest is BaseTest {
         );
 
         (key, poolId) = initPool(
+            tokenZero,
             tokenOne,
-            tokenTwo,
             tickRangeHook,
             SWAP_FEE,
             TICK_SPACING,
