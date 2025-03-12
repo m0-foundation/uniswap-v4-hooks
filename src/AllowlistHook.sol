@@ -93,7 +93,7 @@ contract AllowlistHook is BaseTickRangeHook, IAllowlistHook {
         PoolKey calldata /* poolKey */,
         uint160 /* sqrtPriceX96 */,
         int24 tick_
-    ) internal override returns (bytes4) {
+    ) internal view override returns (bytes4) {
         super._afterInitialize(tick_);
         return this.afterInitialize.selector;
     }
@@ -134,7 +134,7 @@ contract AllowlistHook is BaseTickRangeHook, IAllowlistHook {
         IPoolManager.SwapParams calldata /* params */,
         BalanceDelta /* delta */,
         bytes calldata /* hookData */
-    ) internal override returns (bytes4, int128) {
+    ) internal view override returns (bytes4, int128) {
         super._afterSwap(key_);
         return (this.afterSwap.selector, int128(0));
     }

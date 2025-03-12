@@ -9,7 +9,7 @@ verbosity = 3
 [profile.production]
 build_info = true
 optimizer = true
-optimizer_runs = 999999
+optimizer_runs = 44444444
 sizes = true
 
 [fuzz]
@@ -22,7 +22,8 @@ fail_on_revert = true # Fail the test if the contract reverts
 
 [profile.ci]
 optimizer = true
-optimizer_runs = 999999
+optimizer_runs = 44444444
+via_ir = true
 
 [profile.ci.fuzz]
 runs = 10_000

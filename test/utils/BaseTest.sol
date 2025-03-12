@@ -137,7 +137,11 @@ contract BaseTest is Deployers, PosmTestSetup {
         Currency outputCurrency_,
         uint256 amountIn_,
         address takeRecipient_
-    ) internal returns (uint256 inputBalanceBefore_, uint256 outputBalanceBefore_, bytes memory data_, uint256 value_) {
+    )
+        internal
+        view
+        returns (uint256 inputBalanceBefore_, uint256 outputBalanceBefore_, bytes memory data_, uint256 value_)
+    {
         inputBalanceBefore_ = inputCurrency_.balanceOfSelf();
         outputBalanceBefore_ = outputCurrency_.balanceOfSelf();
 
@@ -149,7 +153,11 @@ contract BaseTest is Deployers, PosmTestSetup {
         Currency inputCurrency_,
         Currency outputCurrency_,
         uint256 amountIn_
-    ) internal returns (uint256 inputBalanceBefore_, uint256 outputBalanceBefore_, bytes memory data_, uint256 value_) {
+    )
+        internal
+        view
+        returns (uint256 inputBalanceBefore_, uint256 outputBalanceBefore_, bytes memory data_, uint256 value_)
+    {
         return _finalizeSwap(inputCurrency_, outputCurrency_, amountIn_, ActionConstants.MSG_SENDER);
     }
 

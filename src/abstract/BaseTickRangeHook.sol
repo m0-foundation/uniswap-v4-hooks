@@ -73,11 +73,11 @@ abstract contract BaseTickRangeHook is IBaseTickRangeHook, BaseHook, Ownable2Ste
             });
     }
 
-    function _afterInitialize(int24 tick_) internal {
+    function _afterInitialize(int24 tick_) internal view {
         _checkTick(tick_);
     }
 
-    function _afterSwap(PoolKey calldata key_) internal {
+    function _afterSwap(PoolKey calldata key_) internal view {
         (, int24 tickCurrent_, , ) = poolManager.getSlot0(key_.toId());
         _checkTick(tickCurrent_);
     }
