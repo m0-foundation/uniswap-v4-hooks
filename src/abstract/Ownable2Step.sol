@@ -36,7 +36,8 @@ abstract contract Ownable2Step is Ownable {
     }
 
     /**
-     * @dev Starts the ownership transfer of the contract to a new account. Replaces the pending transfer if there is one.
+     * @dev Starts the ownership transfer of the contract to a new account.
+     * Replaces the pending transfer if there is one.
      * Can only be called by the current owner.
      *
      * Setting `newOwner` to the zero address is allowed; this can be used to cancel an initiated ownership transfer.
