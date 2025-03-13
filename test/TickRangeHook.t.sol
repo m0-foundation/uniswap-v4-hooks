@@ -34,7 +34,6 @@ contract TickRangeHookTest is BaseTest {
             address(flags)
         );
 
-        // Deploy WrappedMRewardsHook contract
         tickRangeHook = TickRangeHook(address(flags));
 
         IERC721Like(address(lpm)).setApprovalForAll(address(tickRangeHook), true);
