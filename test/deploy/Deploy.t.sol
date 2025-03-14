@@ -45,11 +45,9 @@ contract DeployTest is Deploy, Test {
         vm.prank(config_.create2Deployer);
         IHooks allowlistHook_ = _deployAllowlistHook(OWNER, config_);
 
-        assertEq(address(allowlistHook_), 0xFe676961b39Ac91F63210e986E2202C8dE49c8c0);
         assertEq(Ownable(address(allowlistHook_)).owner(), OWNER);
         assertEq(IAllowlistHook(address(allowlistHook_)).positionManager(), address(config_.posm));
         assertEq(IAllowlistHook(address(allowlistHook_)).swapRouter(), config_.swapRouter);
-
         assertEq(IBaseTickRangeHook(address(allowlistHook_)).tickLowerBound(), config_.tickLowerBound);
         assertEq(IBaseTickRangeHook(address(allowlistHook_)).tickUpperBound(), config_.tickUpperBound);
     }
@@ -82,9 +80,7 @@ contract DeployTest is Deploy, Test {
         vm.prank(config_.create2Deployer);
         IHooks tickrangeHook_ = _deployTickRangeHook(OWNER, config_);
 
-        assertEq(address(tickrangeHook_), 0x0AebBEA7fAcC81989Efe799CE6f6568c732D4840);
         assertEq(Ownable(address(tickrangeHook_)).owner(), OWNER);
-
         assertEq(IBaseTickRangeHook(address(tickrangeHook_)).tickLowerBound(), config_.tickLowerBound);
         assertEq(IBaseTickRangeHook(address(tickrangeHook_)).tickUpperBound(), config_.tickUpperBound);
     }

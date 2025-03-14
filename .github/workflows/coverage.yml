@@ -24,9 +24,6 @@ jobs:
         uses: hrishikesh-kadam/setup-lcov@v1
 
       - name: Run coverage
-        env:
-          MNEMONIC: ${{ secrets.MNEMONIC_FOR_TESTS }}
-          MAINNET_RPC_URL: ${{ secrets.MAINNET_RPC_URL }}
         run: make coverage profile=ci
         id: coverage
 
