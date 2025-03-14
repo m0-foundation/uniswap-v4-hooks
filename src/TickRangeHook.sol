@@ -33,21 +33,6 @@ contract TickRangeHook is BaseTickRangeHook {
     /* ============ Hook functions ============ */
 
     /**
-     * @dev    Hook that is called after the pool is initialized.
-     * @param  tick_ The initial tick of the pool.
-     * @return The selector of this function.
-     */
-    function _afterInitialize(
-        address /* sender */,
-        PoolKey calldata /* poolKey */,
-        uint160 /* sqrtPriceX96 */,
-        int24 tick_
-    ) internal view override returns (bytes4) {
-        super._afterInitialize(tick_);
-        return this.afterInitialize.selector;
-    }
-
-    /**
      * @dev    Hook that is called after a swap is executed.
      * @param  key_ The key of the pool.
      * @return A tuple containing the selector of this function and the hook's delta in unspecified currency.

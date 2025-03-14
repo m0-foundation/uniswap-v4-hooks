@@ -8,6 +8,8 @@ import { IPoolManager } from "../lib/v4-periphery/lib/v4-core/src/interfaces/IPo
 import { Hooks } from "../lib/v4-periphery/lib/v4-core/src/libraries/Hooks.sol";
 import { TickMath } from "../lib/v4-periphery/lib/v4-core/src/libraries/TickMath.sol";
 
+import { Currency } from "../lib/v4-periphery/lib/v4-core/src/types/Currency.sol";
+
 import { PoolSwapTest } from "../lib/v4-periphery/lib/v4-core/src/test/PoolSwapTest.sol";
 
 import { Ownable } from "../src/abstract/Ownable.sol";
@@ -22,8 +24,7 @@ import { BaseTest } from "./utils/BaseTest.sol";
 contract TickRangeHookTest is BaseTest {
     TickRangeHook public tickRangeHook;
 
-    uint160 public flags =
-        uint160(Hooks.AFTER_INITIALIZE_FLAG | Hooks.BEFORE_ADD_LIQUIDITY_FLAG | Hooks.AFTER_SWAP_FLAG);
+    uint160 public flags = uint160(Hooks.BEFORE_ADD_LIQUIDITY_FLAG | Hooks.AFTER_SWAP_FLAG);
 
     function setUp() public override {
         super.setUp();
@@ -67,71 +68,87 @@ contract TickRangeHookTest is BaseTest {
 
     /* ============ afterInitialize ============ */
 
-    function test_afterInitialize_invalidInitialTick_outsideLowerBound() public {
-        int24 tick_ = -1;
+    // TODO: move into integration test file
+    function test_afterInitialize_moveTickInRange() public {
+        // We initialize the pool at tick -1
+        initPool(tickRangeHook, TickMath.getSqrtPriceAtTick(-1));
 
-        expectWrappedRevert(
-            address(tickRangeHook),
-            IHooks.afterInitialize.selector,
-            abi.encodeWithSelector(IBaseTickRangeHook.InvalidTick.selector, tick_, TICK_LOWER_BOUND, TICK_UPPER_BOUND)
+        (, int24 tick_, , ) = state.getSlot0(poolId);
+        assertEq(tick_, -1);
+
+        // Then deposit tokenZero single sided liquidity at tick 0
+        (uint128 positionLiquidity_, uint256 tokenId_) = mintNewPosition(
+            TickMath.getSqrtPriceAtTick(0),
+            TICK_LOWER_BOUND,
+            TICK_UPPER_BOUND,
+            1_000_000e6,
+            0
         );
 
-        (key, poolId) = initPool(
-            tokenZero,
-            tokenOne,
-            tickRangeHook,
-            SWAP_FEE,
-            TICK_SPACING,
-            TickMath.getSqrtPriceAtTick(tick_)
-        );
-    }
+        uint256 tokenZeroBalanceBeforeSwap_ = tokenZero.balanceOf(address(this));
+        uint256 tokenOneBalanceBeforeSwap_ = tokenOne.balanceOf(address(this));
 
-    function test_afterInitialize_invalidInitialTick_outsideUpperBound() public {
-        int24 tick_ = 2;
-
-        expectWrappedRevert(
-            address(tickRangeHook),
-            IHooks.afterInitialize.selector,
-            abi.encodeWithSelector(IBaseTickRangeHook.InvalidTick.selector, tick_, TICK_LOWER_BOUND, TICK_UPPER_BOUND)
+        // Then swap to move tick to tick 0
+        swapRouter.swap(
+            key,
+            IPoolManager.SwapParams({
+                zeroForOne: false,
+                amountSpecified: 500_000e6,
+                sqrtPriceLimitX96: TickMath.getSqrtPriceAtTick(1)
+            }),
+            PoolSwapTest.TestSettings({ takeClaims: false, settleUsingBurn: false }),
+            ""
         );
 
-        (key, poolId) = initPool(
-            tokenZero,
-            tokenOne,
-            tickRangeHook,
-            SWAP_FEE,
-            TICK_SPACING,
-            TickMath.getSqrtPriceAtTick(tick_)
-        );
-    }
+        uint256 tokenZeroBalanceAfterSwap_ = tokenZero.balanceOf(address(this));
+        uint256 tokenOneBalanceAfterSwap_ = tokenOne.balanceOf(address(this));
+        (, tick_, , ) = state.getSlot0(poolId);
 
-    function test_afterInitialize_invalidInitialTick_equalUpperBound() public {
-        int24 tick_ = 1;
+        // Should receive 500_000 tokenZero in exchange of...
+        assertEq(tokenZeroBalanceAfterSwap_ - tokenZeroBalanceBeforeSwap_, 500_000e6);
 
-        expectWrappedRevert(
-            address(tickRangeHook),
-            IHooks.afterInitialize.selector,
-            abi.encodeWithSelector(IBaseTickRangeHook.InvalidTick.selector, tick_, TICK_LOWER_BOUND, TICK_UPPER_BOUND)
-        );
+        // 500_062.505627 tokenOne, which accounts for the 0.01% swap fee and 12.505627 of slippage
+        assertEq(tokenOneBalanceBeforeSwap_ - tokenOneBalanceAfterSwap_, 500062505627);
 
-        (key, poolId) = initPool(
-            tokenZero,
-            tokenOne,
-            tickRangeHook,
-            SWAP_FEE,
-            TICK_SPACING,
-            TickMath.getSqrtPriceAtTick(tick_)
-        );
-    }
-
-    function test_afterInitialize() public {
-        initPool(tickRangeHook);
-        (uint160 sqrtPriceX96_, int24 tick_, uint24 protocolFee_, uint24 swapFee_) = state.getSlot0(poolId);
-
-        assertEq(sqrtPriceX96_, SQRT_PRICE_0_0);
+        // Current tick is now 0
         assertEq(tick_, 0);
-        assertEq(protocolFee_, 0);
-        assertEq(swapFee_, SWAP_FEE);
+    }
+
+    function test_afterInitialize_moveTickOutOfRange() public {
+        // We initialize the pool at tick -1
+        initPool(tickRangeHook, TickMath.getSqrtPriceAtTick(-1));
+
+        (, int24 tick_, , ) = state.getSlot0(poolId);
+        assertEq(tick_, -1);
+
+        // Then deposit tokenZero single sided liquidity at tick 0
+        (uint128 positionLiquidity_, uint256 tokenId_) = mintNewPosition(
+            TickMath.getSqrtPriceAtTick(0),
+            TICK_LOWER_BOUND,
+            TICK_UPPER_BOUND,
+            1_000_000e6,
+            0
+        );
+
+        tick_ = 2;
+
+        expectWrappedRevert(
+            address(tickRangeHook),
+            IHooks.afterSwap.selector,
+            abi.encodeWithSelector(IBaseTickRangeHook.InvalidTick.selector, tick_, TICK_LOWER_BOUND, TICK_UPPER_BOUND)
+        );
+
+        // Then swap to move tick out of range
+        swapRouter.swap(
+            key,
+            IPoolManager.SwapParams({
+                zeroForOne: false,
+                amountSpecified: 1_000_000e6,
+                sqrtPriceLimitX96: TickMath.getSqrtPriceAtTick(tick_)
+            }),
+            PoolSwapTest.TestSettings({ takeClaims: false, settleUsingBurn: false }),
+            ""
+        );
     }
 
     /* ============ afterSwap ============ */

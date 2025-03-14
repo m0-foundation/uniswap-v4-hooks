@@ -85,6 +85,10 @@ contract BaseTest is Deployers, PosmTestSetup {
         (key, poolId) = initPool(tokenZero, tokenOne, hook_, SWAP_FEE, TICK_SPACING, SQRT_PRICE_0_0);
     }
 
+    function initPool(IHooks hook_, uint160 initSqrtPriceX96_) public {
+        (key, poolId) = initPool(tokenZero, tokenOne, hook_, SWAP_FEE, TICK_SPACING, initSqrtPriceX96_);
+    }
+
     /* ============ Helpers ============ */
 
     function mintNewPosition(

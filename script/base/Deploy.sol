@@ -20,11 +20,11 @@ import { HookMiner } from "../../lib/v4-periphery/src/utils/HookMiner.sol";
 import { AllowlistHook } from "../../src/AllowlistHook.sol";
 import { TickRangeHook } from "../../src/TickRangeHook.sol";
 
-import { Config } from "./config.sol";
+import { Config } from "./Config.sol";
 
 contract Deploy is Config {
     function _deployTickRangeHook(address owner_, DeployConfig memory config_) internal returns (IHooks) {
-        uint160 flags_ = uint160(Hooks.AFTER_INITIALIZE_FLAG | Hooks.BEFORE_ADD_LIQUIDITY_FLAG | Hooks.AFTER_SWAP_FLAG);
+        uint160 flags_ = uint160(Hooks.BEFORE_ADD_LIQUIDITY_FLAG | Hooks.AFTER_SWAP_FLAG);
 
         // Mine a salt that will produce a hook address with the correct flags
         (address hookAddress_, bytes32 salt_) = HookMiner.find(
@@ -48,12 +48,7 @@ contract Deploy is Config {
     }
 
     function _deployAllowlistHook(address owner_, DeployConfig memory config_) internal returns (IHooks) {
-        uint160 flags_ = uint160(
-            Hooks.AFTER_INITIALIZE_FLAG |
-                Hooks.BEFORE_ADD_LIQUIDITY_FLAG |
-                Hooks.BEFORE_SWAP_FLAG |
-                Hooks.AFTER_SWAP_FLAG
-        );
+        uint160 flags_ = uint160(Hooks.BEFORE_ADD_LIQUIDITY_FLAG | Hooks.BEFORE_SWAP_FLAG | Hooks.AFTER_SWAP_FLAG);
 
         // Mine a salt that will produce a hook address with the correct flags
         (address hookAddress_, bytes32 salt_) = HookMiner.find(

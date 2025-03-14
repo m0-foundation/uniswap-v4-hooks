@@ -12,7 +12,7 @@ import { PoolKey } from "../../lib/v4-periphery/lib/v4-core/src/types/PoolKey.so
 
 import { Ownable } from "../../src/abstract/Ownable.sol";
 
-import { IAllowlistHook } from "../../src/interfaces/IAllowListHook.sol";
+import { IAllowlistHook } from "../../src/interfaces/IAllowlistHook.sol";
 import { IBaseTickRangeHook } from "../../src/interfaces/IBaseTickRangeHook.sol";
 
 import { Config } from "../../script/base/Config.sol";
@@ -30,10 +30,10 @@ contract DeployTest is Deploy, Test {
     /* ============ getConfig ============ */
 
     /// forge-config: default.allow_internal_expect_revert = true
-    // function testFork_getConfig_unsupportedChain() public {
-    //     vm.expectRevert(abi.encodeWithSelector(Config.UnsupportedChain.selector, block.chainid));
-    //     DeployConfig memory config_ = _getDeployConfig(block.chainid);
-    // }
+    function testFork_getConfig_unsupportedChain() public {
+        vm.expectRevert(abi.encodeWithSelector(Config.UnsupportedChain.selector, block.chainid));
+        DeployConfig memory config_ = _getDeployConfig(block.chainid);
+    }
 
     /* ============ deployAllowlistHook ============ */
 
@@ -45,7 +45,7 @@ contract DeployTest is Deploy, Test {
         vm.prank(config_.create2Deployer);
         IHooks allowlistHook_ = _deployAllowlistHook(OWNER, config_);
 
-        assertEq(address(allowlistHook_), 0xA0a46B502722840942b70F258c7A6B376B6a58C0);
+        assertEq(address(allowlistHook_), 0xFe676961b39Ac91F63210e986E2202C8dE49c8c0);
         assertEq(Ownable(address(allowlistHook_)).owner(), OWNER);
         assertEq(IAllowlistHook(address(allowlistHook_)).positionManager(), address(config_.posm));
         assertEq(IAllowlistHook(address(allowlistHook_)).swapRouter(), config_.swapRouter);
@@ -82,7 +82,7 @@ contract DeployTest is Deploy, Test {
         vm.prank(config_.create2Deployer);
         IHooks tickrangeHook_ = _deployTickRangeHook(OWNER, config_);
 
-        assertEq(address(tickrangeHook_), 0xAa602161aA67F1c8a56d4Eaf254069cFc5575840);
+        assertEq(address(tickrangeHook_), 0x0AebBEA7fAcC81989Efe799CE6f6568c732D4840);
         assertEq(Ownable(address(tickrangeHook_)).owner(), OWNER);
 
         assertEq(IBaseTickRangeHook(address(tickrangeHook_)).tickLowerBound(), config_.tickLowerBound);

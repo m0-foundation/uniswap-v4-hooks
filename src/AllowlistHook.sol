@@ -67,7 +67,7 @@ contract AllowlistHook is BaseTickRangeHook, IAllowlistHook {
         return
             Hooks.Permissions({
                 beforeInitialize: false,
-                afterInitialize: true,
+                afterInitialize: false,
                 beforeAddLiquidity: true,
                 beforeRemoveLiquidity: false,
                 afterAddLiquidity: false,
@@ -81,21 +81,6 @@ contract AllowlistHook is BaseTickRangeHook, IAllowlistHook {
                 afterAddLiquidityReturnDelta: false,
                 afterRemoveLiquidityReturnDelta: false
             });
-    }
-
-    /**
-     * @dev    Hook that is called after the pool is initialized.
-     * @param  tick_ The initial tick of the pool.
-     * @return The selector of this function.
-     */
-    function _afterInitialize(
-        address /* sender */,
-        PoolKey calldata /* poolKey */,
-        uint160 /* sqrtPriceX96 */,
-        int24 tick_
-    ) internal view override returns (bytes4) {
-        super._afterInitialize(tick_);
-        return this.afterInitialize.selector;
     }
 
     /**

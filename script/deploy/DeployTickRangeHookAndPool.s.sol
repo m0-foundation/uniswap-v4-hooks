@@ -13,7 +13,6 @@ import { Deploy } from "../base/Deploy.sol";
 
 contract DeployTickRangeHookAndPool is Deploy, Script {
     function run() public {
-        address deployer_ = vm.rememberKey(vm.envUint("PRIVATE_KEY"));
         address owner_ = vm.envAddress("OWNER");
         DeployConfig memory config_ = _getDeployConfig(block.chainid);
 

@@ -22,13 +22,7 @@ import { BaseTest } from "./utils/BaseTest.sol";
 contract AllowlistHookTest is BaseTest {
     AllowlistHook public allowlistHook;
 
-    uint160 public flags =
-        uint160(
-            Hooks.AFTER_INITIALIZE_FLAG |
-                Hooks.BEFORE_ADD_LIQUIDITY_FLAG |
-                Hooks.AFTER_SWAP_FLAG |
-                Hooks.BEFORE_SWAP_FLAG
-        );
+    uint160 public flags = uint160(Hooks.BEFORE_ADD_LIQUIDITY_FLAG | Hooks.AFTER_SWAP_FLAG | Hooks.BEFORE_SWAP_FLAG);
 
     function setUp() public override {
         super.setUp();

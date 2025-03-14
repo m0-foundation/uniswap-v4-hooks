@@ -57,7 +57,7 @@ abstract contract BaseTickRangeHook is IBaseTickRangeHook, BaseHook, Ownable2Ste
         return
             Hooks.Permissions({
                 beforeInitialize: false,
-                afterInitialize: true,
+                afterInitialize: false,
                 beforeAddLiquidity: true,
                 beforeRemoveLiquidity: false,
                 afterAddLiquidity: false,
@@ -71,10 +71,6 @@ abstract contract BaseTickRangeHook is IBaseTickRangeHook, BaseHook, Ownable2Ste
                 afterAddLiquidityReturnDelta: false,
                 afterRemoveLiquidityReturnDelta: false
             });
-    }
-
-    function _afterInitialize(int24 tick_) internal view {
-        _checkTick(tick_);
     }
 
     function _afterSwap(PoolKey calldata key_) internal view {
