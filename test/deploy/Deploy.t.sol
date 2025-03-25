@@ -32,7 +32,7 @@ contract DeployTest is Deploy, Test {
     /// forge-config: default.allow_internal_expect_revert = true
     function testFork_getConfig_unsupportedChain() public {
         vm.expectRevert(abi.encodeWithSelector(Config.UnsupportedChain.selector, block.chainid));
-        DeployConfig memory config_ = _getDeployConfig(block.chainid);
+        _getDeployConfig(block.chainid);
     }
 
     /* ============ deployAllowlistHook ============ */
@@ -46,8 +46,12 @@ contract DeployTest is Deploy, Test {
         IHooks allowlistHook_ = _deployAllowlistHook(OWNER, config_);
 
         assertEq(Ownable(address(allowlistHook_)).owner(), OWNER);
-        assertEq(IAllowlistHook(address(allowlistHook_)).positionManager(), address(config_.posm));
-        assertEq(IAllowlistHook(address(allowlistHook_)).swapRouter(), config_.swapRouter);
+        assertTrue(IAllowlistHook(address(allowlistHook_)).isSwapRouterTrusted(config_.swapRouter));
+        assertEq(
+            uint8(IAllowlistHook(address(allowlistHook_)).getPositionManagerStatus(address(config_.posm))),
+            uint8(IAllowlistHook.PositionManagerStatus.ALLOWED)
+        );
+
         assertEq(IBaseTickRangeHook(address(allowlistHook_)).tickLowerBound(), config_.tickLowerBound);
         assertEq(IBaseTickRangeHook(address(allowlistHook_)).tickUpperBound(), config_.tickUpperBound);
     }

@@ -22,24 +22,32 @@ import { IBaseActionsRouterLike } from "./interfaces/IBaseActionsRouterLike.sol"
 contract AllowlistHook is BaseTickRangeHook, IAllowlistHook {
     /* ============ Variables ============ */
 
-    /// @inheritdoc IAllowlistHook
-    address public positionManager;
+    /**
+     * @notice The PositionManagerStatus for a given positionManager contract. Only trusted position managers can
+     *         invoke the beforeAddLiquidity and beforeRemoveLiquidity hooks. When a position manager is removed, it
+     *         is designated as REDUCE_ONLY to allow users to remove their liquidity or migrate to a new position
+     *         manager.
+     */
+    mapping(address positionManager => PositionManagerStatus positionManagerStatus) internal _positionManagers;
 
-    /// @inheritdoc IAllowlistHook
-    address public swapRouter;
+    /**
+     * @notice Mapping of Swap Routers to their trusted status.
+     * @dev    Only trusted Routers can invoke the beforeSwap hook.
+     */
+    mapping(address swapRouter => bool isSwapRouterTrusted) internal _swapRouters;
 
-    /// @notice Mapping of liquidity providers to their allowed status.
+    /// @notice Mapping of Liquidity Providers to their allowed status.
     mapping(address liquidityProvider => bool isLiquidityProviderAllowed) internal _liquidityProvidersAllowlist;
 
-    /// @notice Mapping of swappers to their allowed status.
+    /// @notice Mapping of Swappers to their allowed status.
     mapping(address swapper => bool isSwapperAllowed) internal _swappersAllowlist;
 
     /* ============ Constructor ============ */
 
     /**
      * @notice Constructs the AllowlistHook contract.
-     * @param  positionManager_ The Uniswap V4 Position Manager contract address allowed to modify liquidity.
-     * @param  swapRouter_      The Uniswap V4 Router contract address allowed to swap.
+     * @param  positionManager_ The initial Uniswap V4 Position Manager contract address allowed to modify liquidity.
+     * @param  swapRouter_      The initial Uniswap V4 Swap Router contract address allowed to swap.
      * @param  poolManager_     The Uniswap V4 Pool Manager contract address.
      * @param  tickLowerBound_  The lower tick of the range to limit the liquidity provision and token swaps to.
      * @param  tickUpperBound_  The upper tick of the range to limit the liquidity provision and token swaps to.
@@ -53,8 +61,8 @@ contract AllowlistHook is BaseTickRangeHook, IAllowlistHook {
         int24 tickUpperBound_,
         address owner_
     ) BaseTickRangeHook(poolManager_, tickLowerBound_, tickUpperBound_, owner_) {
-        _setPositionManager(positionManager_);
-        _setSwapRouter(swapRouter_);
+        _setPositionManager(positionManager_, true);
+        _setSwapRouter(swapRouter_, true);
     }
 
     /* ============ Hook functions ============ */
@@ -95,8 +103,8 @@ contract AllowlistHook is BaseTickRangeHook, IAllowlistHook {
         IPoolManager.SwapParams calldata /* params */,
         bytes calldata /* hookData */
     ) internal override returns (bytes4, BeforeSwapDelta, uint24) {
-        if (sender_ != swapRouter) {
-            revert SwapRouterNotAllowed(sender_);
+        if (!_swapRouters[sender_]) {
+            revert SwapRouterNotTrusted(sender_);
         }
 
         address caller_ = IBaseActionsRouterLike(sender_).msgSender();
@@ -137,8 +145,8 @@ contract AllowlistHook is BaseTickRangeHook, IAllowlistHook {
         IPoolManager.ModifyLiquidityParams calldata params_,
         bytes calldata /* hookData */
     ) internal override returns (bytes4) {
-        if (sender_ != positionManager) {
-            revert PositionManagerNotAllowed(sender_);
+        if (_positionManagers[sender_] != PositionManagerStatus.ALLOWED) {
+            revert PositionManagerNotTrusted(sender_);
         }
 
         address caller_ = IBaseActionsRouterLike(sender_).msgSender();
@@ -155,7 +163,7 @@ contract AllowlistHook is BaseTickRangeHook, IAllowlistHook {
 
     /// @inheritdoc IAllowlistHook
     function setLiquidityProviderStatus(address liquidityProvider_, bool isAllowed_) external onlyOwner {
-        _setLiquidityProviderStatus(liquidityProvider_, isAllowed_);
+        _setLiquidityProvider(liquidityProvider_, isAllowed_);
     }
 
     /// @inheritdoc IAllowlistHook
@@ -166,13 +174,13 @@ contract AllowlistHook is BaseTickRangeHook, IAllowlistHook {
         if (liquidityProviders_.length != isAllowed_.length) revert ArrayLengthMismatch();
 
         for (uint256 i_; i_ < liquidityProviders_.length; ++i_) {
-            _setLiquidityProviderStatus(liquidityProviders_[i_], isAllowed_[i_]);
+            _setLiquidityProvider(liquidityProviders_[i_], isAllowed_[i_]);
         }
     }
 
     /// @inheritdoc IAllowlistHook
     function setSwapperStatus(address swapper_, bool isAllowed_) external onlyOwner {
-        _setSwapperStatus(swapper_, isAllowed_);
+        _setSwapper(swapper_, isAllowed_);
     }
 
     /// @inheritdoc IAllowlistHook
@@ -180,21 +188,47 @@ contract AllowlistHook is BaseTickRangeHook, IAllowlistHook {
         if (swappers_.length != isAllowed_.length) revert ArrayLengthMismatch();
 
         for (uint256 i_; i_ < swappers_.length; ++i_) {
-            _setSwapperStatus(swappers_[i_], isAllowed_[i_]);
+            _setSwapper(swappers_[i_], isAllowed_[i_]);
         }
     }
 
     /// @inheritdoc IAllowlistHook
-    function setPositionManager(address positionManager_) external onlyOwner {
-        _setPositionManager(positionManager_);
+    function setPositionManagerStatus(address positionManager_, bool isAllowed_) external onlyOwner {
+        _setPositionManager(positionManager_, isAllowed_);
     }
 
     /// @inheritdoc IAllowlistHook
-    function setSwapRouter(address swapRouter_) external onlyOwner {
-        _setSwapRouter(swapRouter_);
+    function setPositionManagerStatuses(
+        address[] calldata positionManagers_,
+        bool[] calldata isAllowed_
+    ) external onlyOwner {
+        if (positionManagers_.length != isAllowed_.length) revert ArrayLengthMismatch();
+
+        for (uint256 i_; i_ < positionManagers_.length; ++i_) {
+            _setPositionManager(positionManagers_[i_], isAllowed_[i_]);
+        }
+    }
+
+    /// @inheritdoc IAllowlistHook
+    function setSwapRouterStatus(address swapRouter_, bool isAllowed_) external onlyOwner {
+        _setSwapRouter(swapRouter_, isAllowed_);
+    }
+
+    /// @inheritdoc IAllowlistHook
+    function setSwapRouterStatuses(address[] calldata swapRouters_, bool[] calldata isAllowed_) external onlyOwner {
+        if (swapRouters_.length != isAllowed_.length) revert ArrayLengthMismatch();
+
+        for (uint256 i_; i_ < swapRouters_.length; ++i_) {
+            _setSwapRouter(swapRouters_[i_], isAllowed_[i_]);
+        }
     }
 
     /* ============ External/Public view functions ============ */
+
+    /// @inheritdoc IAllowlistHook
+    function getPositionManagerStatus(address positionManager_) external view returns (PositionManagerStatus) {
+        return _positionManagers[positionManager_];
+    }
 
     /// @inheritdoc IAllowlistHook
     function isLiquidityProviderAllowed(address liquidityProvider_) public view returns (bool) {
@@ -206,6 +240,11 @@ contract AllowlistHook is BaseTickRangeHook, IAllowlistHook {
         return _swappersAllowlist[swapper_];
     }
 
+    /// @inheritdoc IAllowlistHook
+    function isSwapRouterTrusted(address swapRouter_) external view returns (bool) {
+        return _swapRouters[swapRouter_];
+    }
+
     /* ============ Internal Interactive functions ============ */
 
     /**
@@ -213,11 +252,31 @@ contract AllowlistHook is BaseTickRangeHook, IAllowlistHook {
      * @param liquidityProvider_ The address of the liquidity provider.
      * @param isAllowed_         Boolean indicating whether the liquidity provider is allowed or not.
      */
-    function _setLiquidityProviderStatus(address liquidityProvider_, bool isAllowed_) internal {
+    function _setLiquidityProvider(address liquidityProvider_, bool isAllowed_) internal {
         if (liquidityProvider_ == address(0)) revert ZeroLiquidityProvider();
 
         _liquidityProvidersAllowlist[liquidityProvider_] = isAllowed_;
-        emit LiquidityProviderStatusSet(liquidityProvider_, isAllowed_);
+        emit LiquidityProviderSet(liquidityProvider_, isAllowed_);
+    }
+
+    /**
+     * @dev   Sets the Uniswap V4 Position Manager contract address allowed to modify liquidity.
+     * @param positionManager_ The address of the Position Manager to set.
+     * @param isAllowed_       Whether the Position Manager is allowed to modify liquidity or not.
+     */
+    function _setPositionManager(address positionManager_, bool isAllowed_) internal {
+        if (positionManager_ == address(0)) revert ZeroPositionManager();
+
+        // Return early if the position manager is already in the desired state.
+        if ((_positionManagers[positionManager_] == PositionManagerStatus.ALLOWED) ? isAllowed_ : !isAllowed_) {
+            return;
+        }
+
+        _positionManagers[positionManager_] = isAllowed_
+            ? PositionManagerStatus.ALLOWED
+            : PositionManagerStatus.REDUCE_ONLY;
+
+        emit PositionManagerSet(positionManager_, isAllowed_);
     }
 
     /**
@@ -225,28 +284,26 @@ contract AllowlistHook is BaseTickRangeHook, IAllowlistHook {
      * @param swapper_   The address of the swapper.
      * @param isAllowed_ Boolean indicating whether the swapper is allowed or not.
      */
-    function _setSwapperStatus(address swapper_, bool isAllowed_) internal {
+    function _setSwapper(address swapper_, bool isAllowed_) internal {
         if (swapper_ == address(0)) revert ZeroSwapper();
 
         _swappersAllowlist[swapper_] = isAllowed_;
-        emit SwapperStatusSet(swapper_, isAllowed_);
+        emit SwapperSet(swapper_, isAllowed_);
     }
 
     /**
-     * @dev   Sets the Uniswap V4 Position Manager contract address allowed to modify liquidity.
-     * @param positionManager_ The Uniswap V4 Position Manager contract address.
+     * @dev   Sets the status of the Swap Router contract address.
+     * @param swapRouter_ The Swap Router address.
+     * @param isAllowed_  Whether the Swap Router is allowed to swap or not.
      */
-    function _setPositionManager(address positionManager_) internal {
-        if ((positionManager = positionManager_) == address(0)) revert ZeroPositionManager();
-        emit PositionManagerSet(positionManager_);
-    }
+    function _setSwapRouter(address swapRouter_, bool isAllowed_) internal {
+        if (swapRouter_ == address(0)) revert ZeroSwapRouter();
 
-    /**
-     * @dev   Sets the Uniswap V4 Router contract address allowed to swap.
-     * @param swapRouter_ The Uniswap V4 Router contract address.
-     */
-    function _setSwapRouter(address swapRouter_) internal {
-        if ((swapRouter = swapRouter_) == address(0)) revert ZeroSwapRouter();
-        emit SwapRouterSet(swapRouter_);
+        if (_swapRouters[swapRouter_] == isAllowed_) {
+            return;
+        }
+
+        _swapRouters[swapRouter_] = isAllowed_;
+        emit SwapRouterSet(swapRouter_, isAllowed_);
     }
 }
