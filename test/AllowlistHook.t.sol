@@ -22,7 +22,7 @@ import { IAllowlistHook } from "../src/interfaces/IAllowlistHook.sol";
 import { IBaseActionsRouterLike } from "../src/interfaces/IBaseActionsRouterLike.sol";
 import { IERC721Like } from "../src/interfaces/IERC721Like.sol";
 
-import { AllowlistHook } from "../src/AllowlistHook.sol";
+import { AllowlistHookHarness } from "./harness/AllowlistHookHarness.sol";
 
 import { LiquidityOperationsLib } from "./utils/helpers/LiquidityOperationsLib.sol";
 import { BaseTest } from "./utils/BaseTest.sol";
@@ -30,21 +30,27 @@ import { BaseTest } from "./utils/BaseTest.sol";
 contract AllowlistHookTest is BaseTest {
     using LiquidityOperationsLib for IPositionManager;
 
-    AllowlistHook public allowlistHook;
+    AllowlistHookHarness public allowlistHook;
 
-    uint160 public flags = uint160(Hooks.BEFORE_ADD_LIQUIDITY_FLAG | Hooks.AFTER_SWAP_FLAG | Hooks.BEFORE_SWAP_FLAG);
+    uint160 public flags =
+        uint160(
+            Hooks.BEFORE_INITIALIZE_FLAG |
+                Hooks.BEFORE_ADD_LIQUIDITY_FLAG |
+                Hooks.AFTER_SWAP_FLAG |
+                Hooks.BEFORE_SWAP_FLAG
+        );
 
     function setUp() public override {
         super.setUp();
 
         deployCodeTo(
-            "AllowlistHook.sol",
+            "AllowlistHookHarness.sol",
             abi.encode(address(lpm), address(swapRouter), address(manager), TICK_LOWER_BOUND, TICK_UPPER_BOUND, owner),
             address(flags)
         );
 
         // Deploy WrappedMRewardsHook contract
-        allowlistHook = AllowlistHook(address(flags));
+        allowlistHook = AllowlistHookHarness(address(flags));
         initPool(allowlistHook);
 
         IERC721Like(address(lpm)).setApprovalForAll(address(allowlistHook), true);
@@ -56,7 +62,7 @@ contract AllowlistHookTest is BaseTest {
         vm.prank(owner);
         allowlistHook.setSwapRouterStatus(address(mockRouter), true);
 
-        (, , bytes memory data_, uint256 value_) = _prepareSwapExactOutSingle(10_000e6, 10_000e6);
+        (, , bytes memory data_, uint256 value_) = _prepareSwapExactOutSingle(10_000e18, 10_000e18);
 
         expectWrappedRevert(
             address(allowlistHook),
@@ -68,7 +74,7 @@ contract AllowlistHookTest is BaseTest {
     }
 
     function test_beforeSwap_swapRouterNotTrusted() public {
-        (, , bytes memory data_, uint256 value_) = _prepareSwapExactOutSingle(10_000e6, 10_000e6);
+        (, , bytes memory data_, uint256 value_) = _prepareSwapExactOutSingle(10_000e18, 10_000e18);
 
         expectWrappedRevert(
             address(allowlistHook),
@@ -80,6 +86,304 @@ contract AllowlistHookTest is BaseTest {
         mockRouter.executeActions{ value: value_ }(data_);
     }
 
+    function test_beforeSwap_swapCapReached() public {
+        uint256 swapCap_ = 5_000e18;
+        int256 amountSpecified_ = 10_000e18;
+
+        vm.prank(owner);
+        allowlistHook.setSwapCap(swapCap_);
+
+        vm.prank(owner);
+        allowlistHook.setLiquidityProviderStatus(address(this), true);
+
+        (uint128 positionLiquidity_, uint256 tokenId_) = mintNewPosition(
+            SQRT_PRICE_0_0,
+            TICK_LOWER_BOUND,
+            TICK_UPPER_BOUND,
+            1_000_000e18,
+            1_000_000e18
+        );
+
+        vm.prank(owner);
+        allowlistHook.setSwapperStatus(address(this), true);
+
+        vm.mockCall(
+            address(swapRouter),
+            abi.encodeWithSelector(IBaseActionsRouterLike.msgSender.selector),
+            abi.encode(address(this))
+        );
+
+        expectWrappedRevert(
+            address(allowlistHook),
+            IHooks.beforeSwap.selector,
+            abi.encodeWithSelector(IAllowlistHook.SwapCapExceeded.selector, uint256(amountSpecified_), swapCap_)
+        );
+
+        swapRouter.swap(
+            key,
+            IPoolManager.SwapParams({
+                zeroForOne: false,
+                amountSpecified: amountSpecified_, // Exact input for output swap
+                sqrtPriceLimitX96: SQRT_PRICE_0_0 + 1
+            }),
+            PoolSwapTest.TestSettings({ takeClaims: false, settleUsingBurn: false }),
+            ""
+        );
+    }
+
+    function test_beforeSwap_zeroForOne_exactInput() public {
+        int256 amountSpecified_ = 10_000e18;
+
+        vm.prank(owner);
+        allowlistHook.setSwapCap(10_000_000e18);
+
+        vm.prank(owner);
+        allowlistHook.setLiquidityProviderStatus(address(this), true);
+
+        (uint128 positionLiquidity_, uint256 tokenId_) = mintNewPosition(
+            SQRT_PRICE_0_0,
+            TICK_LOWER_BOUND,
+            TICK_UPPER_BOUND,
+            1_000_000e18,
+            1_000_000e18
+        );
+
+        vm.prank(owner);
+        allowlistHook.setTickRange(-1, TICK_UPPER_BOUND);
+
+        vm.prank(owner);
+        allowlistHook.setSwapperStatus(address(this), true);
+
+        vm.mockCall(
+            address(swapRouter),
+            abi.encodeWithSelector(IBaseActionsRouterLike.msgSender.selector),
+            abi.encode(address(this))
+        );
+
+        swapRouter.swap(
+            key,
+            IPoolManager.SwapParams({
+                zeroForOne: true,
+                amountSpecified: -amountSpecified_,
+                sqrtPriceLimitX96: TickMath.getSqrtPriceAtTick(-1)
+            }),
+            PoolSwapTest.TestSettings({ takeClaims: false, settleUsingBurn: false }),
+            ""
+        );
+
+        assertEq(allowlistHook.totalSwap(), uint256(amountSpecified_));
+    }
+
+    function test_beforeSwap_zeroForOne_exactOutput() public {
+        int256 amountSpecified_ = 10_000e18;
+
+        vm.prank(owner);
+        allowlistHook.setSwapCap(10_000_000e18);
+
+        vm.prank(owner);
+        allowlistHook.setLiquidityProviderStatus(address(this), true);
+
+        (uint128 positionLiquidity_, uint256 tokenId_) = mintNewPosition(
+            SQRT_PRICE_0_0,
+            TICK_LOWER_BOUND,
+            TICK_UPPER_BOUND,
+            1_000_000e18,
+            1_000_000e18
+        );
+
+        vm.prank(owner);
+        allowlistHook.setTickRange(-1, TICK_UPPER_BOUND);
+
+        vm.prank(owner);
+        allowlistHook.setSwapperStatus(address(this), true);
+
+        vm.mockCall(
+            address(swapRouter),
+            abi.encodeWithSelector(IBaseActionsRouterLike.msgSender.selector),
+            abi.encode(address(this))
+        );
+
+        swapRouter.swap(
+            key,
+            IPoolManager.SwapParams({
+                zeroForOne: true,
+                amountSpecified: amountSpecified_,
+                sqrtPriceLimitX96: TickMath.getSqrtPriceAtTick(-1)
+            }),
+            PoolSwapTest.TestSettings({ takeClaims: false, settleUsingBurn: false }),
+            ""
+        );
+
+        assertEq(allowlistHook.totalSwap(), uint256(amountSpecified_));
+    }
+
+    function test_beforeSwap_zeroForOne_differentTokenDecimals() public {
+        int256 amountSpecified_ = 10_000e6;
+
+        vm.prank(owner);
+        allowlistHook.setSwapCap(10_000_000e18);
+
+        vm.prank(owner);
+        allowlistHook.setLiquidityProviderStatus(address(this), true);
+
+        (uint128 positionLiquidity_, uint256 tokenId_) = mintNewPosition(
+            SQRT_PRICE_0_0,
+            TICK_LOWER_BOUND,
+            TICK_UPPER_BOUND,
+            1_000_000e18,
+            1_000_000e18
+        );
+
+        vm.prank(owner);
+        allowlistHook.setTickRange(-1, TICK_UPPER_BOUND);
+
+        allowlistHook.setToken0Decimals(6);
+
+        vm.prank(owner);
+        allowlistHook.setSwapperStatus(address(this), true);
+
+        vm.mockCall(
+            address(swapRouter),
+            abi.encodeWithSelector(IBaseActionsRouterLike.msgSender.selector),
+            abi.encode(address(this))
+        );
+
+        swapRouter.swap(
+            key,
+            IPoolManager.SwapParams({
+                zeroForOne: true,
+                amountSpecified: -amountSpecified_,
+                sqrtPriceLimitX96: TickMath.getSqrtPriceAtTick(-1)
+            }),
+            PoolSwapTest.TestSettings({ takeClaims: false, settleUsingBurn: false }),
+            ""
+        );
+
+        assertEq(allowlistHook.totalSwap(), 10_000e18);
+    }
+
+    function test_beforeSwap_oneForZero_exactInput() public {
+        int256 amountSpecified_ = 10_000e18;
+
+        vm.prank(owner);
+        allowlistHook.setSwapCap(10_000_000e18);
+
+        vm.prank(owner);
+        allowlistHook.setLiquidityProviderStatus(address(this), true);
+
+        (uint128 positionLiquidity_, uint256 tokenId_) = mintNewPosition(
+            SQRT_PRICE_0_0,
+            TICK_LOWER_BOUND,
+            TICK_UPPER_BOUND,
+            1_000_000e18,
+            1_000_000e18
+        );
+
+        vm.prank(owner);
+        allowlistHook.setSwapperStatus(address(this), true);
+
+        vm.mockCall(
+            address(swapRouter),
+            abi.encodeWithSelector(IBaseActionsRouterLike.msgSender.selector),
+            abi.encode(address(this))
+        );
+
+        swapRouter.swap(
+            key,
+            IPoolManager.SwapParams({
+                zeroForOne: false,
+                amountSpecified: -amountSpecified_,
+                sqrtPriceLimitX96: SQRT_PRICE_0_0 + 1
+            }),
+            PoolSwapTest.TestSettings({ takeClaims: false, settleUsingBurn: false }),
+            ""
+        );
+
+        assertEq(allowlistHook.totalSwap(), uint256(amountSpecified_));
+    }
+
+    function test_beforeSwap_oneForZero_exactOutput() public {
+        int256 amountSpecified_ = 10_000e18;
+
+        vm.prank(owner);
+        allowlistHook.setSwapCap(10_000_000e18);
+
+        vm.prank(owner);
+        allowlistHook.setLiquidityProviderStatus(address(this), true);
+
+        (uint128 positionLiquidity_, uint256 tokenId_) = mintNewPosition(
+            SQRT_PRICE_0_0,
+            TICK_LOWER_BOUND,
+            TICK_UPPER_BOUND,
+            1_000_000e18,
+            1_000_000e18
+        );
+
+        vm.prank(owner);
+        allowlistHook.setSwapperStatus(address(this), true);
+
+        vm.mockCall(
+            address(swapRouter),
+            abi.encodeWithSelector(IBaseActionsRouterLike.msgSender.selector),
+            abi.encode(address(this))
+        );
+
+        swapRouter.swap(
+            key,
+            IPoolManager.SwapParams({
+                zeroForOne: false,
+                amountSpecified: amountSpecified_,
+                sqrtPriceLimitX96: SQRT_PRICE_0_0 + 1
+            }),
+            PoolSwapTest.TestSettings({ takeClaims: false, settleUsingBurn: false }),
+            ""
+        );
+
+        assertEq(allowlistHook.totalSwap(), uint256(amountSpecified_));
+    }
+
+    function test_beforeSwap_oneForZero_differentTokenDecimals() public {
+        int256 amountSpecified_ = 10_000e6;
+
+        vm.prank(owner);
+        allowlistHook.setSwapCap(10_000_000e18);
+
+        vm.prank(owner);
+        allowlistHook.setLiquidityProviderStatus(address(this), true);
+
+        (uint128 positionLiquidity_, uint256 tokenId_) = mintNewPosition(
+            SQRT_PRICE_0_0,
+            TICK_LOWER_BOUND,
+            TICK_UPPER_BOUND,
+            1_000_000e18,
+            1_000_000e18
+        );
+
+        allowlistHook.setToken1Decimals(6);
+
+        vm.prank(owner);
+        allowlistHook.setSwapperStatus(address(this), true);
+
+        vm.mockCall(
+            address(swapRouter),
+            abi.encodeWithSelector(IBaseActionsRouterLike.msgSender.selector),
+            abi.encode(address(this))
+        );
+
+        swapRouter.swap(
+            key,
+            IPoolManager.SwapParams({
+                zeroForOne: false,
+                amountSpecified: -amountSpecified_,
+                sqrtPriceLimitX96: SQRT_PRICE_0_0 + 1
+            }),
+            PoolSwapTest.TestSettings({ takeClaims: false, settleUsingBurn: false }),
+            ""
+        );
+
+        assertEq(allowlistHook.totalSwap(), 10_000e18);
+    }
+
     function test_beforeSwap() public {
         vm.prank(owner);
         allowlistHook.setLiquidityProviderStatus(address(this), true);
@@ -88,8 +392,8 @@ contract AllowlistHookTest is BaseTest {
             SQRT_PRICE_0_0,
             TICK_LOWER_BOUND,
             TICK_UPPER_BOUND,
-            1_000_000e6,
-            1_000_000e6
+            1_000_000e18,
+            1_000_000e18
         );
 
         assertEq(lpm.getPositionLiquidity(tokenId_), positionLiquidity_);
@@ -107,7 +411,7 @@ contract AllowlistHookTest is BaseTest {
             key,
             IPoolManager.SwapParams({
                 zeroForOne: false,
-                amountSpecified: 10_000e6, // Exact input for output swap
+                amountSpecified: 10_000e18,
                 sqrtPriceLimitX96: SQRT_PRICE_0_0 + 1
             }),
             PoolSwapTest.TestSettings({ takeClaims: false, settleUsingBurn: false }),
@@ -132,7 +436,7 @@ contract AllowlistHookTest is BaseTest {
             abi.encodeWithSelector(IAllowlistHook.PositionManagerNotTrusted.selector, address(lpm))
         );
 
-        mintNewPosition(SQRT_PRICE_0_0, TICK_LOWER_BOUND - 1, TICK_UPPER_BOUND, 1_000_000e6, 1_000_000e6);
+        mintNewPosition(SQRT_PRICE_0_0, TICK_LOWER_BOUND - 1, TICK_UPPER_BOUND, 1_000_000e18, 1_000_000e18);
     }
 
     function test_beforeAddLiquidity_liquidityProviderNotAllowed() public {
@@ -143,7 +447,7 @@ contract AllowlistHookTest is BaseTest {
         );
 
         vm.prank(alice);
-        mintNewPosition(SQRT_PRICE_0_0, TICK_LOWER_BOUND - 1, TICK_UPPER_BOUND, 1_000_000e6, 1_000_000e6);
+        mintNewPosition(SQRT_PRICE_0_0, TICK_LOWER_BOUND - 1, TICK_UPPER_BOUND, 1_000_000e18, 1_000_000e18);
     }
 
     function test_beforeAddLiquidity_reduceOnly() public {
@@ -154,8 +458,8 @@ contract AllowlistHookTest is BaseTest {
             SQRT_PRICE_0_0,
             TICK_LOWER_BOUND,
             TICK_UPPER_BOUND,
-            1_000_000e6,
-            1_000_000e6
+            1_000_000e18,
+            1_000_000e18
         );
 
         (uint160 sqrtPriceX96_, int24 tick_, , ) = state.getSlot0(poolId);
@@ -174,7 +478,7 @@ contract AllowlistHookTest is BaseTest {
             abi.encodeWithSelector(IAllowlistHook.PositionManagerNotTrusted.selector, address(lpm))
         );
 
-        mintNewPosition(SQRT_PRICE_0_0, TICK_LOWER_BOUND - 1, TICK_UPPER_BOUND, 1_000_000e6, 1_000_000e6);
+        mintNewPosition(SQRT_PRICE_0_0, TICK_LOWER_BOUND - 1, TICK_UPPER_BOUND, 1_000_000e18, 1_000_000e18);
     }
 
     function test_beforeAddLiquidity() public {
@@ -185,8 +489,8 @@ contract AllowlistHookTest is BaseTest {
             SQRT_PRICE_0_0,
             TICK_LOWER_BOUND,
             TICK_UPPER_BOUND,
-            1_000_000e6,
-            1_000_000e6
+            1_000_000e18,
+            1_000_000e18
         );
 
         assertEq(lpm.getPositionLiquidity(tokenId_), positionLiquidity_);
@@ -221,8 +525,8 @@ contract AllowlistHookTest is BaseTest {
             SQRT_PRICE_0_0,
             TickMath.getSqrtPriceAtTick(TICK_LOWER_BOUND),
             TickMath.getSqrtPriceAtTick(TICK_UPPER_BOUND),
-            1_000_000e6,
-            1_000_000e6
+            1_000_000e18,
+            1_000_000e18
         );
 
         lpm.mint(positionConfig_, positionLiquidity_, address(this), "");
@@ -581,5 +885,142 @@ contract AllowlistHookTest is BaseTest {
         assertTrue(allowlistHook.isSwapRouterTrusted(alice));
         assertFalse(allowlistHook.isSwapRouterTrusted(bob));
         assertTrue(allowlistHook.isSwapRouterTrusted(carol));
+    }
+
+    /* ============ setSwapCap ============ */
+
+    function test_setSwapCap_onlyOwner() public {
+        vm.expectRevert(abi.encodeWithSelector(Ownable.OwnableUnauthorizedAccount.selector, address(this)));
+        allowlistHook.setSwapCap(10_000_000e18);
+    }
+
+    function test_setSwapCap_noChange() public {
+        uint256 initialSwapCap_ = 10_000_000e18;
+
+        vm.prank(owner);
+        allowlistHook.setSwapCap(initialSwapCap_);
+
+        vm.prank(owner);
+        allowlistHook.setSwapCap(initialSwapCap_);
+
+        assertEq(allowlistHook.swapCap(), initialSwapCap_);
+    }
+
+    function test_setSwapCap_resetTotalSwap() public {
+        uint256 totalSwap_ = 7_500_000e18;
+
+        vm.prank(owner);
+        allowlistHook.setSwapCap(10_000_000e18);
+
+        allowlistHook.setTotalSwap(totalSwap_);
+        assertEq(allowlistHook.totalSwap(), totalSwap_);
+
+        vm.expectEmit();
+        emit IAllowlistHook.TotalSwapReset();
+
+        vm.prank(owner);
+        allowlistHook.setSwapCap(5_000_000e18);
+
+        assertEq(allowlistHook.totalSwap(), 0);
+    }
+
+    function test_setSwapCap() public {
+        uint256 swapCap_ = 10_000_000e18;
+
+        vm.expectEmit();
+        emit IAllowlistHook.SwapCapSet(swapCap_);
+
+        vm.prank(owner);
+        allowlistHook.setSwapCap(swapCap_);
+
+        assertEq(allowlistHook.swapCap(), swapCap_);
+    }
+
+    /* ============ resetTotalSwap ============ */
+
+    function test_resetTotalSwap_onlyOwner() public {
+        vm.expectRevert(abi.encodeWithSelector(Ownable.OwnableUnauthorizedAccount.selector, address(this)));
+        allowlistHook.resetTotalSwap();
+    }
+
+    function test_resetTotalSwap() public {
+        uint256 totalSwap_ = 7_500_000e18;
+
+        allowlistHook.setTotalSwap(totalSwap_);
+        assertEq(allowlistHook.totalSwap(), totalSwap_);
+
+        vm.expectEmit();
+        emit IAllowlistHook.TotalSwapReset();
+
+        vm.prank(owner);
+        allowlistHook.resetTotalSwap();
+    }
+
+    /* ============ getSwappableAmount ============ */
+
+    function test_getSwappableAmount_noSwapCap() public {
+        uint256 amount_ = 1_000_000e18;
+        assertEq(allowlistHook.getSwappableAmount(amount_), amount_);
+    }
+
+    function test_getSwappableAmount_withinBuffer() public {
+        uint256 amount_ = 500_000e18;
+
+        vm.prank(owner);
+        allowlistHook.setSwapCap(1_000_000e18);
+        allowlistHook.setTotalSwap(250_000e18);
+
+        assertEq(allowlistHook.getSwappableAmount(amount_), amount_);
+    }
+
+    function test_getSwappableAmount_exceedsBuffer() public {
+        uint256 amount_ = 1_500_000e18;
+        uint256 swapCap_ = 1_000_000e18;
+        uint256 totalSwap_ = 250_000e18;
+        uint256 buffer_ = swapCap_ - totalSwap_;
+
+        vm.prank(owner);
+        allowlistHook.setSwapCap(swapCap_);
+        allowlistHook.setTotalSwap(totalSwap_);
+
+        assertEq(allowlistHook.getSwappableAmount(amount_), buffer_);
+    }
+
+    function test_getSwappableAmount_zeroBuffer() public {
+        uint256 amount_ = 1_500_000e18;
+        uint256 swapCap_ = 1_000_000e18;
+        uint256 totalSwap_ = 1_000_000e18;
+
+        vm.prank(owner);
+        allowlistHook.setSwapCap(swapCap_);
+        allowlistHook.setTotalSwap(totalSwap_);
+
+        assertEq(allowlistHook.getSwappableAmount(amount_), 0);
+    }
+
+    /* ============ tokenAmountToDecimals ============ */
+
+    function test_tokenAmountToDecimals_scaleUp() public {
+        uint256 tokenAmount_ = 1_000_000e6;
+        assertEq(allowlistHook.tokenAmountToDecimals(tokenAmount_, 6, 18), tokenAmount_ * (10 ** 12));
+    }
+
+    function test_tokenAmountToDecimals_zeroTokenDecimals() public {
+        uint256 tokenAmount_ = 1_000_000;
+        assertEq(allowlistHook.tokenAmountToDecimals(tokenAmount_, 0, 18), tokenAmount_ * (10 ** 18));
+    }
+
+    function test_tokenAmountToDecimals_zeroAmount() public {
+        assertEq(allowlistHook.tokenAmountToDecimals(0e18, 6, 18), 0);
+    }
+
+    function test_tokenAmountToDecimals_noScaling() public {
+        uint256 tokenAmount_ = 1_000_000e18;
+        assertEq(allowlistHook.tokenAmountToDecimals(tokenAmount_, 18, 18), tokenAmount_);
+    }
+
+    function test_tokenAmountToDecimals_targetDecimalsLessNoScalingDown() public {
+        uint256 tokenAmount_ = 1_000_000e18;
+        assertEq(allowlistHook.tokenAmountToDecimals(tokenAmount_, 18, 6), tokenAmount_);
     }
 }

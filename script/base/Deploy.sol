@@ -48,7 +48,12 @@ contract Deploy is Config {
     }
 
     function _deployAllowlistHook(address owner_, DeployConfig memory config_) internal returns (IHooks) {
-        uint160 flags_ = uint160(Hooks.BEFORE_ADD_LIQUIDITY_FLAG | Hooks.BEFORE_SWAP_FLAG | Hooks.AFTER_SWAP_FLAG);
+        uint160 flags_ = uint160(
+            Hooks.BEFORE_INITIALIZE_FLAG |
+                Hooks.BEFORE_ADD_LIQUIDITY_FLAG |
+                Hooks.BEFORE_SWAP_FLAG |
+                Hooks.AFTER_SWAP_FLAG
+        );
 
         // Mine a salt that will produce a hook address with the correct flags
         (address hookAddress_, bytes32 salt_) = HookMiner.find(
