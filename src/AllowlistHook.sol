@@ -359,6 +359,8 @@ contract AllowlistHook is BaseTickRangeHook, IAllowlistHook {
      * @param  isEnabled_ Boolean indicating whether the liquidity providers allowlist is enabled or not.
      */
     function _setLiquidityProvidersAllowlist(bool isEnabled_) internal {
+        if (isLiquidityProvidersAllowlistEnabled == isEnabled_) return;
+
         isLiquidityProvidersAllowlistEnabled = isEnabled_;
         emit LiquidityProvidersAllowlistSet(isEnabled_);
     }
@@ -368,6 +370,8 @@ contract AllowlistHook is BaseTickRangeHook, IAllowlistHook {
      * @param  isEnabled_ Boolean indicating whether the swappers allowlist is enabled or not.
      */
     function _setSwappersAllowlist(bool isEnabled_) internal {
+        if (isSwappersAllowlistEnabled == isEnabled_) return;
+
         isSwappersAllowlistEnabled = isEnabled_;
         emit SwappersAllowlistSet(isEnabled_);
     }
@@ -379,6 +383,7 @@ contract AllowlistHook is BaseTickRangeHook, IAllowlistHook {
      */
     function _setLiquidityProvider(address liquidityProvider_, bool isAllowed_) internal {
         if (liquidityProvider_ == address(0)) revert ZeroLiquidityProvider();
+        if (_liquidityProvidersAllowlist[liquidityProvider_] == isAllowed_) return;
 
         _liquidityProvidersAllowlist[liquidityProvider_] = isAllowed_;
         emit LiquidityProviderSet(liquidityProvider_, isAllowed_);
@@ -411,6 +416,7 @@ contract AllowlistHook is BaseTickRangeHook, IAllowlistHook {
      */
     function _setSwapper(address swapper_, bool isAllowed_) internal {
         if (swapper_ == address(0)) revert ZeroSwapper();
+        if (_swappersAllowlist[swapper_] == isAllowed_) return;
 
         _swappersAllowlist[swapper_] = isAllowed_;
         emit SwapperSet(swapper_, isAllowed_);
@@ -423,10 +429,7 @@ contract AllowlistHook is BaseTickRangeHook, IAllowlistHook {
      */
     function _setSwapRouter(address swapRouter_, bool isAllowed_) internal {
         if (swapRouter_ == address(0)) revert ZeroSwapRouter();
-
-        if (_swapRouters[swapRouter_] == isAllowed_) {
-            return;
-        }
+        if (_swapRouters[swapRouter_] == isAllowed_) return;
 
         _swapRouters[swapRouter_] = isAllowed_;
         emit SwapRouterSet(swapRouter_, isAllowed_);

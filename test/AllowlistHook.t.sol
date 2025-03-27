@@ -503,6 +503,16 @@ contract AllowlistHookTest is BaseTest {
         allowlistHook.setLiquidityProvidersAllowlist(false);
     }
 
+    function test_setLiquidityProvidersAllowlist_noChange() public {
+        // Enabled by default at deployment
+        assertTrue(allowlistHook.isLiquidityProvidersAllowlistEnabled());
+
+        vm.prank(owner);
+        allowlistHook.setLiquidityProvidersAllowlist(true);
+
+        assertTrue(allowlistHook.isLiquidityProvidersAllowlistEnabled());
+    }
+
     function test_setLiquidityProvidersAllowlist() public {
         // Enabled by default at deployment
         assertTrue(allowlistHook.isLiquidityProvidersAllowlistEnabled());
@@ -523,6 +533,16 @@ contract AllowlistHookTest is BaseTest {
     function test_setSwappersAllowlist_onlyOwner() public {
         vm.expectRevert(abi.encodeWithSelector(Ownable.OwnableUnauthorizedAccount.selector, address(this)));
         allowlistHook.setSwappersAllowlist(true);
+    }
+
+    function test_setSwappersAllowlist_noChange() public {
+        // Enabled by default at deployment
+        assertTrue(allowlistHook.isSwappersAllowlistEnabled());
+
+        vm.prank(owner);
+        allowlistHook.setSwappersAllowlist(true);
+
+        assertTrue(allowlistHook.isSwappersAllowlistEnabled());
     }
 
     function test_setSwappersAllowlist() public {
@@ -552,6 +572,13 @@ contract AllowlistHookTest is BaseTest {
 
         vm.prank(owner);
         allowlistHook.setLiquidityProvider(address(0), true);
+    }
+
+    function test_setLiquidityProvider_noChange() public {
+        vm.prank(owner);
+        allowlistHook.setLiquidityProvider(alice, false);
+
+        assertFalse(allowlistHook.isLiquidityProviderAllowed(alice));
     }
 
     function test_setLiquidityProvider() public {
@@ -630,6 +657,13 @@ contract AllowlistHookTest is BaseTest {
         allowlistHook.setSwapper(address(0), true);
     }
 
+    function test_setSwapper_noChange() public {
+        vm.prank(owner);
+        allowlistHook.setSwapper(alice, false);
+
+        assertFalse(allowlistHook.isSwapperAllowed(alice));
+    }
+
     function test_setSwapper() public {
         vm.expectEmit();
         emit IAllowlistHook.SwapperSet(alice, true);
@@ -704,6 +738,32 @@ contract AllowlistHookTest is BaseTest {
 
         vm.prank(owner);
         allowlistHook.setPositionManager(address(0), true);
+    }
+
+    function test_setPositionManager_noChange() public {
+        assertEq(
+            uint8(allowlistHook.getPositionManagerStatus(mockPositionManager)),
+            uint8(IAllowlistHook.PositionManagerStatus.FORBIDDEN)
+        );
+
+        vm.expectEmit();
+        emit IAllowlistHook.PositionManagerSet(mockPositionManager, true);
+
+        vm.prank(owner);
+        allowlistHook.setPositionManager(mockPositionManager, true);
+
+        assertEq(
+            uint8(allowlistHook.getPositionManagerStatus(mockPositionManager)),
+            uint8(IAllowlistHook.PositionManagerStatus.ALLOWED)
+        );
+
+        vm.prank(owner);
+        allowlistHook.setPositionManager(mockPositionManager, true);
+
+        assertEq(
+            uint8(allowlistHook.getPositionManagerStatus(mockPositionManager)),
+            uint8(IAllowlistHook.PositionManagerStatus.ALLOWED)
+        );
     }
 
     function test_setPositionManager() public {
@@ -807,6 +867,23 @@ contract AllowlistHookTest is BaseTest {
 
         vm.prank(owner);
         allowlistHook.setSwapRouter(address(0), true);
+    }
+
+    function test_setSwapRouter_noChange() public {
+        assertFalse(allowlistHook.isSwapRouterTrusted(address(mockRouter)));
+
+        vm.expectEmit();
+        emit IAllowlistHook.SwapRouterSet(address(mockRouter), true);
+
+        vm.prank(owner);
+        allowlistHook.setSwapRouter(address(mockRouter), true);
+
+        assertTrue(allowlistHook.isSwapRouterTrusted(address(mockRouter)));
+
+        vm.prank(owner);
+        allowlistHook.setSwapRouter(address(mockRouter), true);
+
+        assertTrue(allowlistHook.isSwapRouterTrusted(address(mockRouter)));
     }
 
     function test_setSwapRouter() public {

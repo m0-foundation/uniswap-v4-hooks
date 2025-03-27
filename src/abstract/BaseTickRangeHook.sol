@@ -73,11 +73,19 @@ abstract contract BaseTickRangeHook is IBaseTickRangeHook, BaseHook, Ownable2Ste
             });
     }
 
+    /**
+     * @dev    Hook that is called after a swap is executed.
+     * @param  key_ The key of the pool.
+     */
     function _afterSwap(PoolKey calldata key_) internal view {
         (, int24 tickCurrent_, , ) = poolManager.getSlot0(key_.toId());
         _checkTick(tickCurrent_);
     }
 
+    /**
+     * @dev    Hook that is called before liquidity is added.
+     * @param  params_ The parameters for modifying liquidity.
+     */
     function _beforeAddLiquidity(IPoolManager.ModifyLiquidityParams calldata params_) internal view {
         if (params_.tickLower < tickLowerBound || params_.tickUpper > tickUpperBound)
             revert InvalidTickRange(params_.tickLower, params_.tickUpper, tickLowerBound, tickUpperBound);

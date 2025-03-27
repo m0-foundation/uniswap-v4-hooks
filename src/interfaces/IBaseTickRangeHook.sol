@@ -42,7 +42,7 @@ interface IBaseTickRangeHook {
      */
     error TicksOutOfOrder(int24 tickLowerBound, int24 tickUpperBound);
 
-    /* ============ External / View functions ============ */
+    /* ============ External / Interactive functions ============ */
 
     /**
      * @notice Sets the tick range to limit the liquidity provision and token swaps to.
