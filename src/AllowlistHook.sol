@@ -303,14 +303,14 @@ contract AllowlistHook is BaseTickRangeHook, IAllowlistHook {
 
     /// @inheritdoc IAllowlistHook
     function setSwapCap(uint256 swapCap_) external onlyOwner {
-        if (swapCap_ == swapCap) return;
+        if (swapCap == swapCap_) return;
 
         swapCap = swapCap_;
 
         emit SwapCapSet(swapCap_);
 
         // Reset the total swap amount if the new cap is lower than the current total swap amount.
-        if (swapCap_ < totalSwap) {
+        if (swapCap_ <= totalSwap) {
             _resetTotalSwap();
         }
     }

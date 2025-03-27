@@ -985,6 +985,19 @@ contract AllowlistHookTest is BaseTest {
         allowlistHook.setSwapCap(5_000_000e18);
 
         assertEq(allowlistHook.totalSwap(), 0);
+
+        totalSwap_ = 2_500_000e18;
+
+        allowlistHook.setTotalSwap(totalSwap_);
+        assertEq(allowlistHook.totalSwap(), totalSwap_);
+
+        vm.expectEmit();
+        emit IAllowlistHook.TotalSwapReset();
+
+        vm.prank(owner);
+        allowlistHook.setSwapCap(2_500_000e18);
+
+        assertEq(allowlistHook.totalSwap(), 0);
     }
 
     function test_setSwapCap() public {
