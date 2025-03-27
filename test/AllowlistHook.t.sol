@@ -60,7 +60,7 @@ contract AllowlistHookTest is BaseTest {
 
     function test_beforeSwap_swapperNotAllowed() public {
         vm.prank(owner);
-        allowlistHook.setSwapRouterStatus(address(mockRouter), true);
+        allowlistHook.setSwapRouter(address(mockRouter), true);
 
         (, , bytes memory data_, uint256 value_) = _prepareSwapExactOutSingle(10_000e18, 10_000e18);
 
@@ -94,18 +94,12 @@ contract AllowlistHookTest is BaseTest {
         allowlistHook.setSwapCap(swapCap_);
 
         vm.prank(owner);
-        allowlistHook.setLiquidityProviderStatus(address(this), true);
+        allowlistHook.setLiquidityProvider(address(this), true);
 
-        (uint128 positionLiquidity_, uint256 tokenId_) = mintNewPosition(
-            SQRT_PRICE_0_0,
-            TICK_LOWER_BOUND,
-            TICK_UPPER_BOUND,
-            1_000_000e18,
-            1_000_000e18
-        );
+        mintNewPosition(SQRT_PRICE_0_0, TICK_LOWER_BOUND, TICK_UPPER_BOUND, 1_000_000e18, 1_000_000e18);
 
         vm.prank(owner);
-        allowlistHook.setSwapperStatus(address(this), true);
+        allowlistHook.setSwapper(address(this), true);
 
         vm.mockCall(
             address(swapRouter),
@@ -138,21 +132,15 @@ contract AllowlistHookTest is BaseTest {
         allowlistHook.setSwapCap(10_000_000e18);
 
         vm.prank(owner);
-        allowlistHook.setLiquidityProviderStatus(address(this), true);
+        allowlistHook.setLiquidityProvider(address(this), true);
 
-        (uint128 positionLiquidity_, uint256 tokenId_) = mintNewPosition(
-            SQRT_PRICE_0_0,
-            TICK_LOWER_BOUND,
-            TICK_UPPER_BOUND,
-            1_000_000e18,
-            1_000_000e18
-        );
+        mintNewPosition(SQRT_PRICE_0_0, TICK_LOWER_BOUND, TICK_UPPER_BOUND, 1_000_000e18, 1_000_000e18);
 
         vm.prank(owner);
         allowlistHook.setTickRange(-1, TICK_UPPER_BOUND);
 
         vm.prank(owner);
-        allowlistHook.setSwapperStatus(address(this), true);
+        allowlistHook.setSwapper(address(this), true);
 
         vm.mockCall(
             address(swapRouter),
@@ -181,21 +169,15 @@ contract AllowlistHookTest is BaseTest {
         allowlistHook.setSwapCap(10_000_000e18);
 
         vm.prank(owner);
-        allowlistHook.setLiquidityProviderStatus(address(this), true);
+        allowlistHook.setLiquidityProvider(address(this), true);
 
-        (uint128 positionLiquidity_, uint256 tokenId_) = mintNewPosition(
-            SQRT_PRICE_0_0,
-            TICK_LOWER_BOUND,
-            TICK_UPPER_BOUND,
-            1_000_000e18,
-            1_000_000e18
-        );
+        mintNewPosition(SQRT_PRICE_0_0, TICK_LOWER_BOUND, TICK_UPPER_BOUND, 1_000_000e18, 1_000_000e18);
 
         vm.prank(owner);
         allowlistHook.setTickRange(-1, TICK_UPPER_BOUND);
 
         vm.prank(owner);
-        allowlistHook.setSwapperStatus(address(this), true);
+        allowlistHook.setSwapper(address(this), true);
 
         vm.mockCall(
             address(swapRouter),
@@ -224,15 +206,9 @@ contract AllowlistHookTest is BaseTest {
         allowlistHook.setSwapCap(10_000_000e18);
 
         vm.prank(owner);
-        allowlistHook.setLiquidityProviderStatus(address(this), true);
+        allowlistHook.setLiquidityProvider(address(this), true);
 
-        (uint128 positionLiquidity_, uint256 tokenId_) = mintNewPosition(
-            SQRT_PRICE_0_0,
-            TICK_LOWER_BOUND,
-            TICK_UPPER_BOUND,
-            1_000_000e18,
-            1_000_000e18
-        );
+        mintNewPosition(SQRT_PRICE_0_0, TICK_LOWER_BOUND, TICK_UPPER_BOUND, 1_000_000e18, 1_000_000e18);
 
         vm.prank(owner);
         allowlistHook.setTickRange(-1, TICK_UPPER_BOUND);
@@ -240,7 +216,7 @@ contract AllowlistHookTest is BaseTest {
         allowlistHook.setToken0Decimals(6);
 
         vm.prank(owner);
-        allowlistHook.setSwapperStatus(address(this), true);
+        allowlistHook.setSwapper(address(this), true);
 
         vm.mockCall(
             address(swapRouter),
@@ -269,18 +245,12 @@ contract AllowlistHookTest is BaseTest {
         allowlistHook.setSwapCap(10_000_000e18);
 
         vm.prank(owner);
-        allowlistHook.setLiquidityProviderStatus(address(this), true);
+        allowlistHook.setLiquidityProvider(address(this), true);
 
-        (uint128 positionLiquidity_, uint256 tokenId_) = mintNewPosition(
-            SQRT_PRICE_0_0,
-            TICK_LOWER_BOUND,
-            TICK_UPPER_BOUND,
-            1_000_000e18,
-            1_000_000e18
-        );
+        mintNewPosition(SQRT_PRICE_0_0, TICK_LOWER_BOUND, TICK_UPPER_BOUND, 1_000_000e18, 1_000_000e18);
 
         vm.prank(owner);
-        allowlistHook.setSwapperStatus(address(this), true);
+        allowlistHook.setSwapper(address(this), true);
 
         vm.mockCall(
             address(swapRouter),
@@ -309,18 +279,12 @@ contract AllowlistHookTest is BaseTest {
         allowlistHook.setSwapCap(10_000_000e18);
 
         vm.prank(owner);
-        allowlistHook.setLiquidityProviderStatus(address(this), true);
+        allowlistHook.setLiquidityProvider(address(this), true);
 
-        (uint128 positionLiquidity_, uint256 tokenId_) = mintNewPosition(
-            SQRT_PRICE_0_0,
-            TICK_LOWER_BOUND,
-            TICK_UPPER_BOUND,
-            1_000_000e18,
-            1_000_000e18
-        );
+        mintNewPosition(SQRT_PRICE_0_0, TICK_LOWER_BOUND, TICK_UPPER_BOUND, 1_000_000e18, 1_000_000e18);
 
         vm.prank(owner);
-        allowlistHook.setSwapperStatus(address(this), true);
+        allowlistHook.setSwapper(address(this), true);
 
         vm.mockCall(
             address(swapRouter),
@@ -349,20 +313,14 @@ contract AllowlistHookTest is BaseTest {
         allowlistHook.setSwapCap(10_000_000e18);
 
         vm.prank(owner);
-        allowlistHook.setLiquidityProviderStatus(address(this), true);
+        allowlistHook.setLiquidityProvider(address(this), true);
 
-        (uint128 positionLiquidity_, uint256 tokenId_) = mintNewPosition(
-            SQRT_PRICE_0_0,
-            TICK_LOWER_BOUND,
-            TICK_UPPER_BOUND,
-            1_000_000e18,
-            1_000_000e18
-        );
+        mintNewPosition(SQRT_PRICE_0_0, TICK_LOWER_BOUND, TICK_UPPER_BOUND, 1_000_000e18, 1_000_000e18);
 
         allowlistHook.setToken1Decimals(6);
 
         vm.prank(owner);
-        allowlistHook.setSwapperStatus(address(this), true);
+        allowlistHook.setSwapper(address(this), true);
 
         vm.mockCall(
             address(swapRouter),
@@ -386,7 +344,7 @@ contract AllowlistHookTest is BaseTest {
 
     function test_beforeSwap() public {
         vm.prank(owner);
-        allowlistHook.setLiquidityProviderStatus(address(this), true);
+        allowlistHook.setLiquidityProvider(address(this), true);
 
         (uint128 positionLiquidity_, uint256 tokenId_) = mintNewPosition(
             SQRT_PRICE_0_0,
@@ -399,7 +357,7 @@ contract AllowlistHookTest is BaseTest {
         assertEq(lpm.getPositionLiquidity(tokenId_), positionLiquidity_);
 
         vm.prank(owner);
-        allowlistHook.setSwapperStatus(address(this), true);
+        allowlistHook.setSwapper(address(this), true);
 
         vm.mockCall(
             address(swapRouter),
@@ -428,7 +386,7 @@ contract AllowlistHookTest is BaseTest {
 
     function test_beforeAddLiquidity_positionManagerNotAllowed() public {
         vm.prank(owner);
-        allowlistHook.setPositionManagerStatus(address(lpm), false);
+        allowlistHook.setPositionManager(address(lpm), false);
 
         expectWrappedRevert(
             address(allowlistHook),
@@ -452,20 +410,12 @@ contract AllowlistHookTest is BaseTest {
 
     function test_beforeAddLiquidity_reduceOnly() public {
         vm.prank(owner);
-        allowlistHook.setLiquidityProviderStatus(address(this), true);
+        allowlistHook.setLiquidityProvider(address(this), true);
 
-        (uint128 positionLiquidity_, uint256 tokenId_) = mintNewPosition(
-            SQRT_PRICE_0_0,
-            TICK_LOWER_BOUND,
-            TICK_UPPER_BOUND,
-            1_000_000e18,
-            1_000_000e18
-        );
-
-        (uint160 sqrtPriceX96_, int24 tick_, , ) = state.getSlot0(poolId);
+        mintNewPosition(SQRT_PRICE_0_0, TICK_LOWER_BOUND, TICK_UPPER_BOUND, 1_000_000e18, 1_000_000e18);
 
         vm.prank(owner);
-        allowlistHook.setPositionManagerStatus(address(lpm), false);
+        allowlistHook.setPositionManager(address(lpm), false);
 
         assertEq(
             uint8(allowlistHook.getPositionManagerStatus(address(lpm))),
@@ -483,7 +433,7 @@ contract AllowlistHookTest is BaseTest {
 
     function test_beforeAddLiquidity() public {
         vm.prank(owner);
-        allowlistHook.setLiquidityProviderStatus(address(this), true);
+        allowlistHook.setLiquidityProvider(address(this), true);
 
         (uint128 positionLiquidity_, uint256 tokenId_) = mintNewPosition(
             SQRT_PRICE_0_0,
@@ -505,15 +455,9 @@ contract AllowlistHookTest is BaseTest {
 
     function test_beforeRemoveLiquidity_reduceOnly() public {
         vm.prank(owner);
-        allowlistHook.setLiquidityProviderStatus(address(this), true);
+        allowlistHook.setLiquidityProvider(address(this), true);
 
         uint256 tokenId_ = 1;
-        bytes32 positionKey_ = Position.calculatePositionKey(
-            address(lpm),
-            TICK_LOWER_BOUND,
-            TICK_UPPER_BOUND,
-            bytes32(tokenId_)
-        );
 
         PositionConfig memory positionConfig_ = PositionConfig({
             poolKey: key,
@@ -531,10 +475,8 @@ contract AllowlistHookTest is BaseTest {
 
         lpm.mint(positionConfig_, positionLiquidity_, address(this), "");
 
-        (uint160 sqrtPriceX96_, int24 tick_, , ) = state.getSlot0(poolId);
-
         vm.prank(owner);
-        allowlistHook.setPositionManagerStatus(address(lpm), false);
+        allowlistHook.setPositionManager(address(lpm), false);
 
         assertEq(
             uint8(allowlistHook.getPositionManagerStatus(address(lpm))),
@@ -554,33 +496,77 @@ contract AllowlistHookTest is BaseTest {
         lpm.mint(positionConfig_, positionLiquidity_, address(this), "");
     }
 
-    /* ============ setLiquidityProviderStatus ============ */
+    /* ============ setLiquidityProvidersAllowlist ============ */
 
-    function test_setLiquidityProviderStatus_onlyOwner() public {
+    function test_setLiquidityProvidersAllowlist_onlyOwner() public {
         vm.expectRevert(abi.encodeWithSelector(Ownable.OwnableUnauthorizedAccount.selector, address(this)));
-        allowlistHook.setLiquidityProviderStatus(alice, true);
+        allowlistHook.setLiquidityProvidersAllowlist(false);
     }
 
-    function test_setLiquidityProviderStatus_zeroAddress() public {
+    function test_setLiquidityProvidersAllowlist() public {
+        // Enabled by default at deployment
+        assertTrue(allowlistHook.isLiquidityProvidersAllowlistEnabled());
+
+        bool isEnabled_ = false;
+
+        vm.expectEmit();
+        emit IAllowlistHook.LiquidityProvidersAllowlistSet(isEnabled_);
+
+        vm.prank(owner);
+        allowlistHook.setLiquidityProvidersAllowlist(isEnabled_);
+
+        assertFalse(allowlistHook.isLiquidityProvidersAllowlistEnabled());
+    }
+
+    /* ============ setSwappersAllowlist ============ */
+
+    function test_setSwappersAllowlist_onlyOwner() public {
+        vm.expectRevert(abi.encodeWithSelector(Ownable.OwnableUnauthorizedAccount.selector, address(this)));
+        allowlistHook.setSwappersAllowlist(true);
+    }
+
+    function test_setSwappersAllowlist() public {
+        // Enabled by default at deployment
+        assertTrue(allowlistHook.isSwappersAllowlistEnabled());
+
+        bool isEnabled_ = false;
+
+        vm.expectEmit();
+        emit IAllowlistHook.SwappersAllowlistSet(isEnabled_);
+
+        vm.prank(owner);
+        allowlistHook.setSwappersAllowlist(isEnabled_);
+
+        assertFalse(allowlistHook.isSwappersAllowlistEnabled());
+    }
+
+    /* ============ setLiquidityProvider ============ */
+
+    function test_setLiquidityProvider_onlyOwner() public {
+        vm.expectRevert(abi.encodeWithSelector(Ownable.OwnableUnauthorizedAccount.selector, address(this)));
+        allowlistHook.setLiquidityProvider(alice, true);
+    }
+
+    function test_setLiquidityProvider_zeroAddress() public {
         vm.expectRevert(abi.encodeWithSelector(IAllowlistHook.ZeroLiquidityProvider.selector));
 
         vm.prank(owner);
-        allowlistHook.setLiquidityProviderStatus(address(0), true);
+        allowlistHook.setLiquidityProvider(address(0), true);
     }
 
-    function test_setLiquidityProviderStatus() public {
+    function test_setLiquidityProvider() public {
         vm.expectEmit();
         emit IAllowlistHook.LiquidityProviderSet(alice, true);
 
         vm.prank(owner);
-        allowlistHook.setLiquidityProviderStatus(alice, true);
+        allowlistHook.setLiquidityProvider(alice, true);
 
         assertTrue(allowlistHook.isLiquidityProviderAllowed(alice));
     }
 
-    /* ============ setLiquidityProviderStatuses ============ */
+    /* ============ setLiquidityProviders ============ */
 
-    function test_setLiquidityProviderStatuses_onlyOwner() public {
+    function test_setLiquidityProviders_onlyOwner() public {
         address[] memory liquidityProviders_ = new address[](3);
         liquidityProviders_[0] = alice;
         liquidityProviders_[1] = bob;
@@ -592,10 +578,10 @@ contract AllowlistHookTest is BaseTest {
         statuses_[2] = true;
 
         vm.expectRevert(abi.encodeWithSelector(Ownable.OwnableUnauthorizedAccount.selector, address(this)));
-        allowlistHook.setLiquidityProviderStatuses(liquidityProviders_, statuses_);
+        allowlistHook.setLiquidityProviders(liquidityProviders_, statuses_);
     }
 
-    function test_setLiquidityProviderStatuses_arrayLengthMismatch() public {
+    function test_setLiquidityProviders_arrayLengthMismatch() public {
         address[] memory liquidityProviders_ = new address[](3);
         liquidityProviders_[0] = alice;
         liquidityProviders_[1] = bob;
@@ -608,10 +594,10 @@ contract AllowlistHookTest is BaseTest {
         vm.expectRevert(IAllowlistHook.ArrayLengthMismatch.selector);
 
         vm.prank(owner);
-        allowlistHook.setLiquidityProviderStatuses(liquidityProviders_, statuses_);
+        allowlistHook.setLiquidityProviders(liquidityProviders_, statuses_);
     }
 
-    function test_setLiquidityProviderStatuses() public {
+    function test_setLiquidityProviders() public {
         address[] memory liquidityProviders_ = new address[](3);
         liquidityProviders_[0] = alice;
         liquidityProviders_[1] = bob;
@@ -623,40 +609,40 @@ contract AllowlistHookTest is BaseTest {
         statuses_[2] = true;
 
         vm.prank(owner);
-        allowlistHook.setLiquidityProviderStatuses(liquidityProviders_, statuses_);
+        allowlistHook.setLiquidityProviders(liquidityProviders_, statuses_);
 
         assertTrue(allowlistHook.isLiquidityProviderAllowed(alice));
         assertFalse(allowlistHook.isLiquidityProviderAllowed(bob));
         assertTrue(allowlistHook.isLiquidityProviderAllowed(carol));
     }
 
-    /* ============ setSwapperStatus ============ */
+    /* ============ setSwapper ============ */
 
-    function test_setSwapperStatus_onlyOwner() public {
+    function test_setSwapper_onlyOwner() public {
         vm.expectRevert(abi.encodeWithSelector(Ownable.OwnableUnauthorizedAccount.selector, address(this)));
-        allowlistHook.setSwapperStatus(alice, true);
+        allowlistHook.setSwapper(alice, true);
     }
 
-    function test_setSwapperStatus_zeroAddress() public {
+    function test_setSwapper_zeroAddress() public {
         vm.expectRevert(abi.encodeWithSelector(IAllowlistHook.ZeroSwapper.selector));
 
         vm.prank(owner);
-        allowlistHook.setSwapperStatus(address(0), true);
+        allowlistHook.setSwapper(address(0), true);
     }
 
-    function test_setSwapperStatus() public {
+    function test_setSwapper() public {
         vm.expectEmit();
         emit IAllowlistHook.SwapperSet(alice, true);
 
         vm.prank(owner);
-        allowlistHook.setSwapperStatus(alice, true);
+        allowlistHook.setSwapper(alice, true);
 
         assertTrue(allowlistHook.isSwapperAllowed(alice));
     }
 
-    /* ============ setSwapperStatuses ============ */
+    /* ============ setSwappers ============ */
 
-    function test_setSwapperStatuses_onlyOwner() public {
+    function test_setSwappers_onlyOwner() public {
         address[] memory swappers_ = new address[](3);
         swappers_[0] = alice;
         swappers_[1] = bob;
@@ -668,10 +654,10 @@ contract AllowlistHookTest is BaseTest {
         statuses_[2] = true;
 
         vm.expectRevert(abi.encodeWithSelector(Ownable.OwnableUnauthorizedAccount.selector, address(this)));
-        allowlistHook.setSwapperStatuses(swappers_, statuses_);
+        allowlistHook.setSwappers(swappers_, statuses_);
     }
 
-    function test_setSwapperStatuses_arrayLengthMismatch() public {
+    function test_setSwappers_arrayLengthMismatch() public {
         address[] memory swappers_ = new address[](3);
         swappers_[0] = alice;
         swappers_[1] = bob;
@@ -684,10 +670,10 @@ contract AllowlistHookTest is BaseTest {
         vm.expectRevert(IAllowlistHook.ArrayLengthMismatch.selector);
 
         vm.prank(owner);
-        allowlistHook.setSwapperStatuses(swappers_, statuses_);
+        allowlistHook.setSwappers(swappers_, statuses_);
     }
 
-    function test_setSwapperStatuses() public {
+    function test_setSwappers() public {
         address[] memory swappers_ = new address[](3);
         swappers_[0] = alice;
         swappers_[1] = bob;
@@ -699,28 +685,28 @@ contract AllowlistHookTest is BaseTest {
         statuses_[2] = true;
 
         vm.prank(owner);
-        allowlistHook.setSwapperStatuses(swappers_, statuses_);
+        allowlistHook.setSwappers(swappers_, statuses_);
 
         assertTrue(allowlistHook.isSwapperAllowed(alice));
         assertFalse(allowlistHook.isSwapperAllowed(bob));
         assertTrue(allowlistHook.isSwapperAllowed(carol));
     }
 
-    /* ============ setPositionManagerStatus ============ */
+    /* ============ setPositionManager ============ */
 
-    function test_setPositionManagerStatus_onlyOwner() public {
+    function test_setPositionManager_onlyOwner() public {
         vm.expectRevert(abi.encodeWithSelector(Ownable.OwnableUnauthorizedAccount.selector, address(this)));
-        allowlistHook.setPositionManagerStatus(mockPositionManager, true);
+        allowlistHook.setPositionManager(mockPositionManager, true);
     }
 
-    function test_setPositionManagerStatus_zeroAddress() public {
+    function test_setPositionManager_zeroAddress() public {
         vm.expectRevert(abi.encodeWithSelector(IAllowlistHook.ZeroPositionManager.selector));
 
         vm.prank(owner);
-        allowlistHook.setPositionManagerStatus(address(0), true);
+        allowlistHook.setPositionManager(address(0), true);
     }
 
-    function test_setPositionManagerStatus() public {
+    function test_setPositionManager() public {
         assertEq(
             uint8(allowlistHook.getPositionManagerStatus(mockPositionManager)),
             uint8(IAllowlistHook.PositionManagerStatus.FORBIDDEN)
@@ -730,7 +716,7 @@ contract AllowlistHookTest is BaseTest {
         emit IAllowlistHook.PositionManagerSet(mockPositionManager, true);
 
         vm.prank(owner);
-        allowlistHook.setPositionManagerStatus(mockPositionManager, true);
+        allowlistHook.setPositionManager(mockPositionManager, true);
 
         assertEq(
             uint8(allowlistHook.getPositionManagerStatus(mockPositionManager)),
@@ -738,7 +724,7 @@ contract AllowlistHookTest is BaseTest {
         );
 
         vm.prank(owner);
-        allowlistHook.setPositionManagerStatus(mockPositionManager, false);
+        allowlistHook.setPositionManager(mockPositionManager, false);
 
         assertEq(
             uint8(allowlistHook.getPositionManagerStatus(mockPositionManager)),
@@ -746,9 +732,9 @@ contract AllowlistHookTest is BaseTest {
         );
     }
 
-    /* ============ setPositionManagerStatuses ============ */
+    /* ============ setPositionManagers ============ */
 
-    function test_setPositionManagerStatuses_onlyOwner() public {
+    function test_setPositionManagers_onlyOwner() public {
         address[] memory positionManagers_ = new address[](3);
         positionManagers_[0] = alice;
         positionManagers_[1] = bob;
@@ -760,10 +746,10 @@ contract AllowlistHookTest is BaseTest {
         statuses_[2] = true;
 
         vm.expectRevert(abi.encodeWithSelector(Ownable.OwnableUnauthorizedAccount.selector, address(this)));
-        allowlistHook.setPositionManagerStatuses(positionManagers_, statuses_);
+        allowlistHook.setPositionManagers(positionManagers_, statuses_);
     }
 
-    function test_setPositionManagerStatuses_arrayLengthMismatch() public {
+    function test_setPositionManagers_arrayLengthMismatch() public {
         address[] memory positionManagers_ = new address[](3);
         positionManagers_[0] = alice;
         positionManagers_[1] = bob;
@@ -776,10 +762,10 @@ contract AllowlistHookTest is BaseTest {
         vm.expectRevert(IAllowlistHook.ArrayLengthMismatch.selector);
 
         vm.prank(owner);
-        allowlistHook.setPositionManagerStatuses(positionManagers_, statuses_);
+        allowlistHook.setPositionManagers(positionManagers_, statuses_);
     }
 
-    function test_setPositionManagerStatuses() public {
+    function test_setPositionManagers() public {
         address[] memory positionManagers_ = new address[](3);
         positionManagers_[0] = alice;
         positionManagers_[1] = bob;
@@ -791,7 +777,7 @@ contract AllowlistHookTest is BaseTest {
         statuses_[2] = true;
 
         vm.prank(owner);
-        allowlistHook.setPositionManagerStatuses(positionManagers_, statuses_);
+        allowlistHook.setPositionManagers(positionManagers_, statuses_);
 
         assertEq(
             uint8(allowlistHook.getPositionManagerStatus(alice)),
@@ -809,35 +795,35 @@ contract AllowlistHookTest is BaseTest {
         );
     }
 
-    /* ============ setSwapRouterStatus ============ */
+    /* ============ setSwapRouter ============ */
 
-    function test_setSwapRouterStatus_onlyOwner() public {
+    function test_setSwapRouter_onlyOwner() public {
         vm.expectRevert(abi.encodeWithSelector(Ownable.OwnableUnauthorizedAccount.selector, address(this)));
-        allowlistHook.setSwapRouterStatus(address(mockRouter), true);
+        allowlistHook.setSwapRouter(address(mockRouter), true);
     }
 
-    function test_setSwapRouterStatus_zeroAddress() public {
+    function test_setSwapRouter_zeroAddress() public {
         vm.expectRevert(abi.encodeWithSelector(IAllowlistHook.ZeroSwapRouter.selector));
 
         vm.prank(owner);
-        allowlistHook.setSwapRouterStatus(address(0), true);
+        allowlistHook.setSwapRouter(address(0), true);
     }
 
-    function test_setSwapRouterStatus() public {
+    function test_setSwapRouter() public {
         assertFalse(allowlistHook.isSwapRouterTrusted(address(mockRouter)));
 
         vm.expectEmit();
         emit IAllowlistHook.SwapRouterSet(address(mockRouter), true);
 
         vm.prank(owner);
-        allowlistHook.setSwapRouterStatus(address(mockRouter), true);
+        allowlistHook.setSwapRouter(address(mockRouter), true);
 
         assertTrue(allowlistHook.isSwapRouterTrusted(address(mockRouter)));
     }
 
-    /* ============ setSwapRouterStatuses ============ */
+    /* ============ setSwapRouters ============ */
 
-    function test_setSwapRouterStatuses_onlyOwner() public {
+    function test_setSwapRouters_onlyOwner() public {
         address[] memory swapRouters_ = new address[](3);
         swapRouters_[0] = alice;
         swapRouters_[1] = bob;
@@ -849,10 +835,10 @@ contract AllowlistHookTest is BaseTest {
         statuses_[2] = true;
 
         vm.expectRevert(abi.encodeWithSelector(Ownable.OwnableUnauthorizedAccount.selector, address(this)));
-        allowlistHook.setSwapRouterStatuses(swapRouters_, statuses_);
+        allowlistHook.setSwapRouters(swapRouters_, statuses_);
     }
 
-    function test_setSwapRouterStatuses_arrayLengthMismatch() public {
+    function test_setSwapRouters_arrayLengthMismatch() public {
         address[] memory swapRouters_ = new address[](3);
         swapRouters_[0] = alice;
         swapRouters_[1] = bob;
@@ -865,10 +851,10 @@ contract AllowlistHookTest is BaseTest {
         vm.expectRevert(IAllowlistHook.ArrayLengthMismatch.selector);
 
         vm.prank(owner);
-        allowlistHook.setSwapRouterStatuses(swapRouters_, statuses_);
+        allowlistHook.setSwapRouters(swapRouters_, statuses_);
     }
 
-    function test_setSwapRouterStatuses() public {
+    function test_setSwapRouters() public {
         address[] memory swapRouters_ = new address[](3);
         swapRouters_[0] = alice;
         swapRouters_[1] = bob;
@@ -880,7 +866,7 @@ contract AllowlistHookTest is BaseTest {
         statuses_[2] = true;
 
         vm.prank(owner);
-        allowlistHook.setSwapRouterStatuses(swapRouters_, statuses_);
+        allowlistHook.setSwapRouters(swapRouters_, statuses_);
 
         assertTrue(allowlistHook.isSwapRouterTrusted(alice));
         assertFalse(allowlistHook.isSwapRouterTrusted(bob));

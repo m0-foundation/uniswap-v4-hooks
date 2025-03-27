@@ -33,6 +33,12 @@ contract AllowlistHook is BaseTickRangeHook, IAllowlistHook {
     uint256 public totalSwap;
 
     /// @inheritdoc IAllowlistHook
+    bool public isLiquidityProvidersAllowlistEnabled;
+
+    /// @inheritdoc IAllowlistHook
+    bool public isSwappersAllowlistEnabled;
+
+    /// @inheritdoc IAllowlistHook
     uint8 public referenceDecimals;
 
     /// @dev The number of decimals for token0.
@@ -82,6 +88,8 @@ contract AllowlistHook is BaseTickRangeHook, IAllowlistHook {
     ) BaseTickRangeHook(poolManager_, tickLowerBound_, tickUpperBound_, owner_) {
         _setPositionManager(positionManager_, true);
         _setSwapRouter(swapRouter_, true);
+        _setLiquidityProvidersAllowlist(true);
+        _setSwappersAllowlist(true);
     }
 
     /* ============ Hook functions ============ */
@@ -140,14 +148,16 @@ contract AllowlistHook is BaseTickRangeHook, IAllowlistHook {
         IPoolManager.SwapParams calldata params_,
         bytes calldata /* hookData */
     ) internal override returns (bytes4, BeforeSwapDelta, uint24) {
-        if (!_swapRouters[sender_]) {
-            revert SwapRouterNotTrusted(sender_);
-        }
+        if (isSwappersAllowlistEnabled) {
+            if (!_swapRouters[sender_]) {
+                revert SwapRouterNotTrusted(sender_);
+            }
 
-        address caller_ = IBaseActionsRouterLike(sender_).msgSender();
+            address caller_ = IBaseActionsRouterLike(sender_).msgSender();
 
-        if (!isSwapperAllowed(caller_)) {
-            revert SwapperNotAllowed(caller_);
+            if (!isSwapperAllowed(caller_)) {
+                revert SwapperNotAllowed(caller_);
+            }
         }
 
         // If the swap cap is set to 0, there is no cap on the amount that can be swapped.
@@ -204,14 +214,16 @@ contract AllowlistHook is BaseTickRangeHook, IAllowlistHook {
         IPoolManager.ModifyLiquidityParams calldata params_,
         bytes calldata /* hookData */
     ) internal override returns (bytes4) {
-        if (_positionManagers[sender_] != PositionManagerStatus.ALLOWED) {
-            revert PositionManagerNotTrusted(sender_);
-        }
+        if (isLiquidityProvidersAllowlistEnabled) {
+            if (_positionManagers[sender_] != PositionManagerStatus.ALLOWED) {
+                revert PositionManagerNotTrusted(sender_);
+            }
 
-        address caller_ = IBaseActionsRouterLike(sender_).msgSender();
+            address caller_ = IBaseActionsRouterLike(sender_).msgSender();
 
-        if (!isLiquidityProviderAllowed(caller_)) {
-            revert LiquidityProviderNotAllowed(caller_);
+            if (!isLiquidityProviderAllowed(caller_)) {
+                revert LiquidityProviderNotAllowed(caller_);
+            }
         }
 
         super._beforeAddLiquidity(params_);
@@ -221,12 +233,22 @@ contract AllowlistHook is BaseTickRangeHook, IAllowlistHook {
     /* ============ External Interactive functions ============ */
 
     /// @inheritdoc IAllowlistHook
-    function setLiquidityProviderStatus(address liquidityProvider_, bool isAllowed_) external onlyOwner {
+    function setLiquidityProvidersAllowlist(bool isEnabled_) external onlyOwner {
+        _setLiquidityProvidersAllowlist(isEnabled_);
+    }
+
+    /// @inheritdoc IAllowlistHook
+    function setSwappersAllowlist(bool isEnabled_) external onlyOwner {
+        _setSwappersAllowlist(isEnabled_);
+    }
+
+    /// @inheritdoc IAllowlistHook
+    function setLiquidityProvider(address liquidityProvider_, bool isAllowed_) external onlyOwner {
         _setLiquidityProvider(liquidityProvider_, isAllowed_);
     }
 
     /// @inheritdoc IAllowlistHook
-    function setLiquidityProviderStatuses(
+    function setLiquidityProviders(
         address[] calldata liquidityProviders_,
         bool[] calldata isAllowed_
     ) external onlyOwner {
@@ -238,12 +260,12 @@ contract AllowlistHook is BaseTickRangeHook, IAllowlistHook {
     }
 
     /// @inheritdoc IAllowlistHook
-    function setSwapperStatus(address swapper_, bool isAllowed_) external onlyOwner {
+    function setSwapper(address swapper_, bool isAllowed_) external onlyOwner {
         _setSwapper(swapper_, isAllowed_);
     }
 
     /// @inheritdoc IAllowlistHook
-    function setSwapperStatuses(address[] calldata swappers_, bool[] calldata isAllowed_) external onlyOwner {
+    function setSwappers(address[] calldata swappers_, bool[] calldata isAllowed_) external onlyOwner {
         if (swappers_.length != isAllowed_.length) revert ArrayLengthMismatch();
 
         for (uint256 i_; i_ < swappers_.length; ++i_) {
@@ -252,15 +274,12 @@ contract AllowlistHook is BaseTickRangeHook, IAllowlistHook {
     }
 
     /// @inheritdoc IAllowlistHook
-    function setPositionManagerStatus(address positionManager_, bool isAllowed_) external onlyOwner {
+    function setPositionManager(address positionManager_, bool isAllowed_) external onlyOwner {
         _setPositionManager(positionManager_, isAllowed_);
     }
 
     /// @inheritdoc IAllowlistHook
-    function setPositionManagerStatuses(
-        address[] calldata positionManagers_,
-        bool[] calldata isAllowed_
-    ) external onlyOwner {
+    function setPositionManagers(address[] calldata positionManagers_, bool[] calldata isAllowed_) external onlyOwner {
         if (positionManagers_.length != isAllowed_.length) revert ArrayLengthMismatch();
 
         for (uint256 i_; i_ < positionManagers_.length; ++i_) {
@@ -269,12 +288,12 @@ contract AllowlistHook is BaseTickRangeHook, IAllowlistHook {
     }
 
     /// @inheritdoc IAllowlistHook
-    function setSwapRouterStatus(address swapRouter_, bool isAllowed_) external onlyOwner {
+    function setSwapRouter(address swapRouter_, bool isAllowed_) external onlyOwner {
         _setSwapRouter(swapRouter_, isAllowed_);
     }
 
     /// @inheritdoc IAllowlistHook
-    function setSwapRouterStatuses(address[] calldata swapRouters_, bool[] calldata isAllowed_) external onlyOwner {
+    function setSwapRouters(address[] calldata swapRouters_, bool[] calldata isAllowed_) external onlyOwner {
         if (swapRouters_.length != isAllowed_.length) revert ArrayLengthMismatch();
 
         for (uint256 i_; i_ < swapRouters_.length; ++i_) {
@@ -334,6 +353,24 @@ contract AllowlistHook is BaseTickRangeHook, IAllowlistHook {
     }
 
     /* ============ Internal Interactive functions ============ */
+
+    /**
+     * @notice Sets the liquidity providers allowlist status.
+     * @param  isEnabled_ Boolean indicating whether the liquidity providers allowlist is enabled or not.
+     */
+    function _setLiquidityProvidersAllowlist(bool isEnabled_) internal {
+        isLiquidityProvidersAllowlistEnabled = isEnabled_;
+        emit LiquidityProvidersAllowlistSet(isEnabled_);
+    }
+
+    /**
+     * @notice Sets the swappers allowlist status.
+     * @param  isEnabled_ Boolean indicating whether the swappers allowlist is enabled or not.
+     */
+    function _setSwappersAllowlist(bool isEnabled_) internal {
+        isSwappersAllowlistEnabled = isEnabled_;
+        emit SwappersAllowlistSet(isEnabled_);
+    }
 
     /**
      * @dev   Sets the allowlist status of a liquidity provider.

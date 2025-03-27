@@ -10,9 +10,22 @@ interface IAllowlistHook {
     /* ============ Events ============ */
 
     /**
+     * @notice Emitted when the liquidity providers allowlist status is set.
+     * @param  isEnabled Boolean indicating whether the liquidity providers allowlist is enabled or not.
+     */
+    event LiquidityProvidersAllowlistSet(bool isEnabled);
+
+    /**
+     * @notice Emitted when the swappers allowlist status is set.
+     * @param  isEnabled Boolean indicating whether the swappers allowlist is enabled or not.
+     */
+    event SwappersAllowlistSet(bool isEnabled);
+
+    /**
      * @notice Emitted when the allowlist status of a liquidity provider is set.
      * @param  liquidityProvider The address of the liquidity provider.
-     * @param  isAllowed         Boolean indicating whether the liquidity provider is allowed or not. */
+     * @param  isAllowed         Boolean indicating whether the liquidity provider is allowed or not.
+     */
     event LiquidityProviderSet(address indexed liquidityProvider, bool isAllowed);
 
     /**
@@ -108,12 +121,26 @@ interface IAllowlistHook {
     /* ============ External Interactive functions ============ */
 
     /**
+     * @notice Sets the liquidity providers allowlist status.
+     * @dev    MUST only be callable by the current owner.
+     * @param  isEnabled Boolean indicating whether the liquidity providers allowlist is enabled or not.
+     */
+    function setLiquidityProvidersAllowlist(bool isEnabled) external;
+
+    /**
+     * @notice Sets the swappers allowlist status.
+     * @dev    MUST only be callable by the current owner.
+     * @param  isEnabled Boolean indicating whether the swappers allowlist is enabled or not.
+     */
+    function setSwappersAllowlist(bool isEnabled) external;
+
+    /**
      * @notice Sets the allowlist status of a liquidity provider.
      * @dev    MUST only be callable by the current owner.
      * @param  liquidityProvider The address of the liquidity provider.
      * @param  isAllowed         Boolean indicating whether the liquidity provider is allowed or not.
      */
-    function setLiquidityProviderStatus(address liquidityProvider, bool isAllowed) external;
+    function setLiquidityProvider(address liquidityProvider, bool isAllowed) external;
 
     /**
      * @notice Sets the allowlist status for multiple liquidity providers.
@@ -121,7 +148,7 @@ interface IAllowlistHook {
      * @param  liquidityProviders The array of liquidity provider addresses.
      * @param  isAllowed          The array of boolean values indicating the allowed status for each liquidity provider.
      */
-    function setLiquidityProviderStatuses(address[] calldata liquidityProviders, bool[] calldata isAllowed) external;
+    function setLiquidityProviders(address[] calldata liquidityProviders, bool[] calldata isAllowed) external;
 
     /**
      * @notice Sets the status of the Uniswap V4 Position Manager contract address.
@@ -129,7 +156,7 @@ interface IAllowlistHook {
      * @param  positionManager The Uniswap V4 Position Manager address.
      * @param  isAllowed       Boolean indicating whether the Position Manager is allowed to modify liquidity or not.
      */
-    function setPositionManagerStatus(address positionManager, bool isAllowed) external;
+    function setPositionManager(address positionManager, bool isAllowed) external;
 
     /**
      * @notice Sets the status of multiple Uniswap V4 Position Manager contract addresses.
@@ -137,7 +164,7 @@ interface IAllowlistHook {
      * @param  positionManagers The array of Position Manager addresses.
      * @param  isAllowed        The array of boolean values indicating the allowed status for each Position Manager.
      */
-    function setPositionManagerStatuses(address[] calldata positionManagers, bool[] calldata isAllowed) external;
+    function setPositionManagers(address[] calldata positionManagers, bool[] calldata isAllowed) external;
 
     /**
      * @notice Sets the allowlist status of a swapper.
@@ -145,7 +172,7 @@ interface IAllowlistHook {
      * @param  swapper   The address of the swapper.
      * @param  isAllowed Boolean indicating whether the swapper is allowed or not.
      */
-    function setSwapperStatus(address swapper, bool isAllowed) external;
+    function setSwapper(address swapper, bool isAllowed) external;
 
     /**
      * @notice Sets the allowlist status for multiple swappers.
@@ -153,7 +180,7 @@ interface IAllowlistHook {
      * @param  swappers  The array of swapper addresses.
      * @param  isAllowed The array of boolean values indicating the allowed status for each swapper.
      */
-    function setSwapperStatuses(address[] calldata swappers, bool[] calldata isAllowed) external;
+    function setSwappers(address[] calldata swappers, bool[] calldata isAllowed) external;
 
     /**
      * @notice Sets the status of the Swap Router contract address.
@@ -161,7 +188,7 @@ interface IAllowlistHook {
      * @param  swapRouter The Swap Router address.
      * @param  isAllowed  Boolean indicating whether the Swap Router is allowed to swap or not.
      */
-    function setSwapRouterStatus(address swapRouter, bool isAllowed) external;
+    function setSwapRouter(address swapRouter, bool isAllowed) external;
 
     /**
      * @notice Sets the status of the Swap Router contract address.
@@ -169,7 +196,7 @@ interface IAllowlistHook {
      * @param  swapRouters The array of Swap Router addresses.
      * @param  isAllowed   The array of boolean values indicating the allowed status for each Swap Router.
      */
-    function setSwapRouterStatuses(address[] calldata swapRouters, bool[] calldata isAllowed) external;
+    function setSwapRouters(address[] calldata swapRouters, bool[] calldata isAllowed) external;
 
     /**
      * @notice Resets the total amount swapped across token0 and token1.
@@ -187,6 +214,18 @@ interface IAllowlistHook {
     function setSwapCap(uint256 swapCap_) external;
 
     /* ============ External/Public view functions ============ */
+
+    /**
+     * @notice Whether the liquidity providers allowlist is enabled or not.
+     * @dev    Enabled by default at deployment.
+     */
+    function isLiquidityProvidersAllowlistEnabled() external view returns (bool);
+
+    /**
+     * @notice Whether the swappers allowlist is enabled or not.
+     * @dev    Enabled by default at deployment.
+     */
+    function isSwappersAllowlistEnabled() external view returns (bool);
 
     /**
      * @notice Gets the status of a given Position Manager.
