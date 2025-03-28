@@ -4,15 +4,44 @@ This repository contains the Uniswap V4 hook contracts built by M^0 Labs for the
 
 ## Hooks
 
-### TickRange Hook
+### Tick Range hook
 
-This hook allows its owner to set a tick range to limit liquidity provision and token swaps to this range.
-This is useful for projects like ours that may want to limit swaps to one tick, as is the case for stable pairs.
-One additional benefit is that a swap that would have crossed the tick range will revert, saving the user from a potential JIT (Just In Time) liquidity attack.
+#### Overview
 
-This contract is ownable and the owner can change the tick range at any time by calling the `setTickRange` function.
-This functionality should be used with parsimony since current liquidity providers will be affected by the change and may have to withdraw their liquidity.
-It could also impact an in-flight swap if the tick range is changed during the swap.
+This hook restricts both liquidity provision and token swaps to a specific tick range, bounded by lower and upper tick values.
+
+This feature is particularly useful for stable pairs that want to prevent their pool's liquidity from becoming unbalanced.
+
+#### Architecture
+
+_BaseTickRangeHook_ is an abstract contract that other hooks can inherit to restrict swaps and liquidity provision.
+
+Inherits from OpenZeppelin's Ownable2Step contract, making it ownable.
+
+The deployer sets the tick range during deployment, and the contract owner can modify it at any time.
+
+Since the tick range is enforced, any swap that would move the tick outside this range will revert. Additionally, changes to the tick range may cause in-progress swaps to revert.
+
+Liquidity providers may be unable to add liquidity to their positions if the tick range has been updated since they first created their position.
+
+### Allowlist hook
+
+#### Overview
+
+The contract maintains two separate allowlists—one for swappers and one for liquidity providers—to restrict which addresses can interact with the pool.
+It also inherits from the Tick Range hook contract to restrict liquidity provision and token swaps within a specific tick range.
+
+Additionally, a swap cap can be set to limit the total amount of tokens that can be swapped through the pool.
+
+#### Architecture
+
+Inherits from the _BaseTickRangeHook_ abstract contract and its functionalities.
+
+Inherits from OpenZeppelin's Ownable2Step contract, making it ownable.
+
+Both allowlists are enabled by default upon deployment and can be disabled later by the contract owner.
+
+At deployment, the swap cap is disabled, but the contract owner can set it afterward.
 
 ## Development
 
