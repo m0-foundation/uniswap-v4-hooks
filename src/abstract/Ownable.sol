@@ -1,6 +1,6 @@
 // SPDX-License-Identifier: MIT
 // OpenZeppelin Contracts (last updated v5.0.0) (access/Ownable.sol)
-// Minor mofication by removing the Context util contract.
+// Minor modification by removing the Context util contract.
 
 pragma solidity ^0.8.26;
 
@@ -8,7 +8,6 @@ pragma solidity ^0.8.26;
  * @dev Contract module which provides a basic access control mechanism, where
  * there is an account (an owner) that can be granted exclusive access to
  * specific functions.
- *
  * The initial owner is set to the address provided by the deployer. This can
  * later be changed with {transferOwnership}.
  *

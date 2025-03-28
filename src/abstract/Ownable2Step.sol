@@ -1,6 +1,6 @@
 // SPDX-License-Identifier: MIT
 // OpenZeppelin Contracts (last updated v5.1.0) (access/Ownable2Step.sol)
-// Minor mofication by removing the Context util contract in Ownable.
+// Minor modification by removing the Context util contract in Ownable.
 
 pragma solidity ^0.8.26;
 
