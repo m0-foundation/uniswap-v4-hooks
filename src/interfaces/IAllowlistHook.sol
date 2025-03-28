@@ -235,6 +235,13 @@ interface IAllowlistHook {
     function getPositionManagerStatus(address positionManager) external view returns (PositionManagerStatus);
 
     /**
+     * @notice Checks if a Swap Router is trusted.
+     * @param  swapRouter The address of the Swap Router.
+     * @return True if the Swap Router is trusted, false otherwise.
+     */
+    function isSwapRouterTrusted(address swapRouter) external view returns (bool);
+
+    /**
      * @notice Checks if a liquidity provider is allowed.
      * @param  liquidityProvider The address of the liquidity provider.
      * @return True if the liquidity provider is allowed, false otherwise.
@@ -247,13 +254,6 @@ interface IAllowlistHook {
      * @return True if the swapper is allowed, false otherwise.
      */
     function isSwapperAllowed(address swapper) external view returns (bool);
-
-    /**
-     * @notice Checks if a Swap Router is trusted.
-     * @param  swapRouter The address of the Swap Router.
-     * @return True if the Swap Router is trusted, false otherwise.
-     */
-    function isSwapRouterTrusted(address swapRouter) external view returns (bool);
 
     /**
      * @notice Gets the maximum amount of token0 or token1 that can currently be swapped for a given amount.

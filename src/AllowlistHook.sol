@@ -328,6 +328,11 @@ contract AllowlistHook is BaseTickRangeHook, IAllowlistHook {
     }
 
     /// @inheritdoc IAllowlistHook
+    function isSwapRouterTrusted(address swapRouter_) external view returns (bool) {
+        return _swapRouters[swapRouter_];
+    }
+
+    /// @inheritdoc IAllowlistHook
     function isLiquidityProviderAllowed(address liquidityProvider_) public view returns (bool) {
         return _liquidityProvidersAllowlist[liquidityProvider_];
     }
@@ -335,11 +340,6 @@ contract AllowlistHook is BaseTickRangeHook, IAllowlistHook {
     /// @inheritdoc IAllowlistHook
     function isSwapperAllowed(address swapper_) public view returns (bool) {
         return _swappersAllowlist[swapper_];
-    }
-
-    /// @inheritdoc IAllowlistHook
-    function isSwapRouterTrusted(address swapRouter_) external view returns (bool) {
-        return _swapRouters[swapRouter_];
     }
 
     /// @inheritdoc IAllowlistHook
