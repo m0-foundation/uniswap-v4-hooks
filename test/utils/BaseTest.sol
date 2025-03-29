@@ -201,3 +201,27 @@ contract BaseTest is Deployers, PosmTestSetup {
         );
     }
 }
+
+contract Foo {
+    function bar() external pure returns (uint256) {
+        return 1;
+    }
+}
+
+contract Migrator {
+    uint256 private constant _IMPLEMENTATION_SLOT = 0x360894a13ba1a3210667c828492db98dca3e2076cc3735a920a3ca505d382bbc;
+
+    address public immutable implementationV2;
+
+    constructor(address implementation_) {
+        implementationV2 = implementation_;
+    }
+
+    fallback() external virtual {
+        address implementation_ = implementationV2;
+
+        assembly {
+            sstore(_IMPLEMENTATION_SLOT, implementation_)
+        }
+    }
+}

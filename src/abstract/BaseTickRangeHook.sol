@@ -1,4 +1,5 @@
 // SPDX-License-Identifier: BUSL-1.1
+
 pragma solidity ^0.8.26;
 
 import { BaseHook } from "../../lib/v4-periphery/src/utils/BaseHook.sol";
@@ -13,12 +14,14 @@ import { PoolKey } from "../../lib/v4-periphery/lib/v4-core/src/types/PoolKey.so
 import { Ownable2Step, Ownable } from "../abstract/Ownable2Step.sol";
 import { IBaseTickRangeHook } from "../interfaces/IBaseTickRangeHook.sol";
 
+import { AdminMigratable } from "./AdminMigratable.sol";
+
 /**
- * @title  Tick Range Hook
+ * @title  Base Tick Range Hook
  * @author M^0 Labs
  * @notice Hook restricting liquidity provision and token swaps to a specific tick range.
  */
-abstract contract BaseTickRangeHook is IBaseTickRangeHook, BaseHook, Ownable2Step {
+abstract contract BaseTickRangeHook is IBaseTickRangeHook, BaseHook, AdminMigratable, Ownable2Step {
     using StateLibrary for IPoolManager;
 
     /* ============ Variables ============ */
@@ -43,7 +46,7 @@ abstract contract BaseTickRangeHook is IBaseTickRangeHook, BaseHook, Ownable2Ste
         int24 tickLowerBound_,
         int24 tickUpperBound_,
         address owner_
-    ) BaseHook(IPoolManager(poolManager_)) Ownable(owner_) {
+    ) BaseHook(IPoolManager(poolManager_)) AdminMigratable(owner_) Ownable(owner_) {
         _setTickRange(tickLowerBound_, tickUpperBound_);
     }
 

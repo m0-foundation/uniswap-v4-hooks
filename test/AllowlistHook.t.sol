@@ -16,16 +16,19 @@ import { PositionConfig } from "../lib/v4-periphery/test/shared/PositionConfig.s
 
 import { IPositionManager } from "../lib/v4-periphery/src/interfaces/IPositionManager.sol";
 
+import { Proxy } from "../lib/common/src/Proxy.sol";
+
 import { Ownable } from "../src/abstract/Ownable.sol";
 
 import { IAllowlistHook } from "../src/interfaces/IAllowlistHook.sol";
+import { IAdminMigratable } from "../src/interfaces/IAdminMigratable.sol";
 import { IBaseActionsRouterLike } from "../src/interfaces/IBaseActionsRouterLike.sol";
 import { IERC721Like } from "../src/interfaces/IERC721Like.sol";
 
 import { AllowlistHookHarness } from "./harness/AllowlistHookHarness.sol";
 
 import { LiquidityOperationsLib } from "./utils/helpers/LiquidityOperationsLib.sol";
-import { BaseTest } from "./utils/BaseTest.sol";
+import { BaseTest, Foo, Migrator } from "./utils/BaseTest.sol";
 
 contract AllowlistHookTest is BaseTest {
     using LiquidityOperationsLib for IPositionManager;
@@ -1098,5 +1101,28 @@ contract AllowlistHookTest is BaseTest {
     function test_tokenAmountToDecimals_targetDecimalsLessNoScalingDown() public {
         uint256 tokenAmount_ = 1_000_000e18;
         assertEq(allowlistHook.tokenAmountToDecimals(tokenAmount_, 18, 6), tokenAmount_);
+    }
+
+    /* ============ migrate ============ */
+
+    function test_migrate_onlyAdmin() external {
+        address allowlistHookProxy_ = address(new Proxy(address(allowlistHook)));
+        address migrator_ = address(new Migrator(address(new Foo())));
+
+        vm.expectRevert(abi.encodeWithSelector(IAdminMigratable.UnauthorizedMigration.selector));
+        IAdminMigratable(allowlistHookProxy_).migrate(migrator_);
+    }
+
+    function test_migrate() external {
+        address allowlistHookProxy_ = address(new Proxy(address(allowlistHook)));
+        address migrator_ = address(new Migrator(address(new Foo())));
+
+        vm.expectRevert();
+        Foo(allowlistHookProxy_).bar();
+
+        vm.prank(owner);
+        IAdminMigratable(allowlistHookProxy_).migrate(migrator_);
+
+        assertEq(Foo(allowlistHookProxy_).bar(), 1);
     }
 }

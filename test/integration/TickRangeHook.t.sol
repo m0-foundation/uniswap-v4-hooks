@@ -50,13 +50,7 @@ contract TickRangeHookIntegrationTest is BaseTest {
         assertEq(tick_, -1);
 
         // Then deposit tokenZero single sided liquidity at tick 0
-        (uint128 positionLiquidity_, uint256 tokenId_) = mintNewPosition(
-            TickMath.getSqrtPriceAtTick(0),
-            TICK_LOWER_BOUND,
-            TICK_UPPER_BOUND,
-            1_000_000e6,
-            0
-        );
+        mintNewPosition(TickMath.getSqrtPriceAtTick(0), TICK_LOWER_BOUND, TICK_UPPER_BOUND, 1_000_000e6, 0);
 
         uint256 tokenZeroBalanceBeforeSwap_ = tokenZero.balanceOf(address(this));
         uint256 tokenOneBalanceBeforeSwap_ = tokenOne.balanceOf(address(this));
@@ -95,13 +89,7 @@ contract TickRangeHookIntegrationTest is BaseTest {
         assertEq(tick_, -1);
 
         // Then deposit tokenZero single sided liquidity at tick 0
-        (uint128 positionLiquidity_, uint256 tokenId_) = mintNewPosition(
-            TickMath.getSqrtPriceAtTick(0),
-            TICK_LOWER_BOUND,
-            TICK_UPPER_BOUND,
-            1_000_000e6,
-            0
-        );
+        mintNewPosition(TickMath.getSqrtPriceAtTick(0), TICK_LOWER_BOUND, TICK_UPPER_BOUND, 1_000_000e6, 0);
 
         tick_ = 2;
 

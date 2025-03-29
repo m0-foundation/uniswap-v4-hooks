@@ -8,18 +8,19 @@ import { IPoolManager } from "../lib/v4-periphery/lib/v4-core/src/interfaces/IPo
 import { Hooks } from "../lib/v4-periphery/lib/v4-core/src/libraries/Hooks.sol";
 import { TickMath } from "../lib/v4-periphery/lib/v4-core/src/libraries/TickMath.sol";
 
-import { Currency } from "../lib/v4-periphery/lib/v4-core/src/types/Currency.sol";
-
 import { PoolSwapTest } from "../lib/v4-periphery/lib/v4-core/src/test/PoolSwapTest.sol";
+
+import { Proxy } from "../lib/common/src/Proxy.sol";
 
 import { Ownable } from "../src/abstract/Ownable.sol";
 
-import { IERC721Like } from "../src/interfaces/IERC721Like.sol";
+import { IAdminMigratable } from "../src/interfaces/IAdminMigratable.sol";
 import { IBaseTickRangeHook } from "../src/interfaces/IBaseTickRangeHook.sol";
+import { IERC721Like } from "../src/interfaces/IERC721Like.sol";
 
 import { TickRangeHook } from "../src/TickRangeHook.sol";
 
-import { BaseTest } from "./utils/BaseTest.sol";
+import { BaseTest, Foo, Migrator } from "./utils/BaseTest.sol";
 
 contract TickRangeHookTest is BaseTest {
     TickRangeHook public tickRangeHook;
@@ -287,5 +288,28 @@ contract TickRangeHookTest is BaseTest {
 
         vm.prank(owner);
         tickRangeHook.setTickRange(1, 2);
+    }
+
+    /* ============ migrate ============ */
+
+    function test_migrate_onlyAdmin() external {
+        address tickRangeHookProxy_ = address(new Proxy(address(tickRangeHook)));
+        address migrator_ = address(new Migrator(address(new Foo())));
+
+        vm.expectRevert(abi.encodeWithSelector(IAdminMigratable.UnauthorizedMigration.selector));
+        IAdminMigratable(tickRangeHookProxy_).migrate(migrator_);
+    }
+
+    function test_migrate() external {
+        address tickRangeHookProxy_ = address(new Proxy(address(tickRangeHook)));
+        address migrator_ = address(new Migrator(address(new Foo())));
+
+        vm.expectRevert();
+        Foo(tickRangeHookProxy_).bar();
+
+        vm.prank(owner);
+        IAdminMigratable(tickRangeHookProxy_).migrate(migrator_);
+
+        assertEq(Foo(tickRangeHookProxy_).bar(), 1);
     }
 }
