@@ -1,16 +1,47 @@
-# Foundry template
+# Uniswap V4 Hooks
 
-Template to kickstart a Foundry project.
+This repository contains the Uniswap V4 hook contracts built by M^0 Labs for the M^0 project.
 
-## Getting started
+## Hooks
 
-The easiest way to get started is by clicking the [Use this template](https://github.com/MZero-Labs/foundry-template/generate) button at the top right of this page.
+### Tick Range hook
 
-If you prefer to go the CLI way:
+#### Overview
 
-```bash
-forge init my-project --template https://github.com/MZero-Labs/foundry-template
-```
+This hook restricts both liquidity provision and token swaps to a specific tick range, bounded by lower and upper tick values.
+
+This feature is particularly useful for stable pairs that want to prevent their pool's liquidity from becoming unbalanced.
+
+#### Architecture
+
+_BaseTickRangeHook_ is an abstract contract that other hooks can inherit to restrict swaps and liquidity provision.
+
+Inherits from OpenZeppelin's Ownable2Step contract, making it ownable.
+
+The deployer sets the tick range during deployment, and the contract owner can modify it at any time.
+
+Since the tick range is enforced, any swap that would move the tick outside this range will revert. Additionally, changes to the tick range may cause in-progress swaps to revert.
+
+Liquidity providers may be unable to add liquidity to their positions if the tick range has been updated since they first created their position.
+
+### Allowlist hook
+
+#### Overview
+
+The contract maintains two separate allowlists—one for swappers and one for liquidity providers—to restrict which addresses can interact with the pool.
+It also inherits from the Tick Range hook contract to restrict liquidity provision and token swaps within a specific tick range.
+
+Additionally, a swap cap can be set to limit the total amount of tokens that can be swapped through the pool.
+
+#### Architecture
+
+Inherits from the _BaseTickRangeHook_ abstract contract and its functionalities.
+
+Inherits from OpenZeppelin's Ownable2Step contract, making it ownable.
+
+Both allowlists are enabled by default upon deployment and can be disabled later by the contract owner.
+
+At deployment, the swap cap is disabled, but the contract owner can set it afterward.
 
 ## Development
 

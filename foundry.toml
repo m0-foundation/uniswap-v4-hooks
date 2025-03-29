@@ -3,13 +3,13 @@ evm_version = "cancun"
 gas_reports = ["*"]
 gas_reports_ignore = []
 ignored_error_codes = []
-optimizer = true
-optimizer_runs = 999999
 solc_version = "0.8.26"
 verbosity = 3
 
 [profile.production]
 build_info = true
+optimizer = true
+optimizer_runs = 44444444
 sizes = true
 
 [fuzz]
@@ -19,6 +19,11 @@ runs = 5_000
 runs = 512            # The number of calls to make in the invariant tests
 depth = 25            # The number of times to run the invariant tests
 fail_on_revert = true # Fail the test if the contract reverts
+
+[profile.ci]
+optimizer = true
+optimizer_runs = 44444444
+via_ir = true
 
 [profile.ci.fuzz]
 runs = 10_000
