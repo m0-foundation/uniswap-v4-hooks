@@ -89,7 +89,7 @@ interface IAllowlistHook {
 
     /**
      * @notice Error emitted in beforeSwap if the swap cap is reached.
-     * @param  totalSwap The total amount that would have been swapped across token0 and token1 if the cap was not reached.
+     * @param  totalSwap The total amount swapped across token0 and token1.
      * @param  swapCap   The maximum amount that can be swapped across token0 and token1.
      */
     error SwapCapExceeded(uint256 totalSwap, uint256 swapCap);
@@ -207,7 +207,8 @@ interface IAllowlistHook {
     /**
      * @notice Sets the swap cap amount.
      * @dev    MUST only be callable by the current owner.
-     * @dev    Caller MUST ensure that the amount set follows the decimal precision of the token with the higher decimals.
+     * @dev    Caller MUST ensure that the amount set follows
+     *         the decimal precision of the token with the higher decimals.
      * @dev    MUST reset the totapSwap amount if swapCap is lower than the totalSwap amount.
      * @param  swapCap_ The new swap cap amount.
      */

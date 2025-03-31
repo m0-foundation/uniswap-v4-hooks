@@ -17,6 +17,9 @@ interface IAdminMigratable is IMigratable {
     /// @notice Emitted when the migration admin address is zero.
     error ZeroMigrationAdmin();
 
+    /// @notice Emitted in constructor if Registrar is 0x0.
+    error ZeroRegistrar();
+
     /* ============ External Interactive functions ============ */
 
     /**
@@ -26,8 +29,14 @@ interface IAdminMigratable is IMigratable {
      */
     function migrate(address migrator) external;
 
-    /* ============ Internal View/Pure Functions ============ */
+    /* ============ External View/Pure Functions ============ */
 
     /// @notice Address of the migration admin that can perform migrations.
     function migrationAdmin() external view returns (address);
+
+    /// @notice The address of the Registrar.
+    function registrar() external view returns (address);
+
+    /// @notice Registrar key prefix to determine the migrator contract.
+    function MIGRATOR_KEY_PREFIX() external pure returns (bytes32);
 }

@@ -13,12 +13,13 @@ import { Deploy } from "../base/Deploy.sol";
 contract DeployAllowlistHook is Deploy, Script {
     function run() public {
         address owner_ = vm.envAddress("OWNER");
+        address migrationAdmin_ = vm.envAddress("MIGRATION_ADMIN");
         DeployConfig memory config_ = _getDeployConfig(block.chainid);
 
         // Deploy the hook using CREATE2
         vm.startBroadcast();
 
-        _deployAllowlistHook(owner_, config_);
+        _deployAllowlistHook(owner_, migrationAdmin_, config_);
 
         vm.stopBroadcast();
     }

@@ -14,14 +14,19 @@ abstract contract AdminMigratable is Migratable, IAdminMigratable {
     /// @inheritdoc IAdminMigratable
     address public immutable migrationAdmin;
 
+    /// @inheritdoc IAdminMigratable
+    address public immutable registrar;
+
     /* ============ Constructor ============ */
 
     /**
      * @notice Constructs the AdminMigratable contract.
      * @param  migrationAdmin_ The admin of the contract.
+     * @param  registrar_      The address of the registrar contract.
      */
-    constructor(address migrationAdmin_) {
+    constructor(address migrationAdmin_, address registrar_) {
         if ((migrationAdmin = migrationAdmin_) == address(0)) revert ZeroMigrationAdmin();
+        if ((registrar = registrar_) == address(0)) revert ZeroRegistrar();
     }
 
     /* ============ External Interactive functions ============ */
@@ -33,13 +38,8 @@ abstract contract AdminMigratable is Migratable, IAdminMigratable {
         _migrate(migrator_);
     }
 
-    /* ============ Internal View/Pure Functions ============ */
+    /* ============ External View/Pure Functions ============ */
 
-    /**
-     * @dev Not used since only the admin can perform the migration.
-     * @dev The unprivileged migrate() function will revert if called.
-     */
-    function _getMigrator() internal pure override returns (address) {
-        return address(0);
-    }
+    /// @inheritdoc IAdminMigratable
+    function MIGRATOR_KEY_PREFIX() external pure virtual returns (bytes32) {}
 }

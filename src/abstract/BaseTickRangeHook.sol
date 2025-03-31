@@ -39,14 +39,18 @@ abstract contract BaseTickRangeHook is IBaseTickRangeHook, BaseHook, AdminMigrat
      * @param  poolManager_    The Uniswap V4 Pool Manager contract address.
      * @param  tickLowerBound_ The lower tick of the range to limit the liquidity provision and token swaps to.
      * @param  tickUpperBound_ The upper tick of the range to limit the liquidity provision and token swaps to.
+     * @param  registrar_      The address of the registrar contract.
      * @param  owner_          The owner of the contract.
+     * @param  migrationAdmin_ The address allowed to migrate the contract.
      */
     constructor(
         address poolManager_,
         int24 tickLowerBound_,
         int24 tickUpperBound_,
-        address owner_
-    ) BaseHook(IPoolManager(poolManager_)) AdminMigratable(owner_) Ownable(owner_) {
+        address registrar_,
+        address owner_,
+        address migrationAdmin_
+    ) BaseHook(IPoolManager(poolManager_)) AdminMigratable(migrationAdmin_, registrar_) Ownable(owner_) {
         _setTickRange(tickLowerBound_, tickUpperBound_);
     }
 

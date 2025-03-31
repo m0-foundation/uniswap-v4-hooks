@@ -31,7 +31,7 @@ contract TickRangeHookIntegrationTest is BaseTest {
 
         deployCodeTo(
             "TickRangeHook.sol",
-            abi.encode(address(manager), TICK_LOWER_BOUND, TICK_UPPER_BOUND, owner),
+            abi.encode(address(manager), TICK_LOWER_BOUND, TICK_UPPER_BOUND, mockRegistrar, owner, migrationAdmin),
             address(flags)
         );
 

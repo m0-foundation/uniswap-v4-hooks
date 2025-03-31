@@ -32,7 +32,7 @@ contract TickRangeHookTest is BaseTest {
 
         deployCodeTo(
             "TickRangeHook.sol",
-            abi.encode(address(manager), TICK_LOWER_BOUND, TICK_UPPER_BOUND, owner),
+            abi.encode(address(manager), TICK_LOWER_BOUND, TICK_UPPER_BOUND, mockRegistrar, owner, migrationAdmin),
             address(flags)
         );
 
@@ -50,7 +50,7 @@ contract TickRangeHookTest is BaseTest {
 
         deployCodeTo(
             "TickRangeHook.sol",
-            abi.encode(address(manager), TICK_UPPER_BOUND, TICK_LOWER_BOUND, owner),
+            abi.encode(address(manager), TICK_UPPER_BOUND, TICK_LOWER_BOUND, mockRegistrar, owner, migrationAdmin),
             address(flags)
         );
     }
@@ -62,7 +62,7 @@ contract TickRangeHookTest is BaseTest {
 
         deployCodeTo(
             "TickRangeHook.sol",
-            abi.encode(address(manager), TICK_UPPER_BOUND, TICK_UPPER_BOUND, owner),
+            abi.encode(address(manager), TICK_UPPER_BOUND, TICK_UPPER_BOUND, mockRegistrar, owner, migrationAdmin),
             address(flags)
         );
     }
@@ -292,7 +292,7 @@ contract TickRangeHookTest is BaseTest {
 
     /* ============ migrate ============ */
 
-    function test_migrate_onlyAdmin() external {
+    function test_migrate_onlyAdmin() public {
         address tickRangeHookProxy_ = address(new Proxy(address(tickRangeHook)));
         address migrator_ = address(new Migrator(address(new Foo())));
 
@@ -300,15 +300,32 @@ contract TickRangeHookTest is BaseTest {
         IAdminMigratable(tickRangeHookProxy_).migrate(migrator_);
     }
 
-    function test_migrate() external {
+    function test_migrate_fromAdmin() public {
         address tickRangeHookProxy_ = address(new Proxy(address(tickRangeHook)));
         address migrator_ = address(new Migrator(address(new Foo())));
 
         vm.expectRevert();
         Foo(tickRangeHookProxy_).bar();
 
-        vm.prank(owner);
+        vm.prank(migrationAdmin);
         IAdminMigratable(tickRangeHookProxy_).migrate(migrator_);
+
+        assertEq(Foo(tickRangeHookProxy_).bar(), 1);
+    }
+
+    function test_migrate_fromRegistrar() public {
+        address tickRangeHookProxy_ = address(new Proxy(address(tickRangeHook)));
+        address migrator_ = address(new Migrator(address(new Foo())));
+
+        vm.expectRevert();
+        Foo(tickRangeHookProxy_).bar();
+
+        mockRegistrar.set(
+            keccak256(abi.encode(tickRangeHook.MIGRATOR_KEY_PREFIX(), tickRangeHookProxy_)),
+            bytes32(uint256(uint160(migrator_)))
+        );
+
+        IAdminMigratable(tickRangeHookProxy_).migrate();
 
         assertEq(Foo(tickRangeHookProxy_).bar(), 1);
     }

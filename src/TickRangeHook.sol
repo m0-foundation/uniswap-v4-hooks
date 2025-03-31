@@ -8,12 +8,20 @@ import { PoolKey } from "../lib/v4-periphery/lib/v4-core/src/types/PoolKey.sol";
 
 import { BaseTickRangeHook } from "./abstract/BaseTickRangeHook.sol";
 
+import { IAdminMigratable } from "./interfaces/IAdminMigratable.sol";
+import { IRegistrarLike } from "./interfaces/IRegistrarLike.sol";
+
 /**
  * @title  Tick Range Hook
  * @author M^0 Labs
  * @notice Hook restricting liquidity provision and token swaps to a specific tick range.
  */
 contract TickRangeHook is BaseTickRangeHook {
+    /* ============ Variables ============ */
+
+    /// @inheritdoc IAdminMigratable
+    bytes32 public constant override MIGRATOR_KEY_PREFIX = "allowlist_hook_migrator_v1";
+
     /* ============ Constructor ============ */
 
     /**
@@ -21,14 +29,18 @@ contract TickRangeHook is BaseTickRangeHook {
      * @param  poolManager_    The Uniswap V4 Pool Manager contract address.
      * @param  tickLowerBound_ The lower tick of the range to limit the liquidity provision and token swaps to.
      * @param  tickUpperBound_ The upper tick of the range to limit the liquidity provision and token swaps to.
+     * @param  registrar_      The address of the registrar contract.
      * @param  owner_          The owner of the contract.
+     * @param  migrationAdmin_ The address allowed to migrate the contract.
      */
     constructor(
         address poolManager_,
         int24 tickLowerBound_,
         int24 tickUpperBound_,
-        address owner_
-    ) BaseTickRangeHook(poolManager_, tickLowerBound_, tickUpperBound_, owner_) {}
+        address registrar_,
+        address owner_,
+        address migrationAdmin_
+    ) BaseTickRangeHook(poolManager_, tickLowerBound_, tickUpperBound_, registrar_, owner_, migrationAdmin_) {}
 
     /* ============ Hook functions ============ */
 
@@ -62,5 +74,18 @@ contract TickRangeHook is BaseTickRangeHook {
     ) internal view override returns (bytes4) {
         super._beforeAddLiquidity(params_);
         return this.beforeAddLiquidity.selector;
+    }
+
+    /* ============ Internal View/Pure Functions ============ */
+
+    /// @dev Returns the address of the contract to use as a migrator, if any.
+    function _getMigrator() internal view override returns (address) {
+        return
+            address(
+                uint160(
+                    // NOTE: A subsequent implementation should use a unique migrator prefix.
+                    uint256(IRegistrarLike(registrar).get(keccak256(abi.encode(MIGRATOR_KEY_PREFIX, address(this)))))
+                )
+            );
     }
 }

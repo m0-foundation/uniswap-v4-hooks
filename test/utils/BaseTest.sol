@@ -33,6 +33,8 @@ import { PosmTestSetup } from "../../lib/v4-periphery/test/shared/PosmTestSetup.
 
 import { LiquidityOperationsLib } from "./helpers/LiquidityOperationsLib.sol";
 
+import { Foo, Migrator, MockRegistrar } from "./Mocks.sol";
+
 contract BaseTest is Deployers, PosmTestSetup {
     using LiquidityOperationsLib for IPositionManager;
 
@@ -42,6 +44,7 @@ contract BaseTest is Deployers, PosmTestSetup {
     PoolId public poolId;
 
     MockV4Router public mockRouter;
+    MockRegistrar public mockRegistrar;
 
     Plan public plan;
     StateView public state;
@@ -61,6 +64,7 @@ contract BaseTest is Deployers, PosmTestSetup {
 
     address public mockPositionManager = makeAddr("positionManager");
     address public owner = makeAddr("owner");
+    address public migrationAdmin = makeAddr("migrationAdmin");
     address public alice = makeAddr("alice");
     address public bob = makeAddr("bob");
     address public carol = makeAddr("carol");
@@ -74,6 +78,7 @@ contract BaseTest is Deployers, PosmTestSetup {
         (tokenZero, tokenOne) = deployMintAndApprove2Currencies();
 
         mockRouter = new MockV4Router(manager);
+        mockRegistrar = new MockRegistrar();
 
         plan = Planner.init();
 
@@ -199,29 +204,5 @@ contract BaseTest is Deployers, PosmTestSetup {
                 abi.encodeWithSelector(Hooks.HookCallFailed.selector)
             )
         );
-    }
-}
-
-contract Foo {
-    function bar() external pure returns (uint256) {
-        return 1;
-    }
-}
-
-contract Migrator {
-    uint256 private constant _IMPLEMENTATION_SLOT = 0x360894a13ba1a3210667c828492db98dca3e2076cc3735a920a3ca505d382bbc;
-
-    address public immutable implementationV2;
-
-    constructor(address implementation_) {
-        implementationV2 = implementation_;
-    }
-
-    fallback() external virtual {
-        address implementation_ = implementationV2;
-
-        assembly {
-            sstore(_IMPLEMENTATION_SLOT, implementation_)
-        }
     }
 }

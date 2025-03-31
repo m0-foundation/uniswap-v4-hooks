@@ -19,7 +19,8 @@ import { Config } from "../../script/base/Config.sol";
 import { Deploy } from "../../script/base/Deploy.sol";
 
 contract DeployTest is Deploy, Test {
-    address public constant OWNER = 0x431169728D75bd02f4053435b87D15c8d1FB2C72;
+    address public constant OWNER = 0x7F7489582b64ABe46c074A45d758d701c2CA5446; // MXON
+    address public constant MIGRATION_ADMIN = 0x431169728D75bd02f4053435b87D15c8d1FB2C72; // M0 Labs
 
     uint256 mainnetFork;
 
@@ -42,8 +43,8 @@ contract DeployTest is Deploy, Test {
 
         DeployConfig memory config_ = _getDeployConfig(block.chainid);
 
-        vm.prank(config_.create2Deployer);
-        IHooks allowlistHook_ = _deployAllowlistHook(OWNER, config_);
+        vm.prank(CREATE2_DEPLOYER);
+        IHooks allowlistHook_ = _deployAllowlistHook(OWNER, MIGRATION_ADMIN, config_);
 
         assertEq(Ownable(address(allowlistHook_)).owner(), OWNER);
         assertTrue(IAllowlistHook(address(allowlistHook_)).isSwapRouterTrusted(config_.swapRouter));
@@ -61,8 +62,8 @@ contract DeployTest is Deploy, Test {
 
         DeployConfig memory config_ = _getDeployConfig(block.chainid);
 
-        vm.prank(config_.create2Deployer);
-        IHooks allowlistHook_ = _deployAllowlistHook(OWNER, config_);
+        vm.prank(CREATE2_DEPLOYER);
+        IHooks allowlistHook_ = _deployAllowlistHook(OWNER, MIGRATION_ADMIN, config_);
 
         PoolKey memory poolKey_ = _deployPool(config_, allowlistHook_);
 
@@ -81,8 +82,8 @@ contract DeployTest is Deploy, Test {
 
         DeployConfig memory config_ = _getDeployConfig(block.chainid);
 
-        vm.prank(config_.create2Deployer);
-        IHooks tickrangeHook_ = _deployTickRangeHook(OWNER, config_);
+        vm.prank(CREATE2_DEPLOYER);
+        IHooks tickrangeHook_ = _deployTickRangeHook(OWNER, MIGRATION_ADMIN, config_);
 
         assertEq(Ownable(address(tickrangeHook_)).owner(), OWNER);
         assertEq(IBaseTickRangeHook(address(tickrangeHook_)).tickLowerBound(), config_.tickLowerBound);
@@ -94,8 +95,8 @@ contract DeployTest is Deploy, Test {
 
         DeployConfig memory config_ = _getDeployConfig(block.chainid);
 
-        vm.prank(config_.create2Deployer);
-        IHooks tickRangeHook_ = _deployTickRangeHook(OWNER, config_);
+        vm.prank(CREATE2_DEPLOYER);
+        IHooks tickRangeHook_ = _deployTickRangeHook(OWNER, MIGRATION_ADMIN, config_);
 
         PoolKey memory poolKey_ = _deployPool(config_, tickRangeHook_);
 

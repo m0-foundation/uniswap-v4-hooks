@@ -6,7 +6,6 @@ import { IHooks } from "../lib/v4-periphery/lib/v4-core/src/interfaces/IHooks.so
 import { IPoolManager } from "../lib/v4-periphery/lib/v4-core/src/interfaces/IPoolManager.sol";
 
 import { Hooks } from "../lib/v4-periphery/lib/v4-core/src/libraries/Hooks.sol";
-import { Position } from "../lib/v4-periphery/lib/v4-core/src/libraries/Position.sol";
 import { TickMath } from "../lib/v4-periphery/lib/v4-core/src/libraries/TickMath.sol";
 
 import { LiquidityAmounts } from "../lib/v4-periphery/lib/v4-core/test/utils/LiquidityAmounts.sol";
@@ -48,7 +47,16 @@ contract AllowlistHookTest is BaseTest {
 
         deployCodeTo(
             "AllowlistHookHarness.sol",
-            abi.encode(address(lpm), address(swapRouter), address(manager), TICK_LOWER_BOUND, TICK_UPPER_BOUND, owner),
+            abi.encode(
+                address(lpm),
+                address(swapRouter),
+                address(manager),
+                TICK_LOWER_BOUND,
+                TICK_UPPER_BOUND,
+                mockRegistrar,
+                owner,
+                migrationAdmin
+            ),
             address(flags)
         );
 
@@ -1105,7 +1113,7 @@ contract AllowlistHookTest is BaseTest {
 
     /* ============ migrate ============ */
 
-    function test_migrate_onlyAdmin() external {
+    function test_migrate_onlyAdmin() public {
         address allowlistHookProxy_ = address(new Proxy(address(allowlistHook)));
         address migrator_ = address(new Migrator(address(new Foo())));
 
@@ -1113,15 +1121,32 @@ contract AllowlistHookTest is BaseTest {
         IAdminMigratable(allowlistHookProxy_).migrate(migrator_);
     }
 
-    function test_migrate() external {
+    function test_migrate_fromAdmin() public {
         address allowlistHookProxy_ = address(new Proxy(address(allowlistHook)));
         address migrator_ = address(new Migrator(address(new Foo())));
 
         vm.expectRevert();
         Foo(allowlistHookProxy_).bar();
 
-        vm.prank(owner);
+        vm.prank(migrationAdmin);
         IAdminMigratable(allowlistHookProxy_).migrate(migrator_);
+
+        assertEq(Foo(allowlistHookProxy_).bar(), 1);
+    }
+
+    function test_migrate_fromRegistrar() public {
+        address allowlistHookProxy_ = address(new Proxy(address(allowlistHook)));
+        address migrator_ = address(new Migrator(address(new Foo())));
+
+        vm.expectRevert();
+        Foo(allowlistHookProxy_).bar();
+
+        mockRegistrar.set(
+            keccak256(abi.encode(allowlistHook.MIGRATOR_KEY_PREFIX(), allowlistHookProxy_)),
+            bytes32(uint256(uint160(migrator_)))
+        );
+
+        IAdminMigratable(allowlistHookProxy_).migrate();
 
         assertEq(Foo(allowlistHookProxy_).bar(), 1);
     }

@@ -12,9 +12,11 @@ import { PoolKey } from "../lib/v4-periphery/lib/v4-core/src/types/PoolKey.sol";
 
 import { BaseTickRangeHook } from "./abstract/BaseTickRangeHook.sol";
 
+import { IAdminMigratable } from "./interfaces/IAdminMigratable.sol";
 import { IAllowlistHook } from "./interfaces/IAllowlistHook.sol";
 import { IBaseActionsRouterLike } from "./interfaces/IBaseActionsRouterLike.sol";
 import { IERC20Like } from "./interfaces/IERC20Like.sol";
+import { IRegistrarLike } from "./interfaces/IRegistrarLike.sol";
 
 /**
  * @title  Allowlist Hook
@@ -25,6 +27,9 @@ contract AllowlistHook is BaseTickRangeHook, IAllowlistHook {
     using CurrencyLibrary for Currency;
 
     /* ============ Variables ============ */
+
+    /// @inheritdoc IAdminMigratable
+    bytes32 public constant override MIGRATOR_KEY_PREFIX = "allowlist_hook_migrator_v1";
 
     /// @inheritdoc IAllowlistHook
     uint256 public swapCap;
@@ -76,7 +81,9 @@ contract AllowlistHook is BaseTickRangeHook, IAllowlistHook {
      * @param  poolManager_     The Uniswap V4 Pool Manager contract address.
      * @param  tickLowerBound_  The lower tick of the range to limit the liquidity provision and token swaps to.
      * @param  tickUpperBound_  The upper tick of the range to limit the liquidity provision and token swaps to.
+     * @param  registrar_       The address of the registrar contract.
      * @param  owner_           The owner of the contract.
+     * @param  migrationAdmin_  The address allowed to migrate the contract.
      */
     constructor(
         address positionManager_,
@@ -84,8 +91,10 @@ contract AllowlistHook is BaseTickRangeHook, IAllowlistHook {
         address poolManager_,
         int24 tickLowerBound_,
         int24 tickUpperBound_,
-        address owner_
-    ) BaseTickRangeHook(poolManager_, tickLowerBound_, tickUpperBound_, owner_) {
+        address registrar_,
+        address owner_,
+        address migrationAdmin_
+    ) BaseTickRangeHook(poolManager_, tickLowerBound_, tickUpperBound_, registrar_, owner_, migrationAdmin_) {
         _setPositionManager(positionManager_, true);
         _setSwapRouter(swapRouter_, true);
         _setLiquidityProvidersAllowlist(true);
@@ -439,6 +448,19 @@ contract AllowlistHook is BaseTickRangeHook, IAllowlistHook {
     function _resetTotalSwap() internal {
         delete totalSwap;
         emit TotalSwapReset();
+    }
+
+    /* ============ Internal View/Pure Functions ============ */
+
+    /// @dev Returns the address of the contract to use as a migrator, if any.
+    function _getMigrator() internal view override returns (address) {
+        return
+            address(
+                uint160(
+                    // NOTE: A subsequent implementation should use a unique migrator prefix.
+                    uint256(IRegistrarLike(registrar).get(keccak256(abi.encode(MIGRATOR_KEY_PREFIX, address(this)))))
+                )
+            );
     }
 
     /**

@@ -16,30 +16,40 @@ import { PoolId } from "../../lib/v4-periphery/lib/v4-core/src/types/PoolId.sol"
 import { PoolKey } from "../../lib/v4-periphery/lib/v4-core/src/types/PoolKey.sol";
 
 import { HookMiner } from "../../lib/v4-periphery/src/utils/HookMiner.sol";
-
 import { AllowlistHook } from "../../src/AllowlistHook.sol";
 import { TickRangeHook } from "../../src/TickRangeHook.sol";
 
 import { Config } from "./Config.sol";
 
 contract Deploy is Config {
-    function _deployTickRangeHook(address owner_, DeployConfig memory config_) internal returns (IHooks) {
-        uint160 flags_ = uint160(Hooks.BEFORE_ADD_LIQUIDITY_FLAG | Hooks.AFTER_SWAP_FLAG);
-
+    function _deployTickRangeHook(
+        address owner_,
+        address migrationAdmin_,
+        DeployConfig memory config_
+    ) internal returns (IHooks) {
         // Mine a salt that will produce a hook address with the correct flags
         (address hookAddress_, bytes32 salt_) = HookMiner.find(
-            config_.create2Deployer,
-            flags_,
+            CREATE2_DEPLOYER,
+            uint160(Hooks.BEFORE_ADD_LIQUIDITY_FLAG | Hooks.AFTER_SWAP_FLAG),
             type(TickRangeHook).creationCode,
-            abi.encode(address(config_.poolManager), config_.tickLowerBound, config_.tickUpperBound, owner_)
+            abi.encode(
+                config_.poolManager,
+                config_.tickLowerBound,
+                config_.tickUpperBound,
+                config_.registrar,
+                owner_,
+                migrationAdmin_
+            )
         );
 
         // Deploy the hook using CREATE2
         TickRangeHook tickRangeHook_ = new TickRangeHook{ salt: salt_ }(
-            address(config_.poolManager),
+            config_.poolManager,
             config_.tickLowerBound,
             config_.tickUpperBound,
-            owner_
+            config_.registrar,
+            owner_,
+            migrationAdmin_
         );
 
         require(address(tickRangeHook_) == hookAddress_, "TickRangeHook: hook address mismatch");
@@ -47,37 +57,43 @@ contract Deploy is Config {
         return IHooks(address(tickRangeHook_));
     }
 
-    function _deployAllowlistHook(address owner_, DeployConfig memory config_) internal returns (IHooks) {
-        uint160 flags_ = uint160(
-            Hooks.BEFORE_INITIALIZE_FLAG |
-                Hooks.BEFORE_ADD_LIQUIDITY_FLAG |
-                Hooks.BEFORE_SWAP_FLAG |
-                Hooks.AFTER_SWAP_FLAG
-        );
-
+    function _deployAllowlistHook(
+        address owner_,
+        address migrationAdmin_,
+        DeployConfig memory config_
+    ) internal returns (IHooks) {
         // Mine a salt that will produce a hook address with the correct flags
         (address hookAddress_, bytes32 salt_) = HookMiner.find(
-            config_.create2Deployer,
-            flags_,
+            CREATE2_DEPLOYER,
+            uint160(
+                Hooks.BEFORE_INITIALIZE_FLAG |
+                    Hooks.BEFORE_ADD_LIQUIDITY_FLAG |
+                    Hooks.BEFORE_SWAP_FLAG |
+                    Hooks.AFTER_SWAP_FLAG
+            ),
             type(AllowlistHook).creationCode,
             abi.encode(
-                address(config_.posm),
+                config_.posm,
                 config_.swapRouter,
-                address(config_.poolManager),
+                config_.poolManager,
                 config_.tickLowerBound,
                 config_.tickUpperBound,
-                owner_
+                config_.registrar,
+                owner_,
+                migrationAdmin_
             )
         );
 
         // Deploy the hook using CREATE2
         AllowlistHook allowlistHook_ = new AllowlistHook{ salt: salt_ }(
-            address(config_.posm),
+            config_.posm,
             config_.swapRouter,
-            address(config_.poolManager),
+            config_.poolManager,
             config_.tickLowerBound,
             config_.tickUpperBound,
-            owner_
+            config_.registrar,
+            owner_,
+            migrationAdmin_
         );
 
         require(address(allowlistHook_) == hookAddress_, "AllowlistHook: hook address mismatch");
@@ -96,7 +112,7 @@ contract Deploy is Config {
             hooks: hook_
         });
 
-        config_.poolManager.initialize(pool_, TickMath.getSqrtPriceAtTick(0));
+        IPoolManager(config_.poolManager).initialize(pool_, TickMath.getSqrtPriceAtTick(0));
     }
 
     function _logPoolDeployment(Vm.Log[] memory logs_) internal pure {
