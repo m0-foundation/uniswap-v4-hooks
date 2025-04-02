@@ -5,28 +5,6 @@ pragma solidity 0.8.26;
 import { AllowlistHook } from "../../src/AllowlistHook.sol";
 
 contract AllowlistHookHarness is AllowlistHook {
-    constructor(
-        address positionManager_,
-        address swapRouter_,
-        address poolManager_,
-        int24 tickLowerBound_,
-        int24 tickUpperBound_,
-        address registrar_,
-        address owner_,
-        address migrationAdmin_
-    )
-        AllowlistHook(
-            positionManager_,
-            swapRouter_,
-            poolManager_,
-            tickLowerBound_,
-            tickUpperBound_,
-            registrar_,
-            owner_,
-            migrationAdmin_
-        )
-    {}
-
     function setTotalSwap(uint256 totalSwap_) external {
         totalSwap = totalSwap_;
     }

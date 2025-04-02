@@ -1,32 +1,30 @@
 // SPDX-License-Identifier: UNLICENSED
-
 pragma solidity 0.8.26;
 
-import { Script } from "../../lib/forge-std/src/Script.sol";
 import { Vm } from "../../lib/forge-std/src/Vm.sol";
 
 import { IHooks } from "../../lib/v4-periphery/lib/v4-core/src/interfaces/IHooks.sol";
 
-import { TickRangeHook } from "../../src/TickRangeHook.sol";
+import { Deploy } from "../base/Deploy.s.sol";
 
-import { Deploy } from "../base/Deploy.sol";
-
-contract DeployTickRangeHookAndPool is Deploy, Script {
+contract DeployTickRangeHookAndPool is Deploy {
     function run() public {
-        address owner_ = vm.envAddress("OWNER");
-        address migrationAdmin_ = vm.envAddress("MIGRATION_ADMIN");
-        DeployConfig memory config_ = _getDeployConfig(block.chainid);
+        address deployer = vm.rememberKey(vm.envUint("PRIVATE_KEY"));
 
-        // Deploy the hook using CREATE2
+        address admin = vm.envAddress("OWNER");
+        address manager = vm.envAddress("MANAGER");
+        address upgrader = vm.envAddress("UPGRADER");
+        DeployConfig memory config = _getDeployConfig(block.chainid);
+
         vm.startBroadcast();
 
-        IHooks tickRangeHook_ = _deployTickRangeHook(owner_, migrationAdmin_, config_);
+        (, address tickRangeHookProxy) = _deployTickRangeHook(deployer, admin, manager, upgrader, config);
 
         vm.recordLogs();
-        _deployPool(config_, tickRangeHook_);
+        _deployPool(config, IHooks(tickRangeHookProxy));
 
-        Vm.Log[] memory logs_ = vm.getRecordedLogs();
-        _logPoolDeployment(logs_);
+        Vm.Log[] memory logs = vm.getRecordedLogs();
+        _logPoolDeployment(logs);
 
         vm.stopBroadcast();
     }

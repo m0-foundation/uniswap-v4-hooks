@@ -12,11 +12,9 @@ import { PoolKey } from "../lib/v4-periphery/lib/v4-core/src/types/PoolKey.sol";
 
 import { BaseTickRangeHook } from "./abstract/BaseTickRangeHook.sol";
 
-import { IAdminMigratable } from "./interfaces/IAdminMigratable.sol";
 import { IAllowlistHook } from "./interfaces/IAllowlistHook.sol";
 import { IBaseActionsRouterLike } from "./interfaces/IBaseActionsRouterLike.sol";
 import { IERC20Like } from "./interfaces/IERC20Like.sol";
-import { IRegistrarLike } from "./interfaces/IRegistrarLike.sol";
 
 /**
  * @title  Allowlist Hook
@@ -27,9 +25,6 @@ contract AllowlistHook is BaseTickRangeHook, IAllowlistHook {
     using CurrencyLibrary for Currency;
 
     /* ============ Variables ============ */
-
-    /// @inheritdoc IAdminMigratable
-    bytes32 public constant override MIGRATOR_KEY_PREFIX = "allowlist_hook_migrator_v1";
 
     /// @inheritdoc IAllowlistHook
     uint256 public swapCap;
@@ -72,29 +67,38 @@ contract AllowlistHook is BaseTickRangeHook, IAllowlistHook {
     /// @notice Mapping of Swappers to their allowed status.
     mapping(address swapper => bool isSwapperAllowed) internal _swappersAllowlist;
 
-    /* ============ Constructor ============ */
+    /* ============ Initializer ============ */
 
     /**
-     * @notice Constructs the AllowlistHook contract.
+     * @notice Initialize the AllowlistHook contract.
      * @param  positionManager_ The initial Uniswap V4 Position Manager contract address allowed to modify liquidity.
      * @param  swapRouter_      The initial Uniswap V4 Swap Router contract address allowed to swap.
      * @param  poolManager_     The Uniswap V4 Pool Manager contract address.
      * @param  tickLowerBound_  The lower tick of the range to limit the liquidity provision and token swaps to.
      * @param  tickUpperBound_  The upper tick of the range to limit the liquidity provision and token swaps to.
-     * @param  registrar_       The address of the registrar contract.
-     * @param  owner_           The owner of the contract.
-     * @param  migrationAdmin_  The address allowed to migrate the contract.
+     * @param  admin_           The address admnistrating the hook. Can grant and revoke roles.
+     * @param  manager_         The address managing the hook.
+     * @param  upgrader_        The address allowed to upgrade the implementation.
      */
-    constructor(
+    function initialize(
         address positionManager_,
         address swapRouter_,
         address poolManager_,
         int24 tickLowerBound_,
         int24 tickUpperBound_,
-        address registrar_,
-        address owner_,
-        address migrationAdmin_
-    ) BaseTickRangeHook(poolManager_, tickLowerBound_, tickUpperBound_, registrar_, owner_, migrationAdmin_) {
+        address admin_,
+        address manager_,
+        address upgrader_
+    ) public initializer {
+        __BaseTickRangeHookUpgradeable_init(
+            poolManager_,
+            tickLowerBound_,
+            tickUpperBound_,
+            admin_,
+            manager_,
+            upgrader_
+        );
+
         _setPositionManager(positionManager_, true);
         _setSwapRouter(swapRouter_, true);
         _setLiquidityProvidersAllowlist(true);
@@ -242,17 +246,17 @@ contract AllowlistHook is BaseTickRangeHook, IAllowlistHook {
     /* ============ External Interactive functions ============ */
 
     /// @inheritdoc IAllowlistHook
-    function setLiquidityProvidersAllowlist(bool isEnabled_) external onlyOwner {
+    function setLiquidityProvidersAllowlist(bool isEnabled_) external onlyRole(_MANAGER_ROLE) {
         _setLiquidityProvidersAllowlist(isEnabled_);
     }
 
     /// @inheritdoc IAllowlistHook
-    function setSwappersAllowlist(bool isEnabled_) external onlyOwner {
+    function setSwappersAllowlist(bool isEnabled_) external onlyRole(_MANAGER_ROLE) {
         _setSwappersAllowlist(isEnabled_);
     }
 
     /// @inheritdoc IAllowlistHook
-    function setLiquidityProvider(address liquidityProvider_, bool isAllowed_) external onlyOwner {
+    function setLiquidityProvider(address liquidityProvider_, bool isAllowed_) external onlyRole(_MANAGER_ROLE) {
         _setLiquidityProvider(liquidityProvider_, isAllowed_);
     }
 
@@ -260,7 +264,7 @@ contract AllowlistHook is BaseTickRangeHook, IAllowlistHook {
     function setLiquidityProviders(
         address[] calldata liquidityProviders_,
         bool[] calldata isAllowed_
-    ) external onlyOwner {
+    ) external onlyRole(_MANAGER_ROLE) {
         if (liquidityProviders_.length != isAllowed_.length) revert ArrayLengthMismatch();
 
         for (uint256 i_; i_ < liquidityProviders_.length; ++i_) {
@@ -269,12 +273,12 @@ contract AllowlistHook is BaseTickRangeHook, IAllowlistHook {
     }
 
     /// @inheritdoc IAllowlistHook
-    function setSwapper(address swapper_, bool isAllowed_) external onlyOwner {
+    function setSwapper(address swapper_, bool isAllowed_) external onlyRole(_MANAGER_ROLE) {
         _setSwapper(swapper_, isAllowed_);
     }
 
     /// @inheritdoc IAllowlistHook
-    function setSwappers(address[] calldata swappers_, bool[] calldata isAllowed_) external onlyOwner {
+    function setSwappers(address[] calldata swappers_, bool[] calldata isAllowed_) external onlyRole(_MANAGER_ROLE) {
         if (swappers_.length != isAllowed_.length) revert ArrayLengthMismatch();
 
         for (uint256 i_; i_ < swappers_.length; ++i_) {
@@ -283,12 +287,15 @@ contract AllowlistHook is BaseTickRangeHook, IAllowlistHook {
     }
 
     /// @inheritdoc IAllowlistHook
-    function setPositionManager(address positionManager_, bool isAllowed_) external onlyOwner {
+    function setPositionManager(address positionManager_, bool isAllowed_) external onlyRole(_MANAGER_ROLE) {
         _setPositionManager(positionManager_, isAllowed_);
     }
 
     /// @inheritdoc IAllowlistHook
-    function setPositionManagers(address[] calldata positionManagers_, bool[] calldata isAllowed_) external onlyOwner {
+    function setPositionManagers(
+        address[] calldata positionManagers_,
+        bool[] calldata isAllowed_
+    ) external onlyRole(_MANAGER_ROLE) {
         if (positionManagers_.length != isAllowed_.length) revert ArrayLengthMismatch();
 
         for (uint256 i_; i_ < positionManagers_.length; ++i_) {
@@ -297,12 +304,15 @@ contract AllowlistHook is BaseTickRangeHook, IAllowlistHook {
     }
 
     /// @inheritdoc IAllowlistHook
-    function setSwapRouter(address swapRouter_, bool isAllowed_) external onlyOwner {
+    function setSwapRouter(address swapRouter_, bool isAllowed_) external onlyRole(_MANAGER_ROLE) {
         _setSwapRouter(swapRouter_, isAllowed_);
     }
 
     /// @inheritdoc IAllowlistHook
-    function setSwapRouters(address[] calldata swapRouters_, bool[] calldata isAllowed_) external onlyOwner {
+    function setSwapRouters(
+        address[] calldata swapRouters_,
+        bool[] calldata isAllowed_
+    ) external onlyRole(_MANAGER_ROLE) {
         if (swapRouters_.length != isAllowed_.length) revert ArrayLengthMismatch();
 
         for (uint256 i_; i_ < swapRouters_.length; ++i_) {
@@ -311,7 +321,7 @@ contract AllowlistHook is BaseTickRangeHook, IAllowlistHook {
     }
 
     /// @inheritdoc IAllowlistHook
-    function setSwapCap(uint256 swapCap_) external onlyOwner {
+    function setSwapCap(uint256 swapCap_) external onlyRole(_MANAGER_ROLE) {
         if (swapCap == swapCap_) return;
 
         swapCap = swapCap_;
@@ -325,7 +335,7 @@ contract AllowlistHook is BaseTickRangeHook, IAllowlistHook {
     }
 
     /// @inheritdoc IAllowlistHook
-    function resetTotalSwap() external onlyOwner {
+    function resetTotalSwap() external onlyRole(_MANAGER_ROLE) {
         _resetTotalSwap();
     }
 
@@ -448,19 +458,6 @@ contract AllowlistHook is BaseTickRangeHook, IAllowlistHook {
     function _resetTotalSwap() internal {
         delete totalSwap;
         emit TotalSwapReset();
-    }
-
-    /* ============ Internal View/Pure Functions ============ */
-
-    /// @dev Returns the address of the contract to use as a migrator, if any.
-    function _getMigrator() internal view override returns (address) {
-        return
-            address(
-                uint160(
-                    // NOTE: A subsequent implementation should use a unique migrator prefix.
-                    uint256(IRegistrarLike(registrar).get(keccak256(abi.encode(MIGRATOR_KEY_PREFIX, address(this)))))
-                )
-            );
     }
 
     /**

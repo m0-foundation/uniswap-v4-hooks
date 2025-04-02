@@ -1,25 +1,20 @@
 // SPDX-License-Identifier: UNLICENSED
-
 pragma solidity 0.8.26;
 
-import { Script } from "../../lib/forge-std/src/Script.sol";
+import { Deploy } from "../base/Deploy.s.sol";
 
-import { IHooks } from "../../lib/v4-periphery/lib/v4-core/src/interfaces/IHooks.sol";
-
-import { AllowlistHook } from "../../src/AllowlistHook.sol";
-
-import { Deploy } from "../base/Deploy.sol";
-
-contract DeployAllowlistHook is Deploy, Script {
+contract DeployAllowlistHook is Deploy {
     function run() public {
-        address owner_ = vm.envAddress("OWNER");
-        address migrationAdmin_ = vm.envAddress("MIGRATION_ADMIN");
-        DeployConfig memory config_ = _getDeployConfig(block.chainid);
+        address deployer = vm.rememberKey(vm.envUint("PRIVATE_KEY"));
 
-        // Deploy the hook using CREATE2
+        address admin = vm.envAddress("ADMIN");
+        address manager = vm.envAddress("MANAGER");
+        address upgrader = vm.envAddress("UPGRADER");
+        DeployConfig memory config = _getDeployConfig(block.chainid);
+
         vm.startBroadcast();
 
-        _deployAllowlistHook(owner_, migrationAdmin_, config_);
+        _deployAllowlistHook(deployer, admin, manager, upgrader, config);
 
         vm.stopBroadcast();
     }

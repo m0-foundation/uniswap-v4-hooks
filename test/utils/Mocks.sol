@@ -2,40 +2,66 @@
 
 pragma solidity 0.8.26;
 
-contract Foo {
+import {
+    AccessControlUpgradeable
+} from "../../lib/openzeppelin-contracts-upgradeable/contracts/access/AccessControlUpgradeable.sol";
+
+import {
+    UUPSUpgradeable
+} from "../../lib/openzeppelin-contracts-upgradeable/contracts/proxy/utils/UUPSUpgradeable.sol";
+
+import { IPoolManager } from "../../lib/v4-periphery/lib/v4-core/src/interfaces/IPoolManager.sol";
+
+/// @custom:oz-upgrades-from src/TickRangeHook.sol:TickRangeHook
+contract TickRangeHookUpgrade is UUPSUpgradeable, AccessControlUpgradeable {
+    IPoolManager public poolManager;
+
+    int24 public tickLowerBound;
+
+    int24 public tickUpperBound;
+
+    /// @custom:oz-upgrades-unsafe-allow constructor
+    constructor() {
+        _disableInitializers();
+    }
+
     function bar() external pure returns (uint256) {
         return 1;
     }
+
+    function _authorizeUpgrade(address newImplementation) internal virtual override {}
 }
 
-contract Migrator {
-    uint256 private constant _IMPLEMENTATION_SLOT = 0x360894a13ba1a3210667c828492db98dca3e2076cc3735a920a3ca505d382bbc;
+/// @custom:oz-upgrades-from src/AllowlistHook.sol:AllowlistHook
+contract AllowlistHookUpgrade is UUPSUpgradeable, AccessControlUpgradeable {
+    IPoolManager public poolManager;
 
-    address public immutable implementationV2;
+    int24 public tickLowerBound;
 
-    constructor(address implementation_) {
-        implementationV2 = implementation_;
+    int24 public tickUpperBound;
+
+    uint256 public swapCap;
+
+    uint256 public totalSwap;
+
+    bool public isLiquidityProvidersAllowlistEnabled;
+
+    bool public isSwappersAllowlistEnabled;
+
+    uint8 public referenceDecimals;
+
+    uint8 internal _token0Decimals;
+
+    uint8 internal _token1Decimals;
+
+    /// @custom:oz-upgrades-unsafe-allow constructor
+    constructor() {
+        _disableInitializers();
     }
 
-    fallback() external virtual {
-        address implementation_ = implementationV2;
-
-        assembly {
-            sstore(_IMPLEMENTATION_SLOT, implementation_)
-        }
-    }
-}
-
-contract MockRegistrar {
-    mapping(bytes32 key => bytes32 value) public get;
-
-    mapping(bytes32 list => mapping(address account => bool contains)) public listContains;
-
-    function set(bytes32 key_, bytes32 value_) external {
-        get[key_] = value_;
+    function bar() external pure returns (uint256) {
+        return 1;
     }
 
-    function setListContains(bytes32 list_, address account_, bool contains_) external {
-        listContains[list_][account_] = contains_;
-    }
+    function _authorizeUpgrade(address newImplementation) internal virtual override {}
 }

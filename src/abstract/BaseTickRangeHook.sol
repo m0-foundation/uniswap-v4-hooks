@@ -1,8 +1,9 @@
 // SPDX-License-Identifier: BUSL-1.1
-
 pragma solidity ^0.8.26;
 
-import { BaseHook } from "../../lib/v4-periphery/src/utils/BaseHook.sol";
+import {
+    AccessControlUpgradeable
+} from "../../lib/openzeppelin-contracts-upgradeable/contracts/access/AccessControlUpgradeable.sol";
 
 import { IPoolManager } from "../../lib/v4-periphery/lib/v4-core/src/interfaces/IPoolManager.sol";
 
@@ -11,20 +12,28 @@ import { StateLibrary } from "../../lib/v4-periphery/lib/v4-core/src/libraries/S
 
 import { PoolKey } from "../../lib/v4-periphery/lib/v4-core/src/types/PoolKey.sol";
 
-import { Ownable2Step, Ownable } from "../abstract/Ownable2Step.sol";
 import { IBaseTickRangeHook } from "../interfaces/IBaseTickRangeHook.sol";
 
-import { AdminMigratable } from "./AdminMigratable.sol";
+import { BaseHookUpgradeable } from "./BaseHookUpgradeable.sol";
 
 /**
  * @title  Base Tick Range Hook
  * @author M^0 Labs
  * @notice Hook restricting liquidity provision and token swaps to a specific tick range.
  */
-abstract contract BaseTickRangeHook is IBaseTickRangeHook, BaseHook, AdminMigratable, Ownable2Step {
+abstract contract BaseTickRangeHook is IBaseTickRangeHook, BaseHookUpgradeable, AccessControlUpgradeable {
     using StateLibrary for IPoolManager;
 
     /* ============ Variables ============ */
+
+    /// @dev The default admin role. Can grant and revoke roles.
+    bytes32 internal constant _DEFAULT_ADMIN_ROLE = 0x00;
+
+    /// @dev The role that can manage the hook.
+    bytes32 internal constant _MANAGER_ROLE = keccak256("MANAGER_ROLE");
+
+    /// @dev The role that can upgrade the implementation.
+    bytes32 internal constant _UPGRADER_ROLE = keccak256("UPGRADER_ROLE");
 
     /// @inheritdoc IBaseTickRangeHook
     int24 public tickLowerBound;
@@ -32,25 +41,41 @@ abstract contract BaseTickRangeHook is IBaseTickRangeHook, BaseHook, AdminMigrat
     /// @inheritdoc IBaseTickRangeHook
     int24 public tickUpperBound;
 
-    /* ============ Constructor ============ */
+    /* ============ Initializer ============ */
+
+    /// @custom:oz-upgrades-unsafe-allow constructor
+    constructor() {
+        _disableInitializers();
+    }
 
     /**
-     * @notice Constructs the TickRangeHook contract.
+     * @notice Initialize the TickRangeHook contract.
+     * @dev Needs to be called in the initialize function of the derived contract.
      * @param  poolManager_    The Uniswap V4 Pool Manager contract address.
      * @param  tickLowerBound_ The lower tick of the range to limit the liquidity provision and token swaps to.
      * @param  tickUpperBound_ The upper tick of the range to limit the liquidity provision and token swaps to.
-     * @param  registrar_      The address of the registrar contract.
-     * @param  owner_          The owner of the contract.
-     * @param  migrationAdmin_ The address allowed to migrate the contract.
+     * @param  admin_          The address admnistrating the hook. Can grant and revoke roles.
+     * @param  manager_        The address managing the hook.
+     * @param  upgrader_       The address allowed to upgrade the implementation.
      */
-    constructor(
+    function __BaseTickRangeHookUpgradeable_init(
         address poolManager_,
         int24 tickLowerBound_,
         int24 tickUpperBound_,
-        address registrar_,
-        address owner_,
-        address migrationAdmin_
-    ) BaseHook(IPoolManager(poolManager_)) AdminMigratable(migrationAdmin_, registrar_) Ownable(owner_) {
+        address admin_,
+        address manager_,
+        address upgrader_
+    ) internal onlyInitializing {
+        __BaseHookUpgradeable_init(poolManager_);
+
+        if (admin_ == address(0)) revert ZeroAdmin();
+        if (manager_ == address(0)) revert ZeroManager();
+        if (upgrader_ == address(0)) revert ZeroUpgrader();
+
+        _grantRole(_DEFAULT_ADMIN_ROLE, admin_);
+        _grantRole(_MANAGER_ROLE, manager_);
+        _grantRole(_UPGRADER_ROLE, upgrader_);
+
         _setTickRange(tickLowerBound_, tickUpperBound_);
     }
 
@@ -101,7 +126,7 @@ abstract contract BaseTickRangeHook is IBaseTickRangeHook, BaseHook, AdminMigrat
     /* ============ External Interactive functions ============ */
 
     /// @inheritdoc IBaseTickRangeHook
-    function setTickRange(int24 tickLowerBound_, int24 tickUpperBound_) external onlyOwner {
+    function setTickRange(int24 tickLowerBound_, int24 tickUpperBound_) external onlyRole(_MANAGER_ROLE) {
         _setTickRange(tickLowerBound_, tickUpperBound_);
     }
 
@@ -131,4 +156,12 @@ abstract contract BaseTickRangeHook is IBaseTickRangeHook, BaseHook, AdminMigrat
         if (tick_ < tickLowerBound || tick_ >= tickUpperBound)
             revert InvalidTick(tick_, tickLowerBound, tickUpperBound);
     }
+
+    /* ============ Internal Upgrade function ============ */
+
+    /**
+     * @dev Called by {upgradeToAndCall} to authorize the upgrade.
+     *      Will revert if `msg.sender` has not the `_UPGRADER_ROLE`.
+     */
+    function _authorizeUpgrade(address) internal override onlyRole(_UPGRADER_ROLE) {}
 }

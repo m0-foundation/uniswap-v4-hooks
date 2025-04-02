@@ -1,25 +1,20 @@
 // SPDX-License-Identifier: UNLICENSED
-
 pragma solidity 0.8.26;
 
-import { Script } from "../../lib/forge-std/src/Script.sol";
+import { Deploy } from "../base/Deploy.s.sol";
 
-import { IHooks } from "../../lib/v4-periphery/lib/v4-core/src/interfaces/IHooks.sol";
-
-import { TickRangeHook } from "../../src/TickRangeHook.sol";
-
-import { Deploy } from "../base/Deploy.sol";
-
-contract DeployTickRangeHook is Deploy, Script {
+contract DeployTickRangeHook is Deploy {
     function run() public {
-        address owner_ = vm.envAddress("OWNER");
-        address migrationAdmin_ = vm.envAddress("MIGRATION_ADMIN");
-        DeployConfig memory config_ = _getDeployConfig(block.chainid);
+        address deployer = vm.rememberKey(vm.envUint("PRIVATE_KEY"));
 
-        // Deploy the hook using CREATE2
+        address admin = vm.envAddress("OWNER");
+        address manager = vm.envAddress("MANAGER");
+        address upgrader = vm.envAddress("UPGRADER");
+        DeployConfig memory config = _getDeployConfig(block.chainid);
+
         vm.startBroadcast();
 
-        _deployTickRangeHook(owner_, migrationAdmin_, config_);
+        _deployTickRangeHook(deployer, admin, manager, upgrader, config);
 
         vm.stopBroadcast();
     }

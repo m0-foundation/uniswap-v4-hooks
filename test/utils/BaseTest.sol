@@ -33,8 +33,6 @@ import { PosmTestSetup } from "../../lib/v4-periphery/test/shared/PosmTestSetup.
 
 import { LiquidityOperationsLib } from "./helpers/LiquidityOperationsLib.sol";
 
-import { Foo, Migrator, MockRegistrar } from "./Mocks.sol";
-
 contract BaseTest is Deployers, PosmTestSetup {
     using LiquidityOperationsLib for IPositionManager;
 
@@ -44,7 +42,6 @@ contract BaseTest is Deployers, PosmTestSetup {
     PoolId public poolId;
 
     MockV4Router public mockRouter;
-    MockRegistrar public mockRegistrar;
 
     Plan public plan;
     StateView public state;
@@ -63,11 +60,16 @@ contract BaseTest is Deployers, PosmTestSetup {
     uint256 public tokenId;
 
     address public mockPositionManager = makeAddr("positionManager");
-    address public owner = makeAddr("owner");
-    address public migrationAdmin = makeAddr("migrationAdmin");
+    address public admin = makeAddr("admin");
+    address public hookManager = makeAddr("hookManager");
+    address public upgrader = makeAddr("upgrader");
     address public alice = makeAddr("alice");
     address public bob = makeAddr("bob");
     address public carol = makeAddr("carol");
+
+    bytes32 internal constant _DEFAULT_ADMIN_ROLE = 0x00;
+    bytes32 internal constant _MANAGER_ROLE = keccak256("MANAGER_ROLE");
+    bytes32 internal constant _UPGRADER_ROLE = keccak256("UPGRADER_ROLE");
 
     /* ============ SetUp ============ */
 
@@ -78,7 +80,6 @@ contract BaseTest is Deployers, PosmTestSetup {
         (tokenZero, tokenOne) = deployMintAndApprove2Currencies();
 
         mockRouter = new MockV4Router(manager);
-        mockRegistrar = new MockRegistrar();
 
         plan = Planner.init();
 

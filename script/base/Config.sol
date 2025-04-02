@@ -1,5 +1,4 @@
 // SPDX-License-Identifier: UNLICENSED
-
 pragma solidity ^0.8.26;
 
 /// @notice Shared configuration between scripts
@@ -10,7 +9,6 @@ contract Config {
         address swapRouter;
         address usdc;
         address wrappedM;
-        address registrar;
         uint24 fee;
         int24 tickLowerBound;
         int24 tickUpperBound;
@@ -40,7 +38,6 @@ contract Config {
 
     // Same addresses across all chains
     address constant CREATE2_DEPLOYER = address(0x4e59b44847b379578588920cA78FbF26c0B4956C);
-    address constant REGISTRAR = address(0x119FbeeDD4F4f4298Fb59B720d5654442b81ae2c);
     address constant WRAPPED_M = address(address(0x437cc33344a0B27A429f795ff6B469C72698B291));
 
     // Mainnet contract addresses
@@ -91,7 +88,6 @@ contract Config {
                     swapRouter: SWAP_ROUTER_ETHEREUM,
                     usdc: USDC_ETHEREUM,
                     wrappedM: WRAPPED_M,
-                    registrar: REGISTRAR,
                     fee: SWAP_FEE,
                     tickLowerBound: TICK_LOWER_BOUND,
                     tickUpperBound: TICK_UPPER_BOUND,
@@ -106,7 +102,6 @@ contract Config {
                     swapRouter: SWAP_ROUTER_ARBITRUM,
                     usdc: USDC_ARBITRUM,
                     wrappedM: WRAPPED_M,
-                    registrar: REGISTRAR,
                     fee: SWAP_FEE,
                     tickLowerBound: TICK_LOWER_BOUND,
                     tickUpperBound: TICK_UPPER_BOUND,
@@ -121,7 +116,6 @@ contract Config {
                     swapRouter: SWAP_ROUTER_OPTIMISM,
                     usdc: USDC_OPTIMISM,
                     wrappedM: WRAPPED_M,
-                    registrar: REGISTRAR,
                     fee: SWAP_FEE,
                     tickLowerBound: TICK_LOWER_BOUND,
                     tickUpperBound: TICK_UPPER_BOUND,
@@ -136,7 +130,6 @@ contract Config {
                     swapRouter: SWAP_ROUTER_UNICHAIN,
                     usdc: USDC_UNICHAIN,
                     wrappedM: WRAPPED_M,
-                    registrar: REGISTRAR,
                     fee: SWAP_FEE,
                     tickLowerBound: TICK_LOWER_BOUND,
                     tickUpperBound: TICK_UPPER_BOUND,
@@ -152,7 +145,6 @@ contract Config {
                     swapRouter: SWAP_ROUTER_SEPOLIA,
                     usdc: USDC_SEPOLIA,
                     wrappedM: WRAPPED_M,
-                    registrar: REGISTRAR,
                     fee: SWAP_FEE,
                     tickLowerBound: TICK_LOWER_BOUND,
                     tickUpperBound: TICK_UPPER_BOUND,
@@ -167,7 +159,6 @@ contract Config {
                     swapRouter: SWAP_ROUTER_ARBITRUM_SEPOLIA,
                     usdc: USDC_ARBITRUM_SEPOLIA,
                     wrappedM: WRAPPED_M,
-                    registrar: REGISTRAR,
                     fee: SWAP_FEE,
                     tickLowerBound: TICK_LOWER_BOUND,
                     tickUpperBound: TICK_UPPER_BOUND,
@@ -182,7 +173,6 @@ contract Config {
                     swapRouter: SWAP_ROUTER_UNICHAIN_SEPOLIA,
                     usdc: USDC_UNICHAIN_SEPOLIA,
                     wrappedM: WRAPPED_M,
-                    registrar: REGISTRAR,
                     fee: SWAP_FEE,
                     tickLowerBound: TICK_LOWER_BOUND,
                     tickUpperBound: TICK_UPPER_BOUND,

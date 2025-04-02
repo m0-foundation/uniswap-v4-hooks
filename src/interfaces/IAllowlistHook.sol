@@ -122,21 +122,21 @@ interface IAllowlistHook {
 
     /**
      * @notice Sets the liquidity providers allowlist status.
-     * @dev    MUST only be callable by the current owner.
+     * @dev    MUST only be callable by the current manager.
      * @param  isEnabled Boolean indicating whether the liquidity providers allowlist is enabled or not.
      */
     function setLiquidityProvidersAllowlist(bool isEnabled) external;
 
     /**
      * @notice Sets the swappers allowlist status.
-     * @dev    MUST only be callable by the current owner.
+     * @dev    MUST only be callable by the current manager.
      * @param  isEnabled Boolean indicating whether the swappers allowlist is enabled or not.
      */
     function setSwappersAllowlist(bool isEnabled) external;
 
     /**
      * @notice Sets the allowlist status of a liquidity provider.
-     * @dev    MUST only be callable by the current owner.
+     * @dev    MUST only be callable by the current manager.
      * @param  liquidityProvider The address of the liquidity provider.
      * @param  isAllowed         Boolean indicating whether the liquidity provider is allowed or not.
      */
@@ -144,7 +144,7 @@ interface IAllowlistHook {
 
     /**
      * @notice Sets the allowlist status for multiple liquidity providers.
-     * @dev    MUST only be callable by the current owner.
+     * @dev    MUST only be callable by the current manager.
      * @param  liquidityProviders The array of liquidity provider addresses.
      * @param  isAllowed          The array of boolean values indicating the allowed status for each liquidity provider.
      */
@@ -152,7 +152,7 @@ interface IAllowlistHook {
 
     /**
      * @notice Sets the status of the Uniswap V4 Position Manager contract address.
-     * @dev    MUST only be callable by the current owner.
+     * @dev    MUST only be callable by the current manager.
      * @param  positionManager The Uniswap V4 Position Manager address.
      * @param  isAllowed       Boolean indicating whether the Position Manager is allowed to modify liquidity or not.
      */
@@ -160,7 +160,7 @@ interface IAllowlistHook {
 
     /**
      * @notice Sets the status of multiple Uniswap V4 Position Manager contract addresses.
-     * @dev    MUST only be callable by the current owner.
+     * @dev    MUST only be callable by the current manager.
      * @param  positionManagers The array of Position Manager addresses.
      * @param  isAllowed        The array of boolean values indicating the allowed status for each Position Manager.
      */
@@ -168,7 +168,7 @@ interface IAllowlistHook {
 
     /**
      * @notice Sets the allowlist status of a swapper.
-     * @dev    MUST only be callable by the current owner.
+     * @dev    MUST only be callable by the current manager.
      * @param  swapper   The address of the swapper.
      * @param  isAllowed Boolean indicating whether the swapper is allowed or not.
      */
@@ -176,7 +176,7 @@ interface IAllowlistHook {
 
     /**
      * @notice Sets the allowlist status for multiple swappers.
-     * @dev    MUST only be callable by the current owner.
+     * @dev    MUST only be callable by the current manager.
      * @param  swappers  The array of swapper addresses.
      * @param  isAllowed The array of boolean values indicating the allowed status for each swapper.
      */
@@ -184,7 +184,7 @@ interface IAllowlistHook {
 
     /**
      * @notice Sets the status of the Swap Router contract address.
-     * @dev    MUST only be callable by the current owner.
+     * @dev    MUST only be callable by the current manager.
      * @param  swapRouter The Swap Router address.
      * @param  isAllowed  Boolean indicating whether the Swap Router is allowed to swap or not.
      */
@@ -192,7 +192,7 @@ interface IAllowlistHook {
 
     /**
      * @notice Sets the status of the Swap Router contract address.
-     * @dev    MUST only be callable by the current owner.
+     * @dev    MUST only be callable by the current manager.
      * @param  swapRouters The array of Swap Router addresses.
      * @param  isAllowed   The array of boolean values indicating the allowed status for each Swap Router.
      */
@@ -200,13 +200,13 @@ interface IAllowlistHook {
 
     /**
      * @notice Resets the total amount swapped across token0 and token1.
-     * @dev    MUST only be callable by the current owner.
+     * @dev    MUST only be callable by the current manager.
      */
     function resetTotalSwap() external;
 
     /**
      * @notice Sets the swap cap amount.
-     * @dev    MUST only be callable by the current owner.
+     * @dev    MUST only be callable by the current manager.
      * @dev    Caller MUST ensure that the amount set follows
      *         the decimal precision of the token with the higher decimals.
      * @dev    MUST reset the totapSwap amount if swapCap is lower than the totalSwap amount.
