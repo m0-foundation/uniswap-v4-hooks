@@ -87,12 +87,7 @@ contract Deploy is Config, Script {
         (address allowlistHook, address hookAddress, bytes32 salt) = _mineHook(
             deployer_,
             implementationInitializeCall,
-            uint160(
-                Hooks.BEFORE_INITIALIZE_FLAG |
-                    Hooks.BEFORE_ADD_LIQUIDITY_FLAG |
-                    Hooks.BEFORE_SWAP_FLAG |
-                    Hooks.AFTER_SWAP_FLAG
-            )
+            uint160(Hooks.BEFORE_ADD_LIQUIDITY_FLAG | Hooks.BEFORE_SWAP_FLAG | Hooks.AFTER_SWAP_FLAG)
         );
 
         address proxyAddress = _deployUUPSProxy("AllowlistHook.sol:AllowlistHook", implementationInitializeCall, salt);
