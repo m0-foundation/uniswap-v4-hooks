@@ -42,11 +42,20 @@ interface IBaseTickRangeHook {
      */
     error TicksOutOfOrder(int24 tickLowerBound, int24 tickUpperBound);
 
+    /// @notice Emitted when the admin address in `initialize` is zero.
+    error ZeroAdmin();
+
+    /// @notice Emitted when the manager address in `initialize` is zero.
+    error ZeroManager();
+
+    /// @notice Emitted when the upgrader address in `initialize` is zero.
+    error ZeroUpgrader();
+
     /* ============ External / Interactive functions ============ */
 
     /**
      * @notice Sets the tick range to limit the liquidity provision and token swaps to.
-     * @dev    MUST only be callable by the current owner.
+     * @dev    MUST only be callable by the current manager.
      * @param  tickLowerBound The lower tick of the range.
      * @param  tickUpperBound The upper tick of the range.
      */

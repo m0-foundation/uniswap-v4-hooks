@@ -34,6 +34,8 @@
     "test-invariant": "make -B invariant"
   },
   "devDependencies": {
+    "@openzeppelin/contracts": "5.2.0",
+    "@openzeppelin/upgrades-core": "1.42.2",
     "husky": "^9.0.11",
     "lint-staged": "^15.2.2",
     "prettier": "^3.2.5",

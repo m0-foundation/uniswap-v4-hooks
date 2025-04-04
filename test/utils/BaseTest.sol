@@ -1,5 +1,4 @@
 // SPDX-License-Identifier: UNLICENSED
-
 pragma solidity 0.8.26;
 
 import { IHooks } from "../../lib/v4-periphery/lib/v4-core/src/interfaces/IHooks.sol";
@@ -60,10 +59,16 @@ contract BaseTest is Deployers, PosmTestSetup {
     uint256 public tokenId;
 
     address public mockPositionManager = makeAddr("positionManager");
-    address public owner = makeAddr("owner");
+    address public admin = makeAddr("admin");
+    address public hookManager = makeAddr("hookManager");
+    address public upgrader = makeAddr("upgrader");
     address public alice = makeAddr("alice");
     address public bob = makeAddr("bob");
     address public carol = makeAddr("carol");
+
+    bytes32 internal constant _DEFAULT_ADMIN_ROLE = 0x00;
+    bytes32 internal constant _MANAGER_ROLE = keccak256("MANAGER_ROLE");
+    bytes32 internal constant _UPGRADER_ROLE = keccak256("UPGRADER_ROLE");
 
     /* ============ SetUp ============ */
 
@@ -199,29 +204,5 @@ contract BaseTest is Deployers, PosmTestSetup {
                 abi.encodeWithSelector(Hooks.HookCallFailed.selector)
             )
         );
-    }
-}
-
-contract Foo {
-    function bar() external pure returns (uint256) {
-        return 1;
-    }
-}
-
-contract Migrator {
-    uint256 private constant _IMPLEMENTATION_SLOT = 0x360894a13ba1a3210667c828492db98dca3e2076cc3735a920a3ca505d382bbc;
-
-    address public immutable implementationV2;
-
-    constructor(address implementation_) {
-        implementationV2 = implementation_;
-    }
-
-    fallback() external virtual {
-        address implementation_ = implementationV2;
-
-        assembly {
-            sstore(_IMPLEMENTATION_SLOT, implementation_)
-        }
     }
 }

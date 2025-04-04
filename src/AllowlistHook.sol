@@ -27,25 +27,10 @@ contract AllowlistHook is BaseTickRangeHook, IAllowlistHook {
     /* ============ Variables ============ */
 
     /// @inheritdoc IAllowlistHook
-    uint256 public swapCap;
-
-    /// @inheritdoc IAllowlistHook
-    uint256 public totalSwap;
-
-    /// @inheritdoc IAllowlistHook
     bool public isLiquidityProvidersAllowlistEnabled;
 
     /// @inheritdoc IAllowlistHook
     bool public isSwappersAllowlistEnabled;
-
-    /// @inheritdoc IAllowlistHook
-    uint8 public referenceDecimals;
-
-    /// @dev The number of decimals for token0.
-    uint8 internal _token0Decimals;
-
-    /// @dev The number of decimals for token1.
-    uint8 internal _token1Decimals;
 
     /**
      * @notice The PositionManagerStatus for a given positionManager contract. Only trusted position managers can
@@ -67,25 +52,38 @@ contract AllowlistHook is BaseTickRangeHook, IAllowlistHook {
     /// @notice Mapping of Swappers to their allowed status.
     mapping(address swapper => bool isSwapperAllowed) internal _swappersAllowlist;
 
-    /* ============ Constructor ============ */
+    /* ============ Initializer ============ */
 
     /**
-     * @notice Constructs the AllowlistHook contract.
+     * @notice Initialize the AllowlistHook contract.
      * @param  positionManager_ The initial Uniswap V4 Position Manager contract address allowed to modify liquidity.
      * @param  swapRouter_      The initial Uniswap V4 Swap Router contract address allowed to swap.
      * @param  poolManager_     The Uniswap V4 Pool Manager contract address.
      * @param  tickLowerBound_  The lower tick of the range to limit the liquidity provision and token swaps to.
      * @param  tickUpperBound_  The upper tick of the range to limit the liquidity provision and token swaps to.
-     * @param  owner_           The owner of the contract.
+     * @param  admin_           The address admnistrating the hook. Can grant and revoke roles.
+     * @param  manager_         The address managing the hook.
+     * @param  upgrader_        The address allowed to upgrade the implementation.
      */
-    constructor(
+    function initialize(
         address positionManager_,
         address swapRouter_,
         address poolManager_,
         int24 tickLowerBound_,
         int24 tickUpperBound_,
-        address owner_
-    ) BaseTickRangeHook(poolManager_, tickLowerBound_, tickUpperBound_, owner_) {
+        address admin_,
+        address manager_,
+        address upgrader_
+    ) public initializer {
+        __BaseTickRangeHookUpgradeable_init(
+            poolManager_,
+            tickLowerBound_,
+            tickUpperBound_,
+            admin_,
+            manager_,
+            upgrader_
+        );
+
         _setPositionManager(positionManager_, true);
         _setSwapRouter(swapRouter_, true);
         _setLiquidityProvidersAllowlist(true);
@@ -101,7 +99,7 @@ contract AllowlistHook is BaseTickRangeHook, IAllowlistHook {
     function getHookPermissions() public pure override returns (Hooks.Permissions memory) {
         return
             Hooks.Permissions({
-                beforeInitialize: true,
+                beforeInitialize: false,
                 afterInitialize: false,
                 beforeAddLiquidity: true,
                 beforeRemoveLiquidity: false,
@@ -119,33 +117,15 @@ contract AllowlistHook is BaseTickRangeHook, IAllowlistHook {
     }
 
     /**
-     * @dev    Hook that is called before the pool is initialized.
-     * @param  key_ The key of the pool.
-     * @return The selector of this function.
-     */
-    function _beforeInitialize(
-        address /* sender */,
-        PoolKey calldata key_,
-        uint160 /* sqrtPriceX96 */
-    ) internal override returns (bytes4) {
-        _token0Decimals = IERC20Like(Currency.unwrap(key_.currency0)).decimals();
-        _token1Decimals = IERC20Like(Currency.unwrap(key_.currency1)).decimals();
-        referenceDecimals = _token0Decimals > _token1Decimals ? _token0Decimals : _token1Decimals;
-
-        return this.beforeInitialize.selector;
-    }
-
-    /**
      * @dev    Hook that is called before a swap is executed.
      * @dev    Will revert if the sender is not allowed to swap.
      * @param  sender_ The address of the sender initiating the swap (i.e. most commonly the Swap Router).
-     * @param  params_ The parameters for the swap.
      * @return A tuple containing the selector of this function, the delta for the swap, and the LP fee.
      */
     function _beforeSwap(
         address sender_,
         PoolKey calldata /* poolKey */,
-        IPoolManager.SwapParams calldata params_,
+        IPoolManager.SwapParams calldata /* params */,
         bytes calldata /* hookData */
     ) internal override returns (bytes4, BeforeSwapDelta, uint24) {
         if (isSwappersAllowlistEnabled) {
@@ -158,28 +138,6 @@ contract AllowlistHook is BaseTickRangeHook, IAllowlistHook {
             if (!isSwapperAllowed(caller_)) {
                 revert SwapperNotAllowed(caller_);
             }
-        }
-
-        // If the swap cap is set to 0, there is no cap on the amount that can be swapped.
-        if (swapCap != 0) {
-            uint256 swapAmount_ = params_.amountSpecified < 0
-                ? uint256(-params_.amountSpecified) // Convert to positive value
-                : uint256(params_.amountSpecified);
-
-            // Scale the swap amount up to the reference decimals if pool tokens have different decimals.
-            if (params_.zeroForOne) {
-                if (_token0Decimals != referenceDecimals) {
-                    swapAmount_ = _tokenAmountToDecimals(swapAmount_, _token0Decimals, referenceDecimals);
-                }
-            } else {
-                if (_token1Decimals != referenceDecimals) {
-                    swapAmount_ = _tokenAmountToDecimals(swapAmount_, _token1Decimals, referenceDecimals);
-                }
-            }
-
-            totalSwap += swapAmount_;
-
-            if (totalSwap > swapCap) revert SwapCapExceeded(totalSwap, swapCap);
         }
 
         return (this.beforeSwap.selector, BeforeSwapDeltaLibrary.ZERO_DELTA, 0);
@@ -233,17 +191,17 @@ contract AllowlistHook is BaseTickRangeHook, IAllowlistHook {
     /* ============ External Interactive functions ============ */
 
     /// @inheritdoc IAllowlistHook
-    function setLiquidityProvidersAllowlist(bool isEnabled_) external onlyOwner {
+    function setLiquidityProvidersAllowlist(bool isEnabled_) external onlyRole(_MANAGER_ROLE) {
         _setLiquidityProvidersAllowlist(isEnabled_);
     }
 
     /// @inheritdoc IAllowlistHook
-    function setSwappersAllowlist(bool isEnabled_) external onlyOwner {
+    function setSwappersAllowlist(bool isEnabled_) external onlyRole(_MANAGER_ROLE) {
         _setSwappersAllowlist(isEnabled_);
     }
 
     /// @inheritdoc IAllowlistHook
-    function setLiquidityProvider(address liquidityProvider_, bool isAllowed_) external onlyOwner {
+    function setLiquidityProvider(address liquidityProvider_, bool isAllowed_) external onlyRole(_MANAGER_ROLE) {
         _setLiquidityProvider(liquidityProvider_, isAllowed_);
     }
 
@@ -251,7 +209,7 @@ contract AllowlistHook is BaseTickRangeHook, IAllowlistHook {
     function setLiquidityProviders(
         address[] calldata liquidityProviders_,
         bool[] calldata isAllowed_
-    ) external onlyOwner {
+    ) external onlyRole(_MANAGER_ROLE) {
         if (liquidityProviders_.length != isAllowed_.length) revert ArrayLengthMismatch();
 
         for (uint256 i_; i_ < liquidityProviders_.length; ++i_) {
@@ -260,12 +218,12 @@ contract AllowlistHook is BaseTickRangeHook, IAllowlistHook {
     }
 
     /// @inheritdoc IAllowlistHook
-    function setSwapper(address swapper_, bool isAllowed_) external onlyOwner {
+    function setSwapper(address swapper_, bool isAllowed_) external onlyRole(_MANAGER_ROLE) {
         _setSwapper(swapper_, isAllowed_);
     }
 
     /// @inheritdoc IAllowlistHook
-    function setSwappers(address[] calldata swappers_, bool[] calldata isAllowed_) external onlyOwner {
+    function setSwappers(address[] calldata swappers_, bool[] calldata isAllowed_) external onlyRole(_MANAGER_ROLE) {
         if (swappers_.length != isAllowed_.length) revert ArrayLengthMismatch();
 
         for (uint256 i_; i_ < swappers_.length; ++i_) {
@@ -274,12 +232,15 @@ contract AllowlistHook is BaseTickRangeHook, IAllowlistHook {
     }
 
     /// @inheritdoc IAllowlistHook
-    function setPositionManager(address positionManager_, bool isAllowed_) external onlyOwner {
+    function setPositionManager(address positionManager_, bool isAllowed_) external onlyRole(_MANAGER_ROLE) {
         _setPositionManager(positionManager_, isAllowed_);
     }
 
     /// @inheritdoc IAllowlistHook
-    function setPositionManagers(address[] calldata positionManagers_, bool[] calldata isAllowed_) external onlyOwner {
+    function setPositionManagers(
+        address[] calldata positionManagers_,
+        bool[] calldata isAllowed_
+    ) external onlyRole(_MANAGER_ROLE) {
         if (positionManagers_.length != isAllowed_.length) revert ArrayLengthMismatch();
 
         for (uint256 i_; i_ < positionManagers_.length; ++i_) {
@@ -288,36 +249,20 @@ contract AllowlistHook is BaseTickRangeHook, IAllowlistHook {
     }
 
     /// @inheritdoc IAllowlistHook
-    function setSwapRouter(address swapRouter_, bool isAllowed_) external onlyOwner {
+    function setSwapRouter(address swapRouter_, bool isAllowed_) external onlyRole(_MANAGER_ROLE) {
         _setSwapRouter(swapRouter_, isAllowed_);
     }
 
     /// @inheritdoc IAllowlistHook
-    function setSwapRouters(address[] calldata swapRouters_, bool[] calldata isAllowed_) external onlyOwner {
+    function setSwapRouters(
+        address[] calldata swapRouters_,
+        bool[] calldata isAllowed_
+    ) external onlyRole(_MANAGER_ROLE) {
         if (swapRouters_.length != isAllowed_.length) revert ArrayLengthMismatch();
 
         for (uint256 i_; i_ < swapRouters_.length; ++i_) {
             _setSwapRouter(swapRouters_[i_], isAllowed_[i_]);
         }
-    }
-
-    /// @inheritdoc IAllowlistHook
-    function setSwapCap(uint256 swapCap_) external onlyOwner {
-        if (swapCap == swapCap_) return;
-
-        swapCap = swapCap_;
-
-        emit SwapCapSet(swapCap_);
-
-        // Reset the total swap amount if the new cap is lower than the current total swap amount.
-        if (swapCap_ <= totalSwap) {
-            _resetTotalSwap();
-        }
-    }
-
-    /// @inheritdoc IAllowlistHook
-    function resetTotalSwap() external onlyOwner {
-        _resetTotalSwap();
     }
 
     /* ============ External/Public view functions ============ */
@@ -340,16 +285,6 @@ contract AllowlistHook is BaseTickRangeHook, IAllowlistHook {
     /// @inheritdoc IAllowlistHook
     function isSwapperAllowed(address swapper_) public view returns (bool) {
         return _swappersAllowlist[swapper_];
-    }
-
-    /// @inheritdoc IAllowlistHook
-    function getSwappableAmount(uint256 amount_) external view returns (uint256) {
-        if (swapCap == 0) {
-            return amount_;
-        }
-
-        uint256 buffer_ = swapCap > totalSwap ? swapCap - totalSwap : 0;
-        return amount_ < buffer_ ? amount_ : buffer_;
     }
 
     /* ============ Internal Interactive functions ============ */
@@ -433,31 +368,5 @@ contract AllowlistHook is BaseTickRangeHook, IAllowlistHook {
 
         _swapRouters[swapRouter_] = isAllowed_;
         emit SwapRouterSet(swapRouter_, isAllowed_);
-    }
-
-    /// @notice Resets the total amount swapped across token0 and token1.
-    function _resetTotalSwap() internal {
-        delete totalSwap;
-        emit TotalSwapReset();
-    }
-
-    /**
-     * @notice Normalize token amount to target decimals
-     * @dev    i.e 100 M with 6 decimals to 100e18 M with 18 decimals
-     * @dev    Only scales up to avoid precision loss by scaling down.
-     * @param  tokenAmount_    The token amount.
-     * @param  tokenDecimals_  The token decimals.
-     * @param  targetDecimals_ The target decimals.
-     */
-    function _tokenAmountToDecimals(
-        uint256 tokenAmount_,
-        uint8 tokenDecimals_,
-        uint8 targetDecimals_
-    ) internal pure returns (uint256) {
-        if (tokenDecimals_ < targetDecimals_) {
-            return tokenAmount_ * (10 ** uint256(targetDecimals_ - tokenDecimals_));
-        } else {
-            return tokenAmount_;
-        }
     }
 }

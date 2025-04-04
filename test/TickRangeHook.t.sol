@@ -1,6 +1,9 @@
 // SPDX-License-Identifier: UNLICENSED
-
 pragma solidity 0.8.26;
+
+import {
+    IAccessControl
+} from "../lib/openzeppelin-contracts-upgradeable/lib/openzeppelin-contracts/contracts/access/IAccessControl.sol";
 
 import { IHooks } from "../lib/v4-periphery/lib/v4-core/src/interfaces/IHooks.sol";
 import { IPoolManager } from "../lib/v4-periphery/lib/v4-core/src/interfaces/IPoolManager.sol";
@@ -10,68 +13,177 @@ import { TickMath } from "../lib/v4-periphery/lib/v4-core/src/libraries/TickMath
 
 import { PoolSwapTest } from "../lib/v4-periphery/lib/v4-core/src/test/PoolSwapTest.sol";
 
-import { Proxy } from "../lib/common/src/Proxy.sol";
-
-import { Ownable } from "../src/abstract/Ownable.sol";
-
-import { IAdminMigratable } from "../src/interfaces/IAdminMigratable.sol";
+import { IBaseHook } from "../src/interfaces/IBaseHook.sol";
 import { IBaseTickRangeHook } from "../src/interfaces/IBaseTickRangeHook.sol";
 import { IERC721Like } from "../src/interfaces/IERC721Like.sol";
 
 import { TickRangeHook } from "../src/TickRangeHook.sol";
 
-import { BaseTest, Foo, Migrator } from "./utils/BaseTest.sol";
+import { BaseTest } from "./utils/BaseTest.sol";
+import { TickRangeHookUpgrade } from "./utils/Mocks.sol";
 
 contract TickRangeHookTest is BaseTest {
+    // Deploy the implementation contract
+    TickRangeHook public tickRangeHookImplementation = new TickRangeHook();
     TickRangeHook public tickRangeHook;
 
+    bytes public proxyConstructorArgs;
     uint160 public flags = uint160(Hooks.BEFORE_ADD_LIQUIDITY_FLAG | Hooks.AFTER_SWAP_FLAG);
 
     function setUp() public override {
         super.setUp();
 
-        deployCodeTo(
-            "TickRangeHook.sol",
-            abi.encode(address(manager), TICK_LOWER_BOUND, TICK_UPPER_BOUND, owner),
-            address(flags)
+        // Deploy the proxy contract to the mined address
+        bytes memory implementationInitializeCall = abi.encodeCall(
+            TickRangeHook.initialize,
+            (address(manager), TICK_LOWER_BOUND, TICK_UPPER_BOUND, admin, hookManager, upgrader)
         );
 
-        tickRangeHook = TickRangeHook(address(flags));
+        proxyConstructorArgs = abi.encode(tickRangeHookImplementation, implementationInitializeCall);
+        address namespacedFlags = address(flags ^ (0x4444 << 144)); // Namespace the hook to avoid collisions
+
+        deployCodeTo(
+            "lib/openzeppelin-contracts-upgradeable/lib/openzeppelin-contracts/contracts/proxy/ERC1967/ERC1967Proxy.sol:ERC1967Proxy",
+            proxyConstructorArgs,
+            namespacedFlags
+        );
+
+        tickRangeHook = TickRangeHook(namespacedFlags);
+        Hooks.validateHookPermissions(tickRangeHook, tickRangeHook.getHookPermissions());
+
+        initPool(tickRangeHook);
 
         IERC721Like(address(lpm)).setApprovalForAll(address(tickRangeHook), true);
     }
 
-    /* ============ constructor ============ */
+    /* ============ initialize ============ */
 
-    function test_constructor_ticksOutOfOrder_lowerGTUpper() public {
+    function test_initialize_ticksOutOfOrder_lowerGTUpper() public {
+        bytes memory implementationInitializeCall = abi.encodeCall(
+            TickRangeHook.initialize,
+            (address(manager), TICK_UPPER_BOUND, TICK_LOWER_BOUND, admin, hookManager, upgrader)
+        );
+
+        bytes memory proxyConstructorArgs = abi.encode(tickRangeHookImplementation, implementationInitializeCall);
+        address namespacedFlags = address(flags ^ (0x4444 << 145));
+
         vm.expectRevert(
             abi.encodeWithSelector(IBaseTickRangeHook.TicksOutOfOrder.selector, TICK_UPPER_BOUND, TICK_LOWER_BOUND)
         );
 
         deployCodeTo(
-            "TickRangeHook.sol",
-            abi.encode(address(manager), TICK_UPPER_BOUND, TICK_LOWER_BOUND, owner),
-            address(flags)
+            "lib/openzeppelin-contracts-upgradeable/lib/openzeppelin-contracts/contracts/proxy/ERC1967/ERC1967Proxy.sol:ERC1967Proxy",
+            proxyConstructorArgs,
+            namespacedFlags
         );
+
+        tickRangeHook = TickRangeHook(namespacedFlags);
     }
 
-    function test_constructor_ticksOutOfOrder_lowerEqualUpper() public {
+    function test_initialize_ticksOutOfOrder_lowerEqualUpper() public {
+        bytes memory implementationInitializeCall = abi.encodeCall(
+            TickRangeHook.initialize,
+            (address(manager), TICK_UPPER_BOUND, TICK_UPPER_BOUND, admin, hookManager, upgrader)
+        );
+
+        bytes memory proxyConstructorArgs = abi.encode(tickRangeHookImplementation, implementationInitializeCall);
+        address namespacedFlags = address(flags ^ (0x4444 << 145));
+
         vm.expectRevert(
             abi.encodeWithSelector(IBaseTickRangeHook.TicksOutOfOrder.selector, TICK_UPPER_BOUND, TICK_UPPER_BOUND)
         );
 
         deployCodeTo(
-            "TickRangeHook.sol",
-            abi.encode(address(manager), TICK_UPPER_BOUND, TICK_UPPER_BOUND, owner),
-            address(flags)
+            "lib/openzeppelin-contracts-upgradeable/lib/openzeppelin-contracts/contracts/proxy/ERC1967/ERC1967Proxy.sol:ERC1967Proxy",
+            proxyConstructorArgs,
+            namespacedFlags
         );
+
+        tickRangeHook = TickRangeHook(namespacedFlags);
+    }
+
+    function test_initialize_zeroPoolManager() public {
+        bytes memory implementationInitializeCall = abi.encodeCall(
+            TickRangeHook.initialize,
+            (address(0), TICK_LOWER_BOUND, TICK_UPPER_BOUND, admin, hookManager, upgrader)
+        );
+
+        bytes memory proxyConstructorArgs = abi.encode(tickRangeHookImplementation, implementationInitializeCall);
+        address namespacedFlags = address(flags ^ (0x4444 << 145));
+
+        vm.expectRevert(abi.encodeWithSelector(IBaseHook.ZeroPoolManager.selector));
+
+        deployCodeTo(
+            "lib/openzeppelin-contracts-upgradeable/lib/openzeppelin-contracts/contracts/proxy/ERC1967/ERC1967Proxy.sol:ERC1967Proxy",
+            proxyConstructorArgs,
+            namespacedFlags
+        );
+
+        tickRangeHook = TickRangeHook(namespacedFlags);
+    }
+
+    function test_initialize_zeroAdmin() public {
+        bytes memory implementationInitializeCall = abi.encodeCall(
+            TickRangeHook.initialize,
+            (address(manager), TICK_LOWER_BOUND, TICK_UPPER_BOUND, address(0), hookManager, upgrader)
+        );
+
+        bytes memory proxyConstructorArgs = abi.encode(tickRangeHookImplementation, implementationInitializeCall);
+        address namespacedFlags = address(flags ^ (0x4444 << 145));
+
+        vm.expectRevert(abi.encodeWithSelector(IBaseTickRangeHook.ZeroAdmin.selector));
+
+        deployCodeTo(
+            "lib/openzeppelin-contracts-upgradeable/lib/openzeppelin-contracts/contracts/proxy/ERC1967/ERC1967Proxy.sol:ERC1967Proxy",
+            proxyConstructorArgs,
+            namespacedFlags
+        );
+
+        tickRangeHook = TickRangeHook(namespacedFlags);
+    }
+
+    function test_initialize_zeroManager() public {
+        bytes memory implementationInitializeCall = abi.encodeCall(
+            TickRangeHook.initialize,
+            (address(manager), TICK_LOWER_BOUND, TICK_UPPER_BOUND, admin, address(0), upgrader)
+        );
+
+        bytes memory proxyConstructorArgs = abi.encode(tickRangeHookImplementation, implementationInitializeCall);
+        address namespacedFlags = address(flags ^ (0x4444 << 145));
+
+        vm.expectRevert(abi.encodeWithSelector(IBaseTickRangeHook.ZeroManager.selector));
+
+        deployCodeTo(
+            "lib/openzeppelin-contracts-upgradeable/lib/openzeppelin-contracts/contracts/proxy/ERC1967/ERC1967Proxy.sol:ERC1967Proxy",
+            proxyConstructorArgs,
+            namespacedFlags
+        );
+
+        tickRangeHook = TickRangeHook(namespacedFlags);
+    }
+
+    function test_initialize_zeroUpgrader() public {
+        bytes memory implementationInitializeCall = abi.encodeCall(
+            TickRangeHook.initialize,
+            (address(manager), TICK_LOWER_BOUND, TICK_UPPER_BOUND, admin, hookManager, address(0))
+        );
+
+        bytes memory proxyConstructorArgs = abi.encode(tickRangeHookImplementation, implementationInitializeCall);
+        address namespacedFlags = address(flags ^ (0x4444 << 145));
+
+        vm.expectRevert(abi.encodeWithSelector(IBaseTickRangeHook.ZeroUpgrader.selector));
+
+        deployCodeTo(
+            "lib/openzeppelin-contracts-upgradeable/lib/openzeppelin-contracts/contracts/proxy/ERC1967/ERC1967Proxy.sol:ERC1967Proxy",
+            proxyConstructorArgs,
+            namespacedFlags
+        );
+        tickRangeHook = TickRangeHook(namespacedFlags);
     }
 
     /* ============ afterSwap ============ */
 
     function test_afterSwap_invalidTick_outsideLowerBound() public {
-        initPool(tickRangeHook);
-
         (uint128 positionLiquidity_, uint256 tokenId_) = mintNewPosition(
             SQRT_PRICE_0_0,
             TICK_LOWER_BOUND,
@@ -103,8 +215,6 @@ contract TickRangeHookTest is BaseTest {
     }
 
     function test_afterSwap_invalidTick_outsideUpperBound() public {
-        initPool(tickRangeHook);
-
         (uint128 positionLiquidity_, uint256 tokenId_) = mintNewPosition(
             SQRT_PRICE_0_0,
             TICK_LOWER_BOUND,
@@ -136,8 +246,6 @@ contract TickRangeHookTest is BaseTest {
     }
 
     function test_afterSwap_invalidTick_equalUpperBound() public {
-        initPool(tickRangeHook);
-
         (uint128 positionLiquidity_, uint256 tokenId_) = mintNewPosition(
             SQRT_PRICE_0_0,
             TICK_LOWER_BOUND,
@@ -169,8 +277,6 @@ contract TickRangeHookTest is BaseTest {
     }
 
     function test_afterSwap() public {
-        initPool(tickRangeHook);
-
         (uint128 positionLiquidity_, uint256 tokenId_) = mintNewPosition(
             SQRT_PRICE_0_0,
             TICK_LOWER_BOUND,
@@ -201,8 +307,6 @@ contract TickRangeHookTest is BaseTest {
     /* ============ beforeAddLiquidity ============ */
 
     function test_beforeAddLiquidity_invalidTickRange_outsideLowerBound() public {
-        initPool(tickRangeHook);
-
         expectWrappedRevert(
             address(tickRangeHook),
             IHooks.beforeAddLiquidity.selector,
@@ -219,8 +323,6 @@ contract TickRangeHookTest is BaseTest {
     }
 
     function test_beforeAddLiquidity_invalidTickRange_outsideUpperBound() public {
-        initPool(tickRangeHook);
-
         expectWrappedRevert(
             address(tickRangeHook),
             IHooks.beforeAddLiquidity.selector,
@@ -237,8 +339,6 @@ contract TickRangeHookTest is BaseTest {
     }
 
     function test_beforeAddLiquidity() public {
-        initPool(tickRangeHook);
-
         (uint128 positionLiquidity_, uint256 tokenId_) = mintNewPosition(
             SQRT_PRICE_0_0,
             TICK_LOWER_BOUND,
@@ -257,8 +357,10 @@ contract TickRangeHookTest is BaseTest {
 
     /* ============ setTickRange ============ */
 
-    function test_setTickRange_onlyOwner() public {
-        vm.expectRevert(abi.encodeWithSelector(Ownable.OwnableUnauthorizedAccount.selector, alice));
+    function test_setTickRange_onlyHookManager() public {
+        vm.expectRevert(
+            abi.encodeWithSelector(IAccessControl.AccessControlUnauthorizedAccount.selector, alice, _MANAGER_ROLE)
+        );
 
         vm.prank(alice);
         tickRangeHook.setTickRange(1, 2);
@@ -269,7 +371,7 @@ contract TickRangeHookTest is BaseTest {
             abi.encodeWithSelector(IBaseTickRangeHook.TicksOutOfOrder.selector, TICK_UPPER_BOUND, TICK_LOWER_BOUND)
         );
 
-        vm.prank(owner);
+        vm.prank(hookManager);
         tickRangeHook.setTickRange(TICK_UPPER_BOUND, TICK_LOWER_BOUND);
     }
 
@@ -278,7 +380,7 @@ contract TickRangeHookTest is BaseTest {
             abi.encodeWithSelector(IBaseTickRangeHook.TicksOutOfOrder.selector, TICK_UPPER_BOUND, TICK_UPPER_BOUND)
         );
 
-        vm.prank(owner);
+        vm.prank(hookManager);
         tickRangeHook.setTickRange(TICK_UPPER_BOUND, TICK_UPPER_BOUND);
     }
 
@@ -286,30 +388,29 @@ contract TickRangeHookTest is BaseTest {
         vm.expectEmit();
         emit IBaseTickRangeHook.TickRangeSet(1, 2);
 
-        vm.prank(owner);
+        vm.prank(hookManager);
         tickRangeHook.setTickRange(1, 2);
     }
 
-    /* ============ migrate ============ */
+    /* ============ upgrade ============ */
 
-    function test_migrate_onlyAdmin() external {
-        address tickRangeHookProxy_ = address(new Proxy(address(tickRangeHook)));
-        address migrator_ = address(new Migrator(address(new Foo())));
+    function test_upgrade_onlyUpgrader() public {
+        address v2implementation = address(new TickRangeHookUpgrade());
 
-        vm.expectRevert(abi.encodeWithSelector(IAdminMigratable.UnauthorizedMigration.selector));
-        IAdminMigratable(tickRangeHookProxy_).migrate(migrator_);
+        vm.expectRevert(
+            abi.encodeWithSelector(IAccessControl.AccessControlUnauthorizedAccount.selector, alice, _UPGRADER_ROLE)
+        );
+
+        vm.prank(alice);
+        tickRangeHook.upgradeToAndCall(v2implementation, "");
     }
 
-    function test_migrate() external {
-        address tickRangeHookProxy_ = address(new Proxy(address(tickRangeHook)));
-        address migrator_ = address(new Migrator(address(new Foo())));
+    function test_upgrade() public {
+        address v2implementation = address(new TickRangeHookUpgrade());
 
-        vm.expectRevert();
-        Foo(tickRangeHookProxy_).bar();
+        vm.prank(upgrader);
+        tickRangeHook.upgradeToAndCall(v2implementation, "");
 
-        vm.prank(owner);
-        IAdminMigratable(tickRangeHookProxy_).migrate(migrator_);
-
-        assertEq(Foo(tickRangeHookProxy_).bar(), 1);
+        assertEq(TickRangeHookUpgrade(address(tickRangeHook)).bar(), 1);
     }
 }

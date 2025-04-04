@@ -1,12 +1,14 @@
 // SPDX-License-Identifier: UNLICENSED
-
 pragma solidity 0.8.26;
+
+import {
+    IAccessControl
+} from "../lib/openzeppelin-contracts-upgradeable/lib/openzeppelin-contracts/contracts/access/IAccessControl.sol";
 
 import { IHooks } from "../lib/v4-periphery/lib/v4-core/src/interfaces/IHooks.sol";
 import { IPoolManager } from "../lib/v4-periphery/lib/v4-core/src/interfaces/IPoolManager.sol";
 
 import { Hooks } from "../lib/v4-periphery/lib/v4-core/src/libraries/Hooks.sol";
-import { Position } from "../lib/v4-periphery/lib/v4-core/src/libraries/Position.sol";
 import { TickMath } from "../lib/v4-periphery/lib/v4-core/src/libraries/TickMath.sol";
 
 import { LiquidityAmounts } from "../lib/v4-periphery/lib/v4-core/test/utils/LiquidityAmounts.sol";
@@ -16,44 +18,55 @@ import { PositionConfig } from "../lib/v4-periphery/test/shared/PositionConfig.s
 
 import { IPositionManager } from "../lib/v4-periphery/src/interfaces/IPositionManager.sol";
 
-import { Proxy } from "../lib/common/src/Proxy.sol";
-
-import { Ownable } from "../src/abstract/Ownable.sol";
-
 import { IAllowlistHook } from "../src/interfaces/IAllowlistHook.sol";
-import { IAdminMigratable } from "../src/interfaces/IAdminMigratable.sol";
 import { IBaseActionsRouterLike } from "../src/interfaces/IBaseActionsRouterLike.sol";
 import { IERC721Like } from "../src/interfaces/IERC721Like.sol";
 
-import { AllowlistHookHarness } from "./harness/AllowlistHookHarness.sol";
+import { AllowlistHook } from "../src/AllowlistHook.sol";
 
 import { LiquidityOperationsLib } from "./utils/helpers/LiquidityOperationsLib.sol";
-import { BaseTest, Foo, Migrator } from "./utils/BaseTest.sol";
+import { BaseTest } from "./utils/BaseTest.sol";
+import { AllowlistHookUpgrade } from "./utils/Mocks.sol";
 
 contract AllowlistHookTest is BaseTest {
     using LiquidityOperationsLib for IPositionManager;
 
-    AllowlistHookHarness public allowlistHook;
+    // Deploy the implementation contract
+    AllowlistHook public allowlistHookImplementation = new AllowlistHook();
+    AllowlistHook public allowlistHook;
 
-    uint160 public flags =
-        uint160(
-            Hooks.BEFORE_INITIALIZE_FLAG |
-                Hooks.BEFORE_ADD_LIQUIDITY_FLAG |
-                Hooks.AFTER_SWAP_FLAG |
-                Hooks.BEFORE_SWAP_FLAG
-        );
+    uint160 public flags = uint160(Hooks.BEFORE_ADD_LIQUIDITY_FLAG | Hooks.AFTER_SWAP_FLAG | Hooks.BEFORE_SWAP_FLAG);
 
     function setUp() public override {
         super.setUp();
 
-        deployCodeTo(
-            "AllowlistHookHarness.sol",
-            abi.encode(address(lpm), address(swapRouter), address(manager), TICK_LOWER_BOUND, TICK_UPPER_BOUND, owner),
-            address(flags)
+        // Deploy the proxy contract to the mined address
+        bytes memory implementationInitializeCall = abi.encodeCall(
+            AllowlistHook.initialize,
+            (
+                address(lpm),
+                address(swapRouter),
+                address(manager),
+                TICK_LOWER_BOUND,
+                TICK_UPPER_BOUND,
+                admin,
+                hookManager,
+                upgrader
+            )
         );
 
-        // Deploy WrappedMRewardsHook contract
-        allowlistHook = AllowlistHookHarness(address(flags));
+        bytes memory proxyConstructorArgs = abi.encode(allowlistHookImplementation, implementationInitializeCall);
+        address namespacedFlags = address(flags ^ (0x4444 << 144)); // Namespace the hook to avoid collisions
+
+        deployCodeTo(
+            "lib/openzeppelin-contracts-upgradeable/lib/openzeppelin-contracts/contracts/proxy/ERC1967/ERC1967Proxy.sol:ERC1967Proxy",
+            proxyConstructorArgs,
+            namespacedFlags
+        );
+
+        allowlistHook = AllowlistHook(namespacedFlags);
+        Hooks.validateHookPermissions(allowlistHook, allowlistHook.getHookPermissions());
+
         initPool(allowlistHook);
 
         IERC721Like(address(lpm)).setApprovalForAll(address(allowlistHook), true);
@@ -62,7 +75,7 @@ contract AllowlistHookTest is BaseTest {
     /* ============ beforeSwap ============ */
 
     function test_beforeSwap_swapperNotAllowed() public {
-        vm.prank(owner);
+        vm.prank(hookManager);
         allowlistHook.setSwapRouter(address(mockRouter), true);
 
         (, , bytes memory data_, uint256 value_) = _prepareSwapExactOutSingle(10_000e18, 10_000e18);
@@ -89,60 +102,18 @@ contract AllowlistHookTest is BaseTest {
         mockRouter.executeActions{ value: value_ }(data_);
     }
 
-    function test_beforeSwap_swapCapReached() public {
-        uint256 swapCap_ = 5_000e18;
-        int256 amountSpecified_ = 10_000e18;
-
-        vm.prank(owner);
-        allowlistHook.setSwapCap(swapCap_);
-
-        vm.prank(owner);
-        allowlistHook.setLiquidityProvider(address(this), true);
-
-        mintNewPosition(SQRT_PRICE_0_0, TICK_LOWER_BOUND, TICK_UPPER_BOUND, 1_000_000e18, 1_000_000e18);
-
-        vm.prank(owner);
-        allowlistHook.setSwapper(address(this), true);
-
-        vm.mockCall(
-            address(swapRouter),
-            abi.encodeWithSelector(IBaseActionsRouterLike.msgSender.selector),
-            abi.encode(address(this))
-        );
-
-        expectWrappedRevert(
-            address(allowlistHook),
-            IHooks.beforeSwap.selector,
-            abi.encodeWithSelector(IAllowlistHook.SwapCapExceeded.selector, uint256(amountSpecified_), swapCap_)
-        );
-
-        swapRouter.swap(
-            key,
-            IPoolManager.SwapParams({
-                zeroForOne: false,
-                amountSpecified: amountSpecified_, // Exact input for output swap
-                sqrtPriceLimitX96: SQRT_PRICE_0_0 + 1
-            }),
-            PoolSwapTest.TestSettings({ takeClaims: false, settleUsingBurn: false }),
-            ""
-        );
-    }
-
     function test_beforeSwap_zeroForOne_exactInput() public {
         int256 amountSpecified_ = 10_000e18;
 
-        vm.prank(owner);
-        allowlistHook.setSwapCap(10_000_000e18);
-
-        vm.prank(owner);
+        vm.prank(hookManager);
         allowlistHook.setLiquidityProvider(address(this), true);
 
         mintNewPosition(SQRT_PRICE_0_0, TICK_LOWER_BOUND, TICK_UPPER_BOUND, 1_000_000e18, 1_000_000e18);
 
-        vm.prank(owner);
+        vm.prank(hookManager);
         allowlistHook.setTickRange(-1, TICK_UPPER_BOUND);
 
-        vm.prank(owner);
+        vm.prank(hookManager);
         allowlistHook.setSwapper(address(this), true);
 
         vm.mockCall(
@@ -161,25 +132,20 @@ contract AllowlistHookTest is BaseTest {
             PoolSwapTest.TestSettings({ takeClaims: false, settleUsingBurn: false }),
             ""
         );
-
-        assertEq(allowlistHook.totalSwap(), uint256(amountSpecified_));
     }
 
     function test_beforeSwap_zeroForOne_exactOutput() public {
         int256 amountSpecified_ = 10_000e18;
 
-        vm.prank(owner);
-        allowlistHook.setSwapCap(10_000_000e18);
-
-        vm.prank(owner);
+        vm.prank(hookManager);
         allowlistHook.setLiquidityProvider(address(this), true);
 
         mintNewPosition(SQRT_PRICE_0_0, TICK_LOWER_BOUND, TICK_UPPER_BOUND, 1_000_000e18, 1_000_000e18);
 
-        vm.prank(owner);
+        vm.prank(hookManager);
         allowlistHook.setTickRange(-1, TICK_UPPER_BOUND);
 
-        vm.prank(owner);
+        vm.prank(hookManager);
         allowlistHook.setSwapper(address(this), true);
 
         vm.mockCall(
@@ -198,61 +164,17 @@ contract AllowlistHookTest is BaseTest {
             PoolSwapTest.TestSettings({ takeClaims: false, settleUsingBurn: false }),
             ""
         );
-
-        assertEq(allowlistHook.totalSwap(), uint256(amountSpecified_));
-    }
-
-    function test_beforeSwap_zeroForOne_differentTokenDecimals() public {
-        int256 amountSpecified_ = 10_000e6;
-
-        vm.prank(owner);
-        allowlistHook.setSwapCap(10_000_000e18);
-
-        vm.prank(owner);
-        allowlistHook.setLiquidityProvider(address(this), true);
-
-        mintNewPosition(SQRT_PRICE_0_0, TICK_LOWER_BOUND, TICK_UPPER_BOUND, 1_000_000e18, 1_000_000e18);
-
-        vm.prank(owner);
-        allowlistHook.setTickRange(-1, TICK_UPPER_BOUND);
-
-        allowlistHook.setToken0Decimals(6);
-
-        vm.prank(owner);
-        allowlistHook.setSwapper(address(this), true);
-
-        vm.mockCall(
-            address(swapRouter),
-            abi.encodeWithSelector(IBaseActionsRouterLike.msgSender.selector),
-            abi.encode(address(this))
-        );
-
-        swapRouter.swap(
-            key,
-            IPoolManager.SwapParams({
-                zeroForOne: true,
-                amountSpecified: -amountSpecified_,
-                sqrtPriceLimitX96: TickMath.getSqrtPriceAtTick(-1)
-            }),
-            PoolSwapTest.TestSettings({ takeClaims: false, settleUsingBurn: false }),
-            ""
-        );
-
-        assertEq(allowlistHook.totalSwap(), 10_000e18);
     }
 
     function test_beforeSwap_oneForZero_exactInput() public {
         int256 amountSpecified_ = 10_000e18;
 
-        vm.prank(owner);
-        allowlistHook.setSwapCap(10_000_000e18);
-
-        vm.prank(owner);
+        vm.prank(hookManager);
         allowlistHook.setLiquidityProvider(address(this), true);
 
         mintNewPosition(SQRT_PRICE_0_0, TICK_LOWER_BOUND, TICK_UPPER_BOUND, 1_000_000e18, 1_000_000e18);
 
-        vm.prank(owner);
+        vm.prank(hookManager);
         allowlistHook.setSwapper(address(this), true);
 
         vm.mockCall(
@@ -271,22 +193,17 @@ contract AllowlistHookTest is BaseTest {
             PoolSwapTest.TestSettings({ takeClaims: false, settleUsingBurn: false }),
             ""
         );
-
-        assertEq(allowlistHook.totalSwap(), uint256(amountSpecified_));
     }
 
     function test_beforeSwap_oneForZero_exactOutput() public {
         int256 amountSpecified_ = 10_000e18;
 
-        vm.prank(owner);
-        allowlistHook.setSwapCap(10_000_000e18);
-
-        vm.prank(owner);
+        vm.prank(hookManager);
         allowlistHook.setLiquidityProvider(address(this), true);
 
         mintNewPosition(SQRT_PRICE_0_0, TICK_LOWER_BOUND, TICK_UPPER_BOUND, 1_000_000e18, 1_000_000e18);
 
-        vm.prank(owner);
+        vm.prank(hookManager);
         allowlistHook.setSwapper(address(this), true);
 
         vm.mockCall(
@@ -305,48 +222,10 @@ contract AllowlistHookTest is BaseTest {
             PoolSwapTest.TestSettings({ takeClaims: false, settleUsingBurn: false }),
             ""
         );
-
-        assertEq(allowlistHook.totalSwap(), uint256(amountSpecified_));
-    }
-
-    function test_beforeSwap_oneForZero_differentTokenDecimals() public {
-        int256 amountSpecified_ = 10_000e6;
-
-        vm.prank(owner);
-        allowlistHook.setSwapCap(10_000_000e18);
-
-        vm.prank(owner);
-        allowlistHook.setLiquidityProvider(address(this), true);
-
-        mintNewPosition(SQRT_PRICE_0_0, TICK_LOWER_BOUND, TICK_UPPER_BOUND, 1_000_000e18, 1_000_000e18);
-
-        allowlistHook.setToken1Decimals(6);
-
-        vm.prank(owner);
-        allowlistHook.setSwapper(address(this), true);
-
-        vm.mockCall(
-            address(swapRouter),
-            abi.encodeWithSelector(IBaseActionsRouterLike.msgSender.selector),
-            abi.encode(address(this))
-        );
-
-        swapRouter.swap(
-            key,
-            IPoolManager.SwapParams({
-                zeroForOne: false,
-                amountSpecified: -amountSpecified_,
-                sqrtPriceLimitX96: SQRT_PRICE_0_0 + 1
-            }),
-            PoolSwapTest.TestSettings({ takeClaims: false, settleUsingBurn: false }),
-            ""
-        );
-
-        assertEq(allowlistHook.totalSwap(), 10_000e18);
     }
 
     function test_beforeSwap() public {
-        vm.prank(owner);
+        vm.prank(hookManager);
         allowlistHook.setLiquidityProvider(address(this), true);
 
         (uint128 positionLiquidity_, uint256 tokenId_) = mintNewPosition(
@@ -359,7 +238,7 @@ contract AllowlistHookTest is BaseTest {
 
         assertEq(lpm.getPositionLiquidity(tokenId_), positionLiquidity_);
 
-        vm.prank(owner);
+        vm.prank(hookManager);
         allowlistHook.setSwapper(address(this), true);
 
         vm.mockCall(
@@ -388,7 +267,7 @@ contract AllowlistHookTest is BaseTest {
     /* ============ beforeAddLiquidity ============ */
 
     function test_beforeAddLiquidity_positionManagerNotAllowed() public {
-        vm.prank(owner);
+        vm.prank(hookManager);
         allowlistHook.setPositionManager(address(lpm), false);
 
         expectWrappedRevert(
@@ -412,12 +291,12 @@ contract AllowlistHookTest is BaseTest {
     }
 
     function test_beforeAddLiquidity_reduceOnly() public {
-        vm.prank(owner);
+        vm.prank(hookManager);
         allowlistHook.setLiquidityProvider(address(this), true);
 
         mintNewPosition(SQRT_PRICE_0_0, TICK_LOWER_BOUND, TICK_UPPER_BOUND, 1_000_000e18, 1_000_000e18);
 
-        vm.prank(owner);
+        vm.prank(hookManager);
         allowlistHook.setPositionManager(address(lpm), false);
 
         assertEq(
@@ -435,7 +314,7 @@ contract AllowlistHookTest is BaseTest {
     }
 
     function test_beforeAddLiquidity() public {
-        vm.prank(owner);
+        vm.prank(hookManager);
         allowlistHook.setLiquidityProvider(address(this), true);
 
         (uint128 positionLiquidity_, uint256 tokenId_) = mintNewPosition(
@@ -457,7 +336,7 @@ contract AllowlistHookTest is BaseTest {
     /* ============ beforeRemoveLiquidity ============ */
 
     function test_beforeRemoveLiquidity_reduceOnly() public {
-        vm.prank(owner);
+        vm.prank(hookManager);
         allowlistHook.setLiquidityProvider(address(this), true);
 
         uint256 tokenId_ = 1;
@@ -478,7 +357,7 @@ contract AllowlistHookTest is BaseTest {
 
         lpm.mint(positionConfig_, positionLiquidity_, address(this), "");
 
-        vm.prank(owner);
+        vm.prank(hookManager);
         allowlistHook.setPositionManager(address(lpm), false);
 
         assertEq(
@@ -501,8 +380,12 @@ contract AllowlistHookTest is BaseTest {
 
     /* ============ setLiquidityProvidersAllowlist ============ */
 
-    function test_setLiquidityProvidersAllowlist_onlyOwner() public {
-        vm.expectRevert(abi.encodeWithSelector(Ownable.OwnableUnauthorizedAccount.selector, address(this)));
+    function test_setLiquidityProvidersAllowlist_onlyHookManager() public {
+        vm.expectRevert(
+            abi.encodeWithSelector(IAccessControl.AccessControlUnauthorizedAccount.selector, alice, _MANAGER_ROLE)
+        );
+
+        vm.prank(alice);
         allowlistHook.setLiquidityProvidersAllowlist(false);
     }
 
@@ -510,7 +393,7 @@ contract AllowlistHookTest is BaseTest {
         // Enabled by default at deployment
         assertTrue(allowlistHook.isLiquidityProvidersAllowlistEnabled());
 
-        vm.prank(owner);
+        vm.prank(hookManager);
         allowlistHook.setLiquidityProvidersAllowlist(true);
 
         assertTrue(allowlistHook.isLiquidityProvidersAllowlistEnabled());
@@ -525,7 +408,7 @@ contract AllowlistHookTest is BaseTest {
         vm.expectEmit();
         emit IAllowlistHook.LiquidityProvidersAllowlistSet(isEnabled_);
 
-        vm.prank(owner);
+        vm.prank(hookManager);
         allowlistHook.setLiquidityProvidersAllowlist(isEnabled_);
 
         assertFalse(allowlistHook.isLiquidityProvidersAllowlistEnabled());
@@ -533,8 +416,12 @@ contract AllowlistHookTest is BaseTest {
 
     /* ============ setSwappersAllowlist ============ */
 
-    function test_setSwappersAllowlist_onlyOwner() public {
-        vm.expectRevert(abi.encodeWithSelector(Ownable.OwnableUnauthorizedAccount.selector, address(this)));
+    function test_setSwappersAllowlist_onlyHookManager() public {
+        vm.expectRevert(
+            abi.encodeWithSelector(IAccessControl.AccessControlUnauthorizedAccount.selector, alice, _MANAGER_ROLE)
+        );
+
+        vm.prank(alice);
         allowlistHook.setSwappersAllowlist(true);
     }
 
@@ -542,7 +429,7 @@ contract AllowlistHookTest is BaseTest {
         // Enabled by default at deployment
         assertTrue(allowlistHook.isSwappersAllowlistEnabled());
 
-        vm.prank(owner);
+        vm.prank(hookManager);
         allowlistHook.setSwappersAllowlist(true);
 
         assertTrue(allowlistHook.isSwappersAllowlistEnabled());
@@ -557,7 +444,7 @@ contract AllowlistHookTest is BaseTest {
         vm.expectEmit();
         emit IAllowlistHook.SwappersAllowlistSet(isEnabled_);
 
-        vm.prank(owner);
+        vm.prank(hookManager);
         allowlistHook.setSwappersAllowlist(isEnabled_);
 
         assertFalse(allowlistHook.isSwappersAllowlistEnabled());
@@ -565,20 +452,24 @@ contract AllowlistHookTest is BaseTest {
 
     /* ============ setLiquidityProvider ============ */
 
-    function test_setLiquidityProvider_onlyOwner() public {
-        vm.expectRevert(abi.encodeWithSelector(Ownable.OwnableUnauthorizedAccount.selector, address(this)));
+    function test_setLiquidityProvider_onlyHookManager() public {
+        vm.expectRevert(
+            abi.encodeWithSelector(IAccessControl.AccessControlUnauthorizedAccount.selector, alice, _MANAGER_ROLE)
+        );
+
+        vm.prank(alice);
         allowlistHook.setLiquidityProvider(alice, true);
     }
 
     function test_setLiquidityProvider_zeroAddress() public {
         vm.expectRevert(abi.encodeWithSelector(IAllowlistHook.ZeroLiquidityProvider.selector));
 
-        vm.prank(owner);
+        vm.prank(hookManager);
         allowlistHook.setLiquidityProvider(address(0), true);
     }
 
     function test_setLiquidityProvider_noChange() public {
-        vm.prank(owner);
+        vm.prank(hookManager);
         allowlistHook.setLiquidityProvider(alice, false);
 
         assertFalse(allowlistHook.isLiquidityProviderAllowed(alice));
@@ -588,7 +479,7 @@ contract AllowlistHookTest is BaseTest {
         vm.expectEmit();
         emit IAllowlistHook.LiquidityProviderSet(alice, true);
 
-        vm.prank(owner);
+        vm.prank(hookManager);
         allowlistHook.setLiquidityProvider(alice, true);
 
         assertTrue(allowlistHook.isLiquidityProviderAllowed(alice));
@@ -596,7 +487,7 @@ contract AllowlistHookTest is BaseTest {
 
     /* ============ setLiquidityProviders ============ */
 
-    function test_setLiquidityProviders_onlyOwner() public {
+    function test_setLiquidityProviders_onlyHookManager() public {
         address[] memory liquidityProviders_ = new address[](3);
         liquidityProviders_[0] = alice;
         liquidityProviders_[1] = bob;
@@ -607,7 +498,11 @@ contract AllowlistHookTest is BaseTest {
         statuses_[1] = false;
         statuses_[2] = true;
 
-        vm.expectRevert(abi.encodeWithSelector(Ownable.OwnableUnauthorizedAccount.selector, address(this)));
+        vm.expectRevert(
+            abi.encodeWithSelector(IAccessControl.AccessControlUnauthorizedAccount.selector, alice, _MANAGER_ROLE)
+        );
+
+        vm.prank(alice);
         allowlistHook.setLiquidityProviders(liquidityProviders_, statuses_);
     }
 
@@ -623,7 +518,7 @@ contract AllowlistHookTest is BaseTest {
 
         vm.expectRevert(IAllowlistHook.ArrayLengthMismatch.selector);
 
-        vm.prank(owner);
+        vm.prank(hookManager);
         allowlistHook.setLiquidityProviders(liquidityProviders_, statuses_);
     }
 
@@ -638,7 +533,7 @@ contract AllowlistHookTest is BaseTest {
         statuses_[1] = false;
         statuses_[2] = true;
 
-        vm.prank(owner);
+        vm.prank(hookManager);
         allowlistHook.setLiquidityProviders(liquidityProviders_, statuses_);
 
         assertTrue(allowlistHook.isLiquidityProviderAllowed(alice));
@@ -648,20 +543,24 @@ contract AllowlistHookTest is BaseTest {
 
     /* ============ setSwapper ============ */
 
-    function test_setSwapper_onlyOwner() public {
-        vm.expectRevert(abi.encodeWithSelector(Ownable.OwnableUnauthorizedAccount.selector, address(this)));
+    function test_setSwapper_onlyHookManager() public {
+        vm.expectRevert(
+            abi.encodeWithSelector(IAccessControl.AccessControlUnauthorizedAccount.selector, alice, _MANAGER_ROLE)
+        );
+
+        vm.prank(alice);
         allowlistHook.setSwapper(alice, true);
     }
 
     function test_setSwapper_zeroAddress() public {
         vm.expectRevert(abi.encodeWithSelector(IAllowlistHook.ZeroSwapper.selector));
 
-        vm.prank(owner);
+        vm.prank(hookManager);
         allowlistHook.setSwapper(address(0), true);
     }
 
     function test_setSwapper_noChange() public {
-        vm.prank(owner);
+        vm.prank(hookManager);
         allowlistHook.setSwapper(alice, false);
 
         assertFalse(allowlistHook.isSwapperAllowed(alice));
@@ -671,7 +570,7 @@ contract AllowlistHookTest is BaseTest {
         vm.expectEmit();
         emit IAllowlistHook.SwapperSet(alice, true);
 
-        vm.prank(owner);
+        vm.prank(hookManager);
         allowlistHook.setSwapper(alice, true);
 
         assertTrue(allowlistHook.isSwapperAllowed(alice));
@@ -679,7 +578,7 @@ contract AllowlistHookTest is BaseTest {
 
     /* ============ setSwappers ============ */
 
-    function test_setSwappers_onlyOwner() public {
+    function test_setSwappers_onlyHookManager() public {
         address[] memory swappers_ = new address[](3);
         swappers_[0] = alice;
         swappers_[1] = bob;
@@ -690,7 +589,11 @@ contract AllowlistHookTest is BaseTest {
         statuses_[1] = false;
         statuses_[2] = true;
 
-        vm.expectRevert(abi.encodeWithSelector(Ownable.OwnableUnauthorizedAccount.selector, address(this)));
+        vm.expectRevert(
+            abi.encodeWithSelector(IAccessControl.AccessControlUnauthorizedAccount.selector, alice, _MANAGER_ROLE)
+        );
+
+        vm.prank(alice);
         allowlistHook.setSwappers(swappers_, statuses_);
     }
 
@@ -706,7 +609,7 @@ contract AllowlistHookTest is BaseTest {
 
         vm.expectRevert(IAllowlistHook.ArrayLengthMismatch.selector);
 
-        vm.prank(owner);
+        vm.prank(hookManager);
         allowlistHook.setSwappers(swappers_, statuses_);
     }
 
@@ -721,7 +624,7 @@ contract AllowlistHookTest is BaseTest {
         statuses_[1] = false;
         statuses_[2] = true;
 
-        vm.prank(owner);
+        vm.prank(hookManager);
         allowlistHook.setSwappers(swappers_, statuses_);
 
         assertTrue(allowlistHook.isSwapperAllowed(alice));
@@ -731,15 +634,19 @@ contract AllowlistHookTest is BaseTest {
 
     /* ============ setPositionManager ============ */
 
-    function test_setPositionManager_onlyOwner() public {
-        vm.expectRevert(abi.encodeWithSelector(Ownable.OwnableUnauthorizedAccount.selector, address(this)));
+    function test_setPositionManager_onlyHookManager() public {
+        vm.expectRevert(
+            abi.encodeWithSelector(IAccessControl.AccessControlUnauthorizedAccount.selector, alice, _MANAGER_ROLE)
+        );
+
+        vm.prank(alice);
         allowlistHook.setPositionManager(mockPositionManager, true);
     }
 
     function test_setPositionManager_zeroAddress() public {
         vm.expectRevert(abi.encodeWithSelector(IAllowlistHook.ZeroPositionManager.selector));
 
-        vm.prank(owner);
+        vm.prank(hookManager);
         allowlistHook.setPositionManager(address(0), true);
     }
 
@@ -752,7 +659,7 @@ contract AllowlistHookTest is BaseTest {
         vm.expectEmit();
         emit IAllowlistHook.PositionManagerSet(mockPositionManager, true);
 
-        vm.prank(owner);
+        vm.prank(hookManager);
         allowlistHook.setPositionManager(mockPositionManager, true);
 
         assertEq(
@@ -760,7 +667,7 @@ contract AllowlistHookTest is BaseTest {
             uint8(IAllowlistHook.PositionManagerStatus.ALLOWED)
         );
 
-        vm.prank(owner);
+        vm.prank(hookManager);
         allowlistHook.setPositionManager(mockPositionManager, true);
 
         assertEq(
@@ -778,7 +685,7 @@ contract AllowlistHookTest is BaseTest {
         vm.expectEmit();
         emit IAllowlistHook.PositionManagerSet(mockPositionManager, true);
 
-        vm.prank(owner);
+        vm.prank(hookManager);
         allowlistHook.setPositionManager(mockPositionManager, true);
 
         assertEq(
@@ -786,7 +693,7 @@ contract AllowlistHookTest is BaseTest {
             uint8(IAllowlistHook.PositionManagerStatus.ALLOWED)
         );
 
-        vm.prank(owner);
+        vm.prank(hookManager);
         allowlistHook.setPositionManager(mockPositionManager, false);
 
         assertEq(
@@ -797,7 +704,7 @@ contract AllowlistHookTest is BaseTest {
 
     /* ============ setPositionManagers ============ */
 
-    function test_setPositionManagers_onlyOwner() public {
+    function test_setPositionManagers_onlyHookManager() public {
         address[] memory positionManagers_ = new address[](3);
         positionManagers_[0] = alice;
         positionManagers_[1] = bob;
@@ -808,7 +715,11 @@ contract AllowlistHookTest is BaseTest {
         statuses_[1] = false;
         statuses_[2] = true;
 
-        vm.expectRevert(abi.encodeWithSelector(Ownable.OwnableUnauthorizedAccount.selector, address(this)));
+        vm.expectRevert(
+            abi.encodeWithSelector(IAccessControl.AccessControlUnauthorizedAccount.selector, alice, _MANAGER_ROLE)
+        );
+
+        vm.prank(alice);
         allowlistHook.setPositionManagers(positionManagers_, statuses_);
     }
 
@@ -824,7 +735,7 @@ contract AllowlistHookTest is BaseTest {
 
         vm.expectRevert(IAllowlistHook.ArrayLengthMismatch.selector);
 
-        vm.prank(owner);
+        vm.prank(hookManager);
         allowlistHook.setPositionManagers(positionManagers_, statuses_);
     }
 
@@ -839,7 +750,7 @@ contract AllowlistHookTest is BaseTest {
         statuses_[1] = false;
         statuses_[2] = true;
 
-        vm.prank(owner);
+        vm.prank(hookManager);
         allowlistHook.setPositionManagers(positionManagers_, statuses_);
 
         assertEq(
@@ -860,15 +771,19 @@ contract AllowlistHookTest is BaseTest {
 
     /* ============ setSwapRouter ============ */
 
-    function test_setSwapRouter_onlyOwner() public {
-        vm.expectRevert(abi.encodeWithSelector(Ownable.OwnableUnauthorizedAccount.selector, address(this)));
+    function test_setSwapRouter_onlyHookManager() public {
+        vm.expectRevert(
+            abi.encodeWithSelector(IAccessControl.AccessControlUnauthorizedAccount.selector, alice, _MANAGER_ROLE)
+        );
+
+        vm.prank(alice);
         allowlistHook.setSwapRouter(address(mockRouter), true);
     }
 
     function test_setSwapRouter_zeroAddress() public {
         vm.expectRevert(abi.encodeWithSelector(IAllowlistHook.ZeroSwapRouter.selector));
 
-        vm.prank(owner);
+        vm.prank(hookManager);
         allowlistHook.setSwapRouter(address(0), true);
     }
 
@@ -878,12 +793,12 @@ contract AllowlistHookTest is BaseTest {
         vm.expectEmit();
         emit IAllowlistHook.SwapRouterSet(address(mockRouter), true);
 
-        vm.prank(owner);
+        vm.prank(hookManager);
         allowlistHook.setSwapRouter(address(mockRouter), true);
 
         assertTrue(allowlistHook.isSwapRouterTrusted(address(mockRouter)));
 
-        vm.prank(owner);
+        vm.prank(hookManager);
         allowlistHook.setSwapRouter(address(mockRouter), true);
 
         assertTrue(allowlistHook.isSwapRouterTrusted(address(mockRouter)));
@@ -895,7 +810,7 @@ contract AllowlistHookTest is BaseTest {
         vm.expectEmit();
         emit IAllowlistHook.SwapRouterSet(address(mockRouter), true);
 
-        vm.prank(owner);
+        vm.prank(hookManager);
         allowlistHook.setSwapRouter(address(mockRouter), true);
 
         assertTrue(allowlistHook.isSwapRouterTrusted(address(mockRouter)));
@@ -903,7 +818,7 @@ contract AllowlistHookTest is BaseTest {
 
     /* ============ setSwapRouters ============ */
 
-    function test_setSwapRouters_onlyOwner() public {
+    function test_setSwapRouters_onlyHookManager() public {
         address[] memory swapRouters_ = new address[](3);
         swapRouters_[0] = alice;
         swapRouters_[1] = bob;
@@ -914,7 +829,11 @@ contract AllowlistHookTest is BaseTest {
         statuses_[1] = false;
         statuses_[2] = true;
 
-        vm.expectRevert(abi.encodeWithSelector(Ownable.OwnableUnauthorizedAccount.selector, address(this)));
+        vm.expectRevert(
+            abi.encodeWithSelector(IAccessControl.AccessControlUnauthorizedAccount.selector, alice, _MANAGER_ROLE)
+        );
+
+        vm.prank(alice);
         allowlistHook.setSwapRouters(swapRouters_, statuses_);
     }
 
@@ -930,7 +849,7 @@ contract AllowlistHookTest is BaseTest {
 
         vm.expectRevert(IAllowlistHook.ArrayLengthMismatch.selector);
 
-        vm.prank(owner);
+        vm.prank(hookManager);
         allowlistHook.setSwapRouters(swapRouters_, statuses_);
     }
 
@@ -945,7 +864,7 @@ contract AllowlistHookTest is BaseTest {
         statuses_[1] = false;
         statuses_[2] = true;
 
-        vm.prank(owner);
+        vm.prank(hookManager);
         allowlistHook.setSwapRouters(swapRouters_, statuses_);
 
         assertTrue(allowlistHook.isSwapRouterTrusted(alice));
@@ -953,176 +872,25 @@ contract AllowlistHookTest is BaseTest {
         assertTrue(allowlistHook.isSwapRouterTrusted(carol));
     }
 
-    /* ============ setSwapCap ============ */
+    /* ============ upgrade ============ */
 
-    function test_setSwapCap_onlyOwner() public {
-        vm.expectRevert(abi.encodeWithSelector(Ownable.OwnableUnauthorizedAccount.selector, address(this)));
-        allowlistHook.setSwapCap(10_000_000e18);
+    function test_upgrade_onlyUpgrader() public {
+        address v2implementation = address(new AllowlistHookUpgrade());
+
+        vm.expectRevert(
+            abi.encodeWithSelector(IAccessControl.AccessControlUnauthorizedAccount.selector, alice, _UPGRADER_ROLE)
+        );
+
+        vm.prank(alice);
+        allowlistHook.upgradeToAndCall(v2implementation, "");
     }
 
-    function test_setSwapCap_noChange() public {
-        uint256 initialSwapCap_ = 10_000_000e18;
+    function test_upgrade() public {
+        address v2implementation = address(new AllowlistHookUpgrade());
 
-        vm.prank(owner);
-        allowlistHook.setSwapCap(initialSwapCap_);
+        vm.prank(upgrader);
+        allowlistHook.upgradeToAndCall(v2implementation, "");
 
-        vm.prank(owner);
-        allowlistHook.setSwapCap(initialSwapCap_);
-
-        assertEq(allowlistHook.swapCap(), initialSwapCap_);
-    }
-
-    function test_setSwapCap_resetTotalSwap() public {
-        uint256 totalSwap_ = 7_500_000e18;
-
-        vm.prank(owner);
-        allowlistHook.setSwapCap(10_000_000e18);
-
-        allowlistHook.setTotalSwap(totalSwap_);
-        assertEq(allowlistHook.totalSwap(), totalSwap_);
-
-        vm.expectEmit();
-        emit IAllowlistHook.TotalSwapReset();
-
-        vm.prank(owner);
-        allowlistHook.setSwapCap(5_000_000e18);
-
-        assertEq(allowlistHook.totalSwap(), 0);
-
-        totalSwap_ = 2_500_000e18;
-
-        allowlistHook.setTotalSwap(totalSwap_);
-        assertEq(allowlistHook.totalSwap(), totalSwap_);
-
-        vm.expectEmit();
-        emit IAllowlistHook.TotalSwapReset();
-
-        vm.prank(owner);
-        allowlistHook.setSwapCap(2_500_000e18);
-
-        assertEq(allowlistHook.totalSwap(), 0);
-    }
-
-    function test_setSwapCap() public {
-        uint256 swapCap_ = 10_000_000e18;
-
-        vm.expectEmit();
-        emit IAllowlistHook.SwapCapSet(swapCap_);
-
-        vm.prank(owner);
-        allowlistHook.setSwapCap(swapCap_);
-
-        assertEq(allowlistHook.swapCap(), swapCap_);
-    }
-
-    /* ============ resetTotalSwap ============ */
-
-    function test_resetTotalSwap_onlyOwner() public {
-        vm.expectRevert(abi.encodeWithSelector(Ownable.OwnableUnauthorizedAccount.selector, address(this)));
-        allowlistHook.resetTotalSwap();
-    }
-
-    function test_resetTotalSwap() public {
-        uint256 totalSwap_ = 7_500_000e18;
-
-        allowlistHook.setTotalSwap(totalSwap_);
-        assertEq(allowlistHook.totalSwap(), totalSwap_);
-
-        vm.expectEmit();
-        emit IAllowlistHook.TotalSwapReset();
-
-        vm.prank(owner);
-        allowlistHook.resetTotalSwap();
-    }
-
-    /* ============ getSwappableAmount ============ */
-
-    function test_getSwappableAmount_noSwapCap() public {
-        uint256 amount_ = 1_000_000e18;
-        assertEq(allowlistHook.getSwappableAmount(amount_), amount_);
-    }
-
-    function test_getSwappableAmount_withinBuffer() public {
-        uint256 amount_ = 500_000e18;
-
-        vm.prank(owner);
-        allowlistHook.setSwapCap(1_000_000e18);
-        allowlistHook.setTotalSwap(250_000e18);
-
-        assertEq(allowlistHook.getSwappableAmount(amount_), amount_);
-    }
-
-    function test_getSwappableAmount_exceedsBuffer() public {
-        uint256 amount_ = 1_500_000e18;
-        uint256 swapCap_ = 1_000_000e18;
-        uint256 totalSwap_ = 250_000e18;
-        uint256 buffer_ = swapCap_ - totalSwap_;
-
-        vm.prank(owner);
-        allowlistHook.setSwapCap(swapCap_);
-        allowlistHook.setTotalSwap(totalSwap_);
-
-        assertEq(allowlistHook.getSwappableAmount(amount_), buffer_);
-    }
-
-    function test_getSwappableAmount_zeroBuffer() public {
-        uint256 amount_ = 1_500_000e18;
-        uint256 swapCap_ = 1_000_000e18;
-        uint256 totalSwap_ = 1_000_000e18;
-
-        vm.prank(owner);
-        allowlistHook.setSwapCap(swapCap_);
-        allowlistHook.setTotalSwap(totalSwap_);
-
-        assertEq(allowlistHook.getSwappableAmount(amount_), 0);
-    }
-
-    /* ============ tokenAmountToDecimals ============ */
-
-    function test_tokenAmountToDecimals_scaleUp() public {
-        uint256 tokenAmount_ = 1_000_000e6;
-        assertEq(allowlistHook.tokenAmountToDecimals(tokenAmount_, 6, 18), tokenAmount_ * (10 ** 12));
-    }
-
-    function test_tokenAmountToDecimals_zeroTokenDecimals() public {
-        uint256 tokenAmount_ = 1_000_000;
-        assertEq(allowlistHook.tokenAmountToDecimals(tokenAmount_, 0, 18), tokenAmount_ * (10 ** 18));
-    }
-
-    function test_tokenAmountToDecimals_zeroAmount() public {
-        assertEq(allowlistHook.tokenAmountToDecimals(0e18, 6, 18), 0);
-    }
-
-    function test_tokenAmountToDecimals_noScaling() public {
-        uint256 tokenAmount_ = 1_000_000e18;
-        assertEq(allowlistHook.tokenAmountToDecimals(tokenAmount_, 18, 18), tokenAmount_);
-    }
-
-    function test_tokenAmountToDecimals_targetDecimalsLessNoScalingDown() public {
-        uint256 tokenAmount_ = 1_000_000e18;
-        assertEq(allowlistHook.tokenAmountToDecimals(tokenAmount_, 18, 6), tokenAmount_);
-    }
-
-    /* ============ migrate ============ */
-
-    function test_migrate_onlyAdmin() external {
-        address allowlistHookProxy_ = address(new Proxy(address(allowlistHook)));
-        address migrator_ = address(new Migrator(address(new Foo())));
-
-        vm.expectRevert(abi.encodeWithSelector(IAdminMigratable.UnauthorizedMigration.selector));
-        IAdminMigratable(allowlistHookProxy_).migrate(migrator_);
-    }
-
-    function test_migrate() external {
-        address allowlistHookProxy_ = address(new Proxy(address(allowlistHook)));
-        address migrator_ = address(new Migrator(address(new Foo())));
-
-        vm.expectRevert();
-        Foo(allowlistHookProxy_).bar();
-
-        vm.prank(owner);
-        IAdminMigratable(allowlistHookProxy_).migrate(migrator_);
-
-        assertEq(Foo(allowlistHookProxy_).bar(), 1);
+        assertEq(AllowlistHookUpgrade(address(allowlistHook)).bar(), 1);
     }
 }
