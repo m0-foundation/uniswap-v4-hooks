@@ -1,5 +1,4 @@
 // SPDX-License-Identifier: UNLICENSED
-
 pragma solidity 0.8.26;
 
 import { Test } from "../../lib/forge-std/src/Test.sol";
@@ -9,17 +8,23 @@ import {
 } from "../../lib/openzeppelin-contracts-upgradeable/lib/openzeppelin-contracts/contracts/access/IAccessControl.sol";
 
 import { IHooks } from "../../lib/v4-periphery/lib/v4-core/src/interfaces/IHooks.sol";
+import { IPoolManager } from "../../lib/v4-periphery/lib/v4-core/src/interfaces/IPoolManager.sol";
+
+import { StateLibrary } from "../../lib/v4-periphery/lib/v4-core/src/libraries/StateLibrary.sol";
 
 import { Currency } from "../../lib/v4-periphery/lib/v4-core/src/types/Currency.sol";
 import { PoolKey } from "../../lib/v4-periphery/lib/v4-core/src/types/PoolKey.sol";
 
 import { IAllowlistHook } from "../../src/interfaces/IAllowlistHook.sol";
+import { IBaseHook } from "../../src/interfaces/IBaseHook.sol";
 import { IBaseTickRangeHook } from "../../src/interfaces/IBaseTickRangeHook.sol";
 
 import { Config } from "../../script/base/Config.sol";
 import { Deploy } from "../../script/base/Deploy.s.sol";
 
 contract DeployTest is Deploy, Test {
+    using StateLibrary for IPoolManager;
+
     address public constant DEPLOYER = 0xF2f1ACbe0BA726fEE8d75f3E32900526874740BB;
     address public constant ADMIN = 0x7F7489582b64ABe46c074A45d758d701c2CA5446; // MXON
     address public constant MANAGER = 0x431169728D75bd02f4053435b87D15c8d1FB2C72; // M0 Labs
@@ -47,13 +52,7 @@ contract DeployTest is Deploy, Test {
         DeployConfig memory config = _getDeployConfig(block.chainid);
 
         vm.prank(DEPLOYER);
-        (address allowlistHook_, address allowlistHookProxy_) = _deployAllowlistHook(
-            DEPLOYER,
-            ADMIN,
-            MANAGER,
-            UPGRADER,
-            config
-        );
+        (, address allowlistHookProxy_) = _deployAllowlistHook(DEPLOYER, ADMIN, MANAGER, UPGRADER, config);
 
         assertTrue(IAccessControl(allowlistHookProxy_).hasRole(bytes32(0x00), ADMIN));
         assertTrue(IAccessControl(allowlistHookProxy_).hasRole(keccak256("MANAGER_ROLE"), MANAGER));
@@ -75,13 +74,7 @@ contract DeployTest is Deploy, Test {
         DeployConfig memory config = _getDeployConfig(block.chainid);
 
         vm.prank(DEPLOYER);
-        (address allowlistHook_, address allowlistHookProxy_) = _deployAllowlistHook(
-            DEPLOYER,
-            ADMIN,
-            MANAGER,
-            UPGRADER,
-            config
-        );
+        (, address allowlistHookProxy_) = _deployAllowlistHook(DEPLOYER, ADMIN, MANAGER, UPGRADER, config);
 
         PoolKey memory poolKey_ = _deployPool(config, IHooks(allowlistHookProxy_));
 
@@ -90,7 +83,9 @@ contract DeployTest is Deploy, Test {
         assertEq(poolKey_.fee, config.fee);
         assertEq(poolKey_.tickSpacing, config.tickSpacing);
         assertEq(address(poolKey_.hooks), address(allowlistHookProxy_));
-        // TODO: check that initial tick is 0 by getting the pool info
+
+        (, int24 tickCurrent_, , ) = IBaseHook(allowlistHookProxy_).poolManager().getSlot0(poolKey_.toId());
+        assertEq(tickCurrent_, 0);
     }
 
     /* ============ deployTickRangeHook ============ */
@@ -101,13 +96,7 @@ contract DeployTest is Deploy, Test {
         DeployConfig memory config = _getDeployConfig(block.chainid);
 
         vm.prank(DEPLOYER);
-        (address tickRangeHook_, address tickRangeHookProxy_) = _deployTickRangeHook(
-            DEPLOYER,
-            ADMIN,
-            MANAGER,
-            UPGRADER,
-            config
-        );
+        (, address tickRangeHookProxy_) = _deployTickRangeHook(DEPLOYER, ADMIN, MANAGER, UPGRADER, config);
 
         assertTrue(IAccessControl(tickRangeHookProxy_).hasRole(bytes32(0x00), ADMIN));
         assertTrue(IAccessControl(tickRangeHookProxy_).hasRole(keccak256("MANAGER_ROLE"), MANAGER));
@@ -123,13 +112,7 @@ contract DeployTest is Deploy, Test {
         DeployConfig memory config = _getDeployConfig(block.chainid);
 
         vm.prank(DEPLOYER);
-        (address tickRangeHook_, address tickRangeHookProxy_) = _deployTickRangeHook(
-            DEPLOYER,
-            ADMIN,
-            MANAGER,
-            UPGRADER,
-            config
-        );
+        (, address tickRangeHookProxy_) = _deployTickRangeHook(DEPLOYER, ADMIN, MANAGER, UPGRADER, config);
 
         PoolKey memory poolKey_ = _deployPool(config, IHooks(tickRangeHookProxy_));
 
@@ -138,6 +121,8 @@ contract DeployTest is Deploy, Test {
         assertEq(poolKey_.fee, config.fee);
         assertEq(poolKey_.tickSpacing, config.tickSpacing);
         assertEq(address(poolKey_.hooks), tickRangeHookProxy_);
-        // TODO: check that initial tick is 0
+
+        (, int24 tickCurrent_, , ) = IBaseHook(tickRangeHookProxy_).poolManager().getSlot0(poolKey_.toId());
+        assertEq(tickCurrent_, 0);
     }
 }
