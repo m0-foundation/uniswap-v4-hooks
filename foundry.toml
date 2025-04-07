@@ -1,13 +1,20 @@
 [profile.default]
 evm_version = "cancun"
+solc_version = "0.8.26"
 gas_reports = ["*"]
 gas_reports_ignore = []
 ignored_error_codes = []
-solc_version = "0.8.26"
 verbosity = 3
+# Used to deploy UUPS proxy deterministically via CREATE2
+always_use_create_2_factory = true
+ast = true
+ffi = true
+build_info = true
+bytecode_hash = "none"
+cbor_metadata = false
+extra_output = ["storageLayout"]
 
 [profile.production]
-build_info = true
 optimizer = true
 optimizer_runs = 44444444
 sizes = true

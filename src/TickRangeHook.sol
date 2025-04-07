@@ -14,21 +14,34 @@ import { BaseTickRangeHook } from "./abstract/BaseTickRangeHook.sol";
  * @notice Hook restricting liquidity provision and token swaps to a specific tick range.
  */
 contract TickRangeHook is BaseTickRangeHook {
-    /* ============ Constructor ============ */
+    /* ============ Initializer ============ */
 
     /**
      * @notice Constructs the TickRangeHook contract.
      * @param  poolManager_    The Uniswap V4 Pool Manager contract address.
      * @param  tickLowerBound_ The lower tick of the range to limit the liquidity provision and token swaps to.
      * @param  tickUpperBound_ The upper tick of the range to limit the liquidity provision and token swaps to.
-     * @param  owner_          The owner of the contract.
+     * @param  admin_           The address admnistrating the hook. Can grant and revoke roles.
+     * @param  manager_         The address managing the hook.
+     * @param  upgrader_        The address allowed to upgrade the implementation.
      */
-    constructor(
+    function initialize(
         address poolManager_,
         int24 tickLowerBound_,
         int24 tickUpperBound_,
-        address owner_
-    ) BaseTickRangeHook(poolManager_, tickLowerBound_, tickUpperBound_, owner_) {}
+        address admin_,
+        address manager_,
+        address upgrader_
+    ) public virtual initializer {
+        __BaseTickRangeHookUpgradeable_init(
+            poolManager_,
+            tickLowerBound_,
+            tickUpperBound_,
+            admin_,
+            manager_,
+            upgrader_
+        );
+    }
 
     /* ============ Hook functions ============ */
 

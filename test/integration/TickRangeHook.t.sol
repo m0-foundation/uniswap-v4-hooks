@@ -1,5 +1,4 @@
 // SPDX-License-Identifier: UNLICENSED
-
 pragma solidity 0.8.26;
 
 import { IHooks } from "../../lib/v4-periphery/lib/v4-core/src/interfaces/IHooks.sol";
@@ -8,11 +7,7 @@ import { IPoolManager } from "../../lib/v4-periphery/lib/v4-core/src/interfaces/
 import { Hooks } from "../../lib/v4-periphery/lib/v4-core/src/libraries/Hooks.sol";
 import { TickMath } from "../../lib/v4-periphery/lib/v4-core/src/libraries/TickMath.sol";
 
-import { Currency } from "../../lib/v4-periphery/lib/v4-core/src/types/Currency.sol";
-
 import { PoolSwapTest } from "../../lib/v4-periphery/lib/v4-core/src/test/PoolSwapTest.sol";
-
-import { Ownable } from "../../src/abstract/Ownable.sol";
 
 import { IERC721Like } from "../../src/interfaces/IERC721Like.sol";
 import { IBaseTickRangeHook } from "../../src/interfaces/IBaseTickRangeHook.sol";
@@ -22,6 +17,8 @@ import { TickRangeHook } from "../../src/TickRangeHook.sol";
 import { BaseTest } from "../utils/BaseTest.sol";
 
 contract TickRangeHookIntegrationTest is BaseTest {
+    // Deploy the implementation contract
+    TickRangeHook public tickRangeHookImplementation = new TickRangeHook();
     TickRangeHook public tickRangeHook;
 
     uint160 public flags = uint160(Hooks.BEFORE_ADD_LIQUIDITY_FLAG | Hooks.AFTER_SWAP_FLAG);
@@ -29,13 +26,22 @@ contract TickRangeHookIntegrationTest is BaseTest {
     function setUp() public override {
         super.setUp();
 
-        deployCodeTo(
-            "TickRangeHook.sol",
-            abi.encode(address(manager), TICK_LOWER_BOUND, TICK_UPPER_BOUND, owner),
-            address(flags)
+        // Deploy the proxy contract to the mined address
+        bytes memory implementationInitializeCall = abi.encodeCall(
+            TickRangeHook.initialize,
+            (address(manager), TICK_LOWER_BOUND, TICK_UPPER_BOUND, admin, hookManager, upgrader)
         );
 
-        tickRangeHook = TickRangeHook(address(flags));
+        bytes memory proxyConstructorArgs = abi.encode(tickRangeHookImplementation, implementationInitializeCall);
+        address namespacedFlags = address(flags ^ (0x4444 << 144)); // Namespace the hook to avoid collisions
+
+        deployCodeTo(
+            "lib/openzeppelin-contracts-upgradeable/lib/openzeppelin-contracts/contracts/proxy/ERC1967/ERC1967Proxy.sol:ERC1967Proxy",
+            proxyConstructorArgs,
+            namespacedFlags
+        );
+
+        tickRangeHook = TickRangeHook(namespacedFlags);
 
         IERC721Like(address(lpm)).setApprovalForAll(address(tickRangeHook), true);
     }

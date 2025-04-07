@@ -49,15 +49,6 @@ interface IAllowlistHook {
      */
     event SwapRouterSet(address indexed swapRouter, bool isAllowed);
 
-    /// @notice Emitted when the total amount swapped is reset.
-    event TotalSwapReset();
-
-    /**
-     * @notice Emitted when the swap cap is set.
-     * @param  swapCap The new swap cap amount.
-     */
-    event SwapCapSet(uint256 swapCap);
-
     /* ============ Custom Errors ============ */
 
     /// @notice Emitted when the lengths of input arrays do not match.
@@ -87,13 +78,6 @@ interface IAllowlistHook {
      */
     error SwapRouterNotTrusted(address swapRouter);
 
-    /**
-     * @notice Error emitted in beforeSwap if the swap cap is reached.
-     * @param  totalSwap The total amount that would have been swapped across token0 and token1 if the cap was not reached.
-     * @param  swapCap   The maximum amount that can be swapped across token0 and token1.
-     */
-    error SwapCapExceeded(uint256 totalSwap, uint256 swapCap);
-
     /// @notice Error emitted when a swapper status is set for address zero.
     error ZeroSwapper();
 
@@ -122,21 +106,21 @@ interface IAllowlistHook {
 
     /**
      * @notice Sets the liquidity providers allowlist status.
-     * @dev    MUST only be callable by the current owner.
+     * @dev    MUST only be callable by the current manager.
      * @param  isEnabled Boolean indicating whether the liquidity providers allowlist is enabled or not.
      */
     function setLiquidityProvidersAllowlist(bool isEnabled) external;
 
     /**
      * @notice Sets the swappers allowlist status.
-     * @dev    MUST only be callable by the current owner.
+     * @dev    MUST only be callable by the current manager.
      * @param  isEnabled Boolean indicating whether the swappers allowlist is enabled or not.
      */
     function setSwappersAllowlist(bool isEnabled) external;
 
     /**
      * @notice Sets the allowlist status of a liquidity provider.
-     * @dev    MUST only be callable by the current owner.
+     * @dev    MUST only be callable by the current manager.
      * @param  liquidityProvider The address of the liquidity provider.
      * @param  isAllowed         Boolean indicating whether the liquidity provider is allowed or not.
      */
@@ -144,7 +128,7 @@ interface IAllowlistHook {
 
     /**
      * @notice Sets the allowlist status for multiple liquidity providers.
-     * @dev    MUST only be callable by the current owner.
+     * @dev    MUST only be callable by the current manager.
      * @param  liquidityProviders The array of liquidity provider addresses.
      * @param  isAllowed          The array of boolean values indicating the allowed status for each liquidity provider.
      */
@@ -152,7 +136,7 @@ interface IAllowlistHook {
 
     /**
      * @notice Sets the status of the Uniswap V4 Position Manager contract address.
-     * @dev    MUST only be callable by the current owner.
+     * @dev    MUST only be callable by the current manager.
      * @param  positionManager The Uniswap V4 Position Manager address.
      * @param  isAllowed       Boolean indicating whether the Position Manager is allowed to modify liquidity or not.
      */
@@ -160,7 +144,7 @@ interface IAllowlistHook {
 
     /**
      * @notice Sets the status of multiple Uniswap V4 Position Manager contract addresses.
-     * @dev    MUST only be callable by the current owner.
+     * @dev    MUST only be callable by the current manager.
      * @param  positionManagers The array of Position Manager addresses.
      * @param  isAllowed        The array of boolean values indicating the allowed status for each Position Manager.
      */
@@ -168,7 +152,7 @@ interface IAllowlistHook {
 
     /**
      * @notice Sets the allowlist status of a swapper.
-     * @dev    MUST only be callable by the current owner.
+     * @dev    MUST only be callable by the current manager.
      * @param  swapper   The address of the swapper.
      * @param  isAllowed Boolean indicating whether the swapper is allowed or not.
      */
@@ -176,7 +160,7 @@ interface IAllowlistHook {
 
     /**
      * @notice Sets the allowlist status for multiple swappers.
-     * @dev    MUST only be callable by the current owner.
+     * @dev    MUST only be callable by the current manager.
      * @param  swappers  The array of swapper addresses.
      * @param  isAllowed The array of boolean values indicating the allowed status for each swapper.
      */
@@ -184,7 +168,7 @@ interface IAllowlistHook {
 
     /**
      * @notice Sets the status of the Swap Router contract address.
-     * @dev    MUST only be callable by the current owner.
+     * @dev    MUST only be callable by the current manager.
      * @param  swapRouter The Swap Router address.
      * @param  isAllowed  Boolean indicating whether the Swap Router is allowed to swap or not.
      */
@@ -192,26 +176,11 @@ interface IAllowlistHook {
 
     /**
      * @notice Sets the status of the Swap Router contract address.
-     * @dev    MUST only be callable by the current owner.
+     * @dev    MUST only be callable by the current manager.
      * @param  swapRouters The array of Swap Router addresses.
      * @param  isAllowed   The array of boolean values indicating the allowed status for each Swap Router.
      */
     function setSwapRouters(address[] calldata swapRouters, bool[] calldata isAllowed) external;
-
-    /**
-     * @notice Resets the total amount swapped across token0 and token1.
-     * @dev    MUST only be callable by the current owner.
-     */
-    function resetTotalSwap() external;
-
-    /**
-     * @notice Sets the swap cap amount.
-     * @dev    MUST only be callable by the current owner.
-     * @dev    Caller MUST ensure that the amount set follows the decimal precision of the token with the higher decimals.
-     * @dev    MUST reset the totapSwap amount if swapCap is lower than the totalSwap amount.
-     * @param  swapCap_ The new swap cap amount.
-     */
-    function setSwapCap(uint256 swapCap_) external;
 
     /* ============ External/Public view functions ============ */
 
@@ -254,20 +223,4 @@ interface IAllowlistHook {
      * @return True if the swapper is allowed, false otherwise.
      */
     function isSwapperAllowed(address swapper) external view returns (bool);
-
-    /**
-     * @notice Gets the maximum amount of token0 or token1 that can currently be swapped for a given amount.
-     * @param  amount The amount of token0 or token1 to get the maximum swappable amount for.
-     * @return The maximum swappable amount.
-     */
-    function getSwappableAmount(uint256 amount) external view returns (uint256);
-
-    /// @notice The maximum amount, across token0 and token1, that can be swapped before swapping is restricted.
-    function swapCap() external view returns (uint256);
-
-    /// @notice The total amount, across token0 and token1, that has been swapped since the last reset.
-    function totalSwap() external view returns (uint256);
-
-    /// @notice The number of decimals to scale swapCap and totalSwap amounts to.
-    function referenceDecimals() external view returns (uint8);
 }
