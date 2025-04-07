@@ -12,6 +12,8 @@ import { PoolId } from "../../lib/v4-periphery/lib/v4-core/src/types/PoolId.sol"
 
 import { Deployers } from "../../lib/v4-periphery/lib/v4-core/test/utils/Deployers.sol";
 import { LiquidityAmounts } from "../../lib/v4-periphery/lib/v4-core/test/utils/LiquidityAmounts.sol";
+import { LiquidityFuzzers } from "../../lib/v4-periphery/test/shared/fuzz/LiquidityFuzzers.sol";
+import { Fuzzers } from "../../lib/v4-periphery/lib/v4-core/src/test/Fuzzers.sol";
 
 import { Actions } from "../../lib/v4-periphery/src/libraries/Actions.sol";
 import { ActionConstants } from "../../lib/v4-periphery/src/libraries/ActionConstants.sol";
@@ -32,7 +34,7 @@ import { PosmTestSetup } from "../../lib/v4-periphery/test/shared/PosmTestSetup.
 
 import { LiquidityOperationsLib } from "./helpers/LiquidityOperationsLib.sol";
 
-contract BaseTest is Deployers, PosmTestSetup {
+contract BaseTest is Deployers, PosmTestSetup, Fuzzers {
     using LiquidityOperationsLib for IPositionManager;
 
     Currency public tokenZero;

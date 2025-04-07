@@ -8,24 +8,32 @@ import {
 import { IHooks } from "../lib/v4-periphery/lib/v4-core/src/interfaces/IHooks.sol";
 import { IPoolManager } from "../lib/v4-periphery/lib/v4-core/src/interfaces/IPoolManager.sol";
 
+import { Actions } from "../lib/v4-periphery/src/libraries/Actions.sol";
 import { Hooks } from "../lib/v4-periphery/lib/v4-core/src/libraries/Hooks.sol";
+import { SafeCast } from "../lib/v4-periphery/lib/v4-core/src/libraries/SafeCast.sol";
 import { TickMath } from "../lib/v4-periphery/lib/v4-core/src/libraries/TickMath.sol";
 
+import { Planner, Plan } from "../lib/v4-periphery/test/shared/Planner.sol";
+
+import { Fuzzers } from "../lib/v4-periphery/lib/v4-core/src/test/Fuzzers.sol";
 import { PoolSwapTest } from "../lib/v4-periphery/lib/v4-core/src/test/PoolSwapTest.sol";
 
 import { IBaseHook } from "../src/interfaces/IBaseHook.sol";
 import { IBaseTickRangeHook } from "../src/interfaces/IBaseTickRangeHook.sol";
 import { IERC721Like } from "../src/interfaces/IERC721Like.sol";
 
-import { TickRangeHook } from "../src/TickRangeHook.sol";
+import { TickRangeHookHarness } from "./harness/TickRangeHookHarness.sol";
 
 import { BaseTest } from "./utils/BaseTest.sol";
 import { TickRangeHookUpgrade } from "./utils/Mocks.sol";
+import { LiquidityOperationsLib } from "./utils/helpers/LiquidityOperationsLib.sol";
 
 contract TickRangeHookTest is BaseTest {
+    using SafeCast for int256;
+
     // Deploy the implementation contract
-    TickRangeHook public tickRangeHookImplementation = new TickRangeHook();
-    TickRangeHook public tickRangeHook;
+    TickRangeHookHarness public tickRangeHookImplementation = new TickRangeHookHarness();
+    TickRangeHookHarness public tickRangeHook;
 
     bytes public proxyConstructorArgs;
     uint160 public flags = uint160(Hooks.BEFORE_ADD_LIQUIDITY_FLAG | Hooks.AFTER_SWAP_FLAG);
@@ -35,7 +43,7 @@ contract TickRangeHookTest is BaseTest {
 
         // Deploy the proxy contract to the mined address
         bytes memory implementationInitializeCall = abi.encodeCall(
-            TickRangeHook.initialize,
+            TickRangeHookHarness.initialize,
             (address(manager), TICK_LOWER_BOUND, TICK_UPPER_BOUND, admin, hookManager, upgrader)
         );
 
@@ -48,7 +56,7 @@ contract TickRangeHookTest is BaseTest {
             namespacedFlags
         );
 
-        tickRangeHook = TickRangeHook(namespacedFlags);
+        tickRangeHook = TickRangeHookHarness(namespacedFlags);
         Hooks.validateHookPermissions(tickRangeHook, tickRangeHook.getHookPermissions());
 
         initPool(tickRangeHook);
@@ -60,7 +68,7 @@ contract TickRangeHookTest is BaseTest {
 
     function test_initialize_ticksOutOfOrder_lowerGTUpper() public {
         bytes memory implementationInitializeCall = abi.encodeCall(
-            TickRangeHook.initialize,
+            TickRangeHookHarness.initialize,
             (address(manager), TICK_UPPER_BOUND, TICK_LOWER_BOUND, admin, hookManager, upgrader)
         );
 
@@ -77,12 +85,12 @@ contract TickRangeHookTest is BaseTest {
             namespacedFlags
         );
 
-        tickRangeHook = TickRangeHook(namespacedFlags);
+        tickRangeHook = TickRangeHookHarness(namespacedFlags);
     }
 
     function test_initialize_ticksOutOfOrder_lowerEqualUpper() public {
         bytes memory implementationInitializeCall = abi.encodeCall(
-            TickRangeHook.initialize,
+            TickRangeHookHarness.initialize,
             (address(manager), TICK_UPPER_BOUND, TICK_UPPER_BOUND, admin, hookManager, upgrader)
         );
 
@@ -99,12 +107,12 @@ contract TickRangeHookTest is BaseTest {
             namespacedFlags
         );
 
-        tickRangeHook = TickRangeHook(namespacedFlags);
+        tickRangeHook = TickRangeHookHarness(namespacedFlags);
     }
 
     function test_initialize_zeroPoolManager() public {
         bytes memory implementationInitializeCall = abi.encodeCall(
-            TickRangeHook.initialize,
+            TickRangeHookHarness.initialize,
             (address(0), TICK_LOWER_BOUND, TICK_UPPER_BOUND, admin, hookManager, upgrader)
         );
 
@@ -119,12 +127,12 @@ contract TickRangeHookTest is BaseTest {
             namespacedFlags
         );
 
-        tickRangeHook = TickRangeHook(namespacedFlags);
+        tickRangeHook = TickRangeHookHarness(namespacedFlags);
     }
 
     function test_initialize_zeroAdmin() public {
         bytes memory implementationInitializeCall = abi.encodeCall(
-            TickRangeHook.initialize,
+            TickRangeHookHarness.initialize,
             (address(manager), TICK_LOWER_BOUND, TICK_UPPER_BOUND, address(0), hookManager, upgrader)
         );
 
@@ -139,12 +147,12 @@ contract TickRangeHookTest is BaseTest {
             namespacedFlags
         );
 
-        tickRangeHook = TickRangeHook(namespacedFlags);
+        tickRangeHook = TickRangeHookHarness(namespacedFlags);
     }
 
     function test_initialize_zeroManager() public {
         bytes memory implementationInitializeCall = abi.encodeCall(
-            TickRangeHook.initialize,
+            TickRangeHookHarness.initialize,
             (address(manager), TICK_LOWER_BOUND, TICK_UPPER_BOUND, admin, address(0), upgrader)
         );
 
@@ -159,12 +167,12 @@ contract TickRangeHookTest is BaseTest {
             namespacedFlags
         );
 
-        tickRangeHook = TickRangeHook(namespacedFlags);
+        tickRangeHook = TickRangeHookHarness(namespacedFlags);
     }
 
     function test_initialize_zeroUpgrader() public {
         bytes memory implementationInitializeCall = abi.encodeCall(
-            TickRangeHook.initialize,
+            TickRangeHookHarness.initialize,
             (address(manager), TICK_LOWER_BOUND, TICK_UPPER_BOUND, admin, hookManager, address(0))
         );
 
@@ -178,7 +186,7 @@ contract TickRangeHookTest is BaseTest {
             proxyConstructorArgs,
             namespacedFlags
         );
-        tickRangeHook = TickRangeHook(namespacedFlags);
+        tickRangeHook = TickRangeHookHarness(namespacedFlags);
     }
 
     /* ============ afterSwap ============ */
@@ -304,6 +312,21 @@ contract TickRangeHookTest is BaseTest {
         assertEq(tick_, 0);
     }
 
+    function testFuzz_checkTick(int24 tick_) public {
+        if (tick_ < TICK_LOWER_BOUND || tick_ >= TICK_UPPER_BOUND) {
+            vm.expectRevert(
+                abi.encodeWithSelector(
+                    IBaseTickRangeHook.InvalidTick.selector,
+                    tick_,
+                    TICK_LOWER_BOUND,
+                    TICK_UPPER_BOUND
+                )
+            );
+        }
+
+        tickRangeHook.checkTick(tick_);
+    }
+
     /* ============ beforeAddLiquidity ============ */
 
     function test_beforeAddLiquidity_invalidTickRange_outsideLowerBound() public {
@@ -355,6 +378,49 @@ contract TickRangeHookTest is BaseTest {
         assertEq(tick_, 0);
     }
 
+    function testFuzz_beforeAddLiquidity(IPoolManager.ModifyLiquidityParams memory params_) public {
+        params_ = Fuzzers.createFuzzyLiquidityParams(key, params_, SQRT_PRICE_0_0);
+
+        Plan memory planner = Planner.init().add(
+            Actions.MINT_POSITION,
+            abi.encode(
+                key,
+                params_.tickLower,
+                params_.tickUpper,
+                uint256(params_.liquidityDelta),
+                LiquidityOperationsLib.MAX_SLIPPAGE_INCREASE,
+                LiquidityOperationsLib.MAX_SLIPPAGE_INCREASE,
+                address(this),
+                ""
+            )
+        );
+
+        bytes memory calls = planner.finalizeModifyLiquidityWithClose(key);
+
+        if (params_.tickLower < TICK_LOWER_BOUND || params_.tickUpper > TICK_UPPER_BOUND) {
+            expectWrappedRevert(
+                address(tickRangeHook),
+                IHooks.beforeAddLiquidity.selector,
+                abi.encodeWithSelector(
+                    IBaseTickRangeHook.InvalidTickRange.selector,
+                    params_.tickLower,
+                    params_.tickUpper,
+                    TICK_LOWER_BOUND,
+                    TICK_UPPER_BOUND
+                )
+            );
+        }
+
+        lpm.modifyLiquidities(calls, block.timestamp + 1);
+
+        if (params_.tickLower < TICK_LOWER_BOUND || params_.tickUpper > TICK_UPPER_BOUND) return;
+
+        (uint160 sqrtPriceX96_, int24 tick_, , ) = state.getSlot0(poolId);
+
+        assertEq(sqrtPriceX96_, SQRT_PRICE_0_0);
+        assertEq(tick_, 0);
+    }
+
     /* ============ setTickRange ============ */
 
     function test_setTickRange_onlyHookManager() public {
@@ -385,11 +451,36 @@ contract TickRangeHookTest is BaseTest {
     }
 
     function test_setTickRange() public {
+        int24 tickLower = 1;
+        int24 tickUpper = 2;
+
         vm.expectEmit();
-        emit IBaseTickRangeHook.TickRangeSet(1, 2);
+        emit IBaseTickRangeHook.TickRangeSet(tickLower, tickUpper);
 
         vm.prank(hookManager);
-        tickRangeHook.setTickRange(1, 2);
+        tickRangeHook.setTickRange(tickLower, tickUpper);
+
+        assertEq(tickRangeHook.tickLowerBound(), tickLower);
+        assertEq(tickRangeHook.tickUpperBound(), tickUpper);
+    }
+
+    function testFuzz_setTickRange(int24 tickLower_, int24 tickUpper_) public {
+        if (tickLower_ >= tickUpper_) {
+            vm.expectRevert(
+                abi.encodeWithSelector(IBaseTickRangeHook.TicksOutOfOrder.selector, tickLower_, tickUpper_)
+            );
+        } else {
+            vm.expectEmit();
+            emit IBaseTickRangeHook.TickRangeSet(tickLower_, tickUpper_);
+        }
+
+        vm.prank(hookManager);
+        tickRangeHook.setTickRange(tickLower_, tickUpper_);
+
+        if (tickLower_ >= tickUpper_) return;
+
+        assertEq(tickRangeHook.tickLowerBound(), tickLower_);
+        assertEq(tickRangeHook.tickUpperBound(), tickUpper_);
     }
 
     /* ============ upgrade ============ */
