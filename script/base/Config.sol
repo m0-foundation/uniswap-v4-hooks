@@ -38,7 +38,7 @@ contract Config {
 
     // Same addresses across all chains
     address constant CREATE2_DEPLOYER = address(0x4e59b44847b379578588920cA78FbF26c0B4956C);
-    address constant WRAPPED_M = address(address(0x437cc33344a0B27A429f795ff6B469C72698B291));
+    address constant WRAPPED_M = address(0x437cc33344a0B27A429f795ff6B469C72698B291);
 
     // Mainnet contract addresses
     address constant POOL_MANAGER_ETHEREUM = address(0x000000000004444c5dc75cB358380D2e3dE08A90);
