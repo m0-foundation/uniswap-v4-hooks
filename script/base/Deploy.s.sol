@@ -109,7 +109,7 @@ contract Deploy is Config, Script {
         address deployer_,
         bytes memory implementationInitializeCall_,
         uint160 flags_
-    ) internal returns (address implementationAddress, address hookAddress, bytes32 salt) {
+    ) internal view returns (address implementationAddress, address hookAddress, bytes32 salt) {
         // Compute the address where the implementation will be deployed
         implementationAddress = vm.computeCreateAddress(deployer_, vm.getNonce(deployer_));
 
