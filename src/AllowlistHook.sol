@@ -14,7 +14,6 @@ import { BaseTickRangeHook } from "./abstract/BaseTickRangeHook.sol";
 
 import { IAllowlistHook } from "./interfaces/IAllowlistHook.sol";
 import { IBaseActionsRouterLike } from "./interfaces/IBaseActionsRouterLike.sol";
-import { IERC20Like } from "./interfaces/IERC20Like.sol";
 
 /**
  * @title  Allowlist Hook
