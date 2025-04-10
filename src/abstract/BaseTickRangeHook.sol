@@ -26,9 +26,6 @@ abstract contract BaseTickRangeHook is IBaseTickRangeHook, BaseHookUpgradeable, 
 
     /* ============ Variables ============ */
 
-    /// @dev The default admin role. Can grant and revoke roles.
-    bytes32 internal constant _DEFAULT_ADMIN_ROLE = 0x00;
-
     /// @dev The role that can manage the hook.
     bytes32 internal constant _MANAGER_ROLE = keccak256("MANAGER_ROLE");
 
@@ -72,7 +69,7 @@ abstract contract BaseTickRangeHook is IBaseTickRangeHook, BaseHookUpgradeable, 
         if (manager_ == address(0)) revert ZeroManager();
         if (upgrader_ == address(0)) revert ZeroUpgrader();
 
-        _grantRole(_DEFAULT_ADMIN_ROLE, admin_);
+        _grantRole(DEFAULT_ADMIN_ROLE, admin_);
         _grantRole(_MANAGER_ROLE, manager_);
         _grantRole(_UPGRADER_ROLE, upgrader_);
 

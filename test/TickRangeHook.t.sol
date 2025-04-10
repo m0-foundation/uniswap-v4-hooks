@@ -189,6 +189,57 @@ contract TickRangeHookTest is BaseTest {
         tickRangeHook = TickRangeHookHarness(namespacedFlags);
     }
 
+    /* ============ Role Management ============ */
+
+    function test_grantRole_onlyAdmin() public {
+        vm.expectRevert(
+            abi.encodeWithSelector(IAccessControl.AccessControlUnauthorizedAccount.selector, alice, _DEFAULT_ADMIN_ROLE)
+        );
+
+        vm.prank(alice);
+        tickRangeHook.grantRole(_DEFAULT_ADMIN_ROLE, alice);
+    }
+
+    function test_grantRole() public {
+        vm.expectEmit();
+        emit IAccessControl.RoleGranted(_DEFAULT_ADMIN_ROLE, alice, admin);
+
+        vm.prank(admin);
+        tickRangeHook.grantRole(_DEFAULT_ADMIN_ROLE, alice);
+    }
+
+    function test_revokeRole_onlyAdmin() public {
+        vm.expectRevert(
+            abi.encodeWithSelector(IAccessControl.AccessControlUnauthorizedAccount.selector, alice, _DEFAULT_ADMIN_ROLE)
+        );
+
+        vm.prank(alice);
+        tickRangeHook.revokeRole(_DEFAULT_ADMIN_ROLE, alice);
+    }
+
+    function test_revokeRole() public {
+        vm.expectEmit();
+        emit IAccessControl.RoleRevoked(_MANAGER_ROLE, hookManager, admin);
+
+        vm.prank(admin);
+        tickRangeHook.revokeRole(_MANAGER_ROLE, hookManager);
+    }
+
+    function test_renounceRole_onlyAdmin() public {
+        vm.expectRevert(abi.encodeWithSelector(IAccessControl.AccessControlBadConfirmation.selector));
+
+        vm.prank(alice);
+        tickRangeHook.renounceRole(_DEFAULT_ADMIN_ROLE, admin);
+    }
+
+    function test_renounceRole() public {
+        vm.expectEmit();
+        emit IAccessControl.RoleRevoked(_DEFAULT_ADMIN_ROLE, admin, admin);
+
+        vm.prank(admin);
+        tickRangeHook.renounceRole(_DEFAULT_ADMIN_ROLE, admin);
+    }
+
     /* ============ afterSwap ============ */
 
     function test_afterSwap_invalidTick_outsideLowerBound() public {
