@@ -15,21 +15,39 @@ import {
 import { IBaseHook } from "../interfaces/IBaseHook.sol";
 
 /**
+ * @title  Base Hook Storage Layout
+ * @author M^0 Labs
+ * @notice Abstract contract defining the storage layout of the BaseHookUpgradeable contract.
+ */
+
+abstract contract BaseHookUpgradeableStorageLayout {
+    /// @custom:storage-location erc7201:M0.storage.BaseHookUpgradeableV0
+    struct BaseHookUpgradeableStorage {
+        IPoolManager poolManager;
+    }
+
+    // keccak256(abi.encode(uint256(keccak256("M0.storage.BaseHookUpgradeableV0")) - 1)) & ~bytes32(uint256(0xff))
+    bytes32 private constant _BASE_HOOK_UPGRADEABLE_V0_LOCATION =
+        0xe39e2856faec2c400b420972a52114ae5541b0a2be8735fab2a9fb6c40b4c400;
+
+    function _getBaseHookUpgradeableStorage() internal pure returns (BaseHookUpgradeableStorage storage $) {
+        assembly {
+            $.slot := _BASE_HOOK_UPGRADEABLE_V0_LOCATION
+        }
+    }
+}
+
+/**
  * @title  Base Hook
  * @author M^0 Labs
  * @notice Abstract contract for hook implementations.
  */
-abstract contract BaseHookUpgradeable is IBaseHook, IHooks, UUPSUpgradeable {
-    /* ============ Variables ============ */
-
-    /// @inheritdoc IBaseHook
-    IPoolManager public poolManager;
-
+abstract contract BaseHookUpgradeable is IBaseHook, IHooks, BaseHookUpgradeableStorageLayout, UUPSUpgradeable {
     /* ============ Modifiers ============ */
 
     /// @notice Only allow calls from the PoolManager contract
     modifier onlyPoolManager() {
-        if (msg.sender != address(poolManager)) revert NotPoolManager();
+        if (msg.sender != address(_getBaseHookUpgradeableStorage().poolManager)) revert NotPoolManager();
         _;
     }
 
@@ -42,7 +60,7 @@ abstract contract BaseHookUpgradeable is IBaseHook, IHooks, UUPSUpgradeable {
      */
     function __BaseHookUpgradeable_init(address poolManager_) internal onlyInitializing {
         if (poolManager_ == address(0)) revert ZeroPoolManager();
-        poolManager = IPoolManager(poolManager_);
+        _getBaseHookUpgradeableStorage().poolManager = IPoolManager(poolManager_);
 
         _validateHookAddress(this);
     }
@@ -256,6 +274,13 @@ abstract contract BaseHookUpgradeable is IBaseHook, IHooks, UUPSUpgradeable {
         bytes calldata
     ) internal virtual returns (bytes4) {
         revert HookNotImplemented();
+    }
+
+    /* ============ External/Public view functions ============ */
+
+    /// @inheritdoc IBaseHook
+    function poolManager() external view returns (IPoolManager) {
+        return _getBaseHookUpgradeableStorage().poolManager;
     }
 
     /* ============ Internal Upgrade function ============ */

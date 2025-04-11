@@ -198,6 +198,9 @@ interface IAllowlistHook {
 
     /**
      * @notice Gets the status of a given Position Manager.
+     * @dev    Only trusted position managers can invoke the beforeAddLiquidity and beforeRemoveLiquidity hooks.
+     *         When a position manager is removed, it is designated as REDUCE_ONLY
+     *         to allow users to remove their liquidity or migrate to a new position manager.
      * @param  positionManager The address of the Position Manager.
      * @return The status of the Position Manager.
      */
@@ -205,6 +208,7 @@ interface IAllowlistHook {
 
     /**
      * @notice Checks if a Swap Router is trusted.
+     * @dev    Only trusted Routers can invoke the beforeSwap hook.
      * @param  swapRouter The address of the Swap Router.
      * @return True if the Swap Router is trusted, false otherwise.
      */
