@@ -382,7 +382,7 @@ contract AllowlistHookTest is BaseTest {
 
     function test_setLiquidityProvidersAllowlist_onlyHookManager() public {
         vm.expectRevert(
-            abi.encodeWithSelector(IAccessControl.AccessControlUnauthorizedAccount.selector, alice, _MANAGER_ROLE)
+            abi.encodeWithSelector(IAccessControl.AccessControlUnauthorizedAccount.selector, alice, MANAGER_ROLE)
         );
 
         vm.prank(alice);
@@ -419,7 +419,7 @@ contract AllowlistHookTest is BaseTest {
 
         if (caller != hookManager) {
             vm.expectRevert(
-                abi.encodeWithSelector(IAccessControl.AccessControlUnauthorizedAccount.selector, caller, _MANAGER_ROLE)
+                abi.encodeWithSelector(IAccessControl.AccessControlUnauthorizedAccount.selector, caller, MANAGER_ROLE)
             );
         } else {
             // Will return early if status is the same as the current one
@@ -441,7 +441,7 @@ contract AllowlistHookTest is BaseTest {
 
     function test_setSwappersAllowlist_onlyHookManager() public {
         vm.expectRevert(
-            abi.encodeWithSelector(IAccessControl.AccessControlUnauthorizedAccount.selector, alice, _MANAGER_ROLE)
+            abi.encodeWithSelector(IAccessControl.AccessControlUnauthorizedAccount.selector, alice, MANAGER_ROLE)
         );
 
         vm.prank(alice);
@@ -478,7 +478,7 @@ contract AllowlistHookTest is BaseTest {
 
         if (caller != hookManager) {
             vm.expectRevert(
-                abi.encodeWithSelector(IAccessControl.AccessControlUnauthorizedAccount.selector, caller, _MANAGER_ROLE)
+                abi.encodeWithSelector(IAccessControl.AccessControlUnauthorizedAccount.selector, caller, MANAGER_ROLE)
             );
         } else {
             // Will return early if status is the same as the current one
@@ -500,7 +500,7 @@ contract AllowlistHookTest is BaseTest {
 
     function test_setLiquidityProvider_onlyHookManager() public {
         vm.expectRevert(
-            abi.encodeWithSelector(IAccessControl.AccessControlUnauthorizedAccount.selector, alice, _MANAGER_ROLE)
+            abi.encodeWithSelector(IAccessControl.AccessControlUnauthorizedAccount.selector, alice, MANAGER_ROLE)
         );
 
         vm.prank(alice);
@@ -536,7 +536,7 @@ contract AllowlistHookTest is BaseTest {
 
         if (caller != hookManager) {
             vm.expectRevert(
-                abi.encodeWithSelector(IAccessControl.AccessControlUnauthorizedAccount.selector, caller, _MANAGER_ROLE)
+                abi.encodeWithSelector(IAccessControl.AccessControlUnauthorizedAccount.selector, caller, MANAGER_ROLE)
             );
         } else {
             if (liquidityProvider_ == address(0)) {
@@ -570,7 +570,7 @@ contract AllowlistHookTest is BaseTest {
         statuses_[2] = true;
 
         vm.expectRevert(
-            abi.encodeWithSelector(IAccessControl.AccessControlUnauthorizedAccount.selector, alice, _MANAGER_ROLE)
+            abi.encodeWithSelector(IAccessControl.AccessControlUnauthorizedAccount.selector, alice, MANAGER_ROLE)
         );
 
         vm.prank(alice);
@@ -623,7 +623,7 @@ contract AllowlistHookTest is BaseTest {
 
         if (caller != hookManager) {
             vm.expectRevert(
-                abi.encodeWithSelector(IAccessControl.AccessControlUnauthorizedAccount.selector, caller, _MANAGER_ROLE)
+                abi.encodeWithSelector(IAccessControl.AccessControlUnauthorizedAccount.selector, caller, MANAGER_ROLE)
             );
         } else {
             if (liquidityProvidersLength != isAllowedLength) {
@@ -655,7 +655,7 @@ contract AllowlistHookTest is BaseTest {
 
     function test_setSwapper_onlyHookManager() public {
         vm.expectRevert(
-            abi.encodeWithSelector(IAccessControl.AccessControlUnauthorizedAccount.selector, alice, _MANAGER_ROLE)
+            abi.encodeWithSelector(IAccessControl.AccessControlUnauthorizedAccount.selector, alice, MANAGER_ROLE)
         );
 
         vm.prank(alice);
@@ -691,7 +691,7 @@ contract AllowlistHookTest is BaseTest {
 
         if (caller != hookManager) {
             vm.expectRevert(
-                abi.encodeWithSelector(IAccessControl.AccessControlUnauthorizedAccount.selector, caller, _MANAGER_ROLE)
+                abi.encodeWithSelector(IAccessControl.AccessControlUnauthorizedAccount.selector, caller, MANAGER_ROLE)
             );
         } else {
             if (swapper_ == address(0)) {
@@ -725,7 +725,7 @@ contract AllowlistHookTest is BaseTest {
         statuses_[2] = true;
 
         vm.expectRevert(
-            abi.encodeWithSelector(IAccessControl.AccessControlUnauthorizedAccount.selector, alice, _MANAGER_ROLE)
+            abi.encodeWithSelector(IAccessControl.AccessControlUnauthorizedAccount.selector, alice, MANAGER_ROLE)
         );
 
         vm.prank(alice);
@@ -778,7 +778,7 @@ contract AllowlistHookTest is BaseTest {
 
         if (caller != hookManager) {
             vm.expectRevert(
-                abi.encodeWithSelector(IAccessControl.AccessControlUnauthorizedAccount.selector, caller, _MANAGER_ROLE)
+                abi.encodeWithSelector(IAccessControl.AccessControlUnauthorizedAccount.selector, caller, MANAGER_ROLE)
             );
         } else {
             if (swappersLength != isAllowedLength) {
@@ -810,7 +810,7 @@ contract AllowlistHookTest is BaseTest {
 
     function test_setPositionManager_onlyHookManager() public {
         vm.expectRevert(
-            abi.encodeWithSelector(IAccessControl.AccessControlUnauthorizedAccount.selector, alice, _MANAGER_ROLE)
+            abi.encodeWithSelector(IAccessControl.AccessControlUnauthorizedAccount.selector, alice, MANAGER_ROLE)
         );
 
         vm.prank(alice);
@@ -882,7 +882,7 @@ contract AllowlistHookTest is BaseTest {
 
         if (caller != hookManager) {
             vm.expectRevert(
-                abi.encodeWithSelector(IAccessControl.AccessControlUnauthorizedAccount.selector, caller, _MANAGER_ROLE)
+                abi.encodeWithSelector(IAccessControl.AccessControlUnauthorizedAccount.selector, caller, MANAGER_ROLE)
             );
         } else {
             if (positionManager_ == address(0)) {
@@ -927,7 +927,7 @@ contract AllowlistHookTest is BaseTest {
         statuses_[2] = true;
 
         vm.expectRevert(
-            abi.encodeWithSelector(IAccessControl.AccessControlUnauthorizedAccount.selector, alice, _MANAGER_ROLE)
+            abi.encodeWithSelector(IAccessControl.AccessControlUnauthorizedAccount.selector, alice, MANAGER_ROLE)
         );
 
         vm.prank(alice);
@@ -992,7 +992,7 @@ contract AllowlistHookTest is BaseTest {
 
         if (caller != hookManager) {
             vm.expectRevert(
-                abi.encodeWithSelector(IAccessControl.AccessControlUnauthorizedAccount.selector, caller, _MANAGER_ROLE)
+                abi.encodeWithSelector(IAccessControl.AccessControlUnauthorizedAccount.selector, caller, MANAGER_ROLE)
             );
         } else {
             if (positionManagersLength != isAllowedLength) {
@@ -1035,7 +1035,7 @@ contract AllowlistHookTest is BaseTest {
 
     function test_setSwapRouter_onlyHookManager() public {
         vm.expectRevert(
-            abi.encodeWithSelector(IAccessControl.AccessControlUnauthorizedAccount.selector, alice, _MANAGER_ROLE)
+            abi.encodeWithSelector(IAccessControl.AccessControlUnauthorizedAccount.selector, alice, MANAGER_ROLE)
         );
 
         vm.prank(alice);
@@ -1083,7 +1083,7 @@ contract AllowlistHookTest is BaseTest {
 
         if (caller != hookManager) {
             vm.expectRevert(
-                abi.encodeWithSelector(IAccessControl.AccessControlUnauthorizedAccount.selector, caller, _MANAGER_ROLE)
+                abi.encodeWithSelector(IAccessControl.AccessControlUnauthorizedAccount.selector, caller, MANAGER_ROLE)
             );
         } else {
             if (swapRouter_ == address(0)) {
@@ -1119,7 +1119,7 @@ contract AllowlistHookTest is BaseTest {
         statuses_[2] = true;
 
         vm.expectRevert(
-            abi.encodeWithSelector(IAccessControl.AccessControlUnauthorizedAccount.selector, alice, _MANAGER_ROLE)
+            abi.encodeWithSelector(IAccessControl.AccessControlUnauthorizedAccount.selector, alice, MANAGER_ROLE)
         );
 
         vm.prank(alice);
@@ -1172,7 +1172,7 @@ contract AllowlistHookTest is BaseTest {
 
         if (caller != hookManager) {
             vm.expectRevert(
-                abi.encodeWithSelector(IAccessControl.AccessControlUnauthorizedAccount.selector, caller, _MANAGER_ROLE)
+                abi.encodeWithSelector(IAccessControl.AccessControlUnauthorizedAccount.selector, caller, MANAGER_ROLE)
             );
         } else {
             if (swapRoutersLength != isAllowedLength) {
@@ -1206,7 +1206,7 @@ contract AllowlistHookTest is BaseTest {
         address v2implementation = address(new AllowlistHookUpgrade());
 
         vm.expectRevert(
-            abi.encodeWithSelector(IAccessControl.AccessControlUnauthorizedAccount.selector, alice, _UPGRADER_ROLE)
+            abi.encodeWithSelector(IAccessControl.AccessControlUnauthorizedAccount.selector, alice, UPGRADER_ROLE)
         );
 
         vm.prank(alice);

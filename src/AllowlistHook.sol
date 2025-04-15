@@ -190,17 +190,17 @@ contract AllowlistHook is BaseTickRangeHook, IAllowlistHook {
     /* ============ External Interactive functions ============ */
 
     /// @inheritdoc IAllowlistHook
-    function setLiquidityProvidersAllowlist(bool isEnabled_) external onlyRole(_MANAGER_ROLE) {
+    function setLiquidityProvidersAllowlist(bool isEnabled_) external onlyRole(MANAGER_ROLE) {
         _setLiquidityProvidersAllowlist(isEnabled_);
     }
 
     /// @inheritdoc IAllowlistHook
-    function setSwappersAllowlist(bool isEnabled_) external onlyRole(_MANAGER_ROLE) {
+    function setSwappersAllowlist(bool isEnabled_) external onlyRole(MANAGER_ROLE) {
         _setSwappersAllowlist(isEnabled_);
     }
 
     /// @inheritdoc IAllowlistHook
-    function setLiquidityProvider(address liquidityProvider_, bool isAllowed_) external onlyRole(_MANAGER_ROLE) {
+    function setLiquidityProvider(address liquidityProvider_, bool isAllowed_) external onlyRole(MANAGER_ROLE) {
         _setLiquidityProvider(liquidityProvider_, isAllowed_);
     }
 
@@ -208,7 +208,7 @@ contract AllowlistHook is BaseTickRangeHook, IAllowlistHook {
     function setLiquidityProviders(
         address[] calldata liquidityProviders_,
         bool[] calldata isAllowed_
-    ) external onlyRole(_MANAGER_ROLE) {
+    ) external onlyRole(MANAGER_ROLE) {
         if (liquidityProviders_.length != isAllowed_.length) revert ArrayLengthMismatch();
 
         for (uint256 i_; i_ < liquidityProviders_.length; ++i_) {
@@ -217,12 +217,12 @@ contract AllowlistHook is BaseTickRangeHook, IAllowlistHook {
     }
 
     /// @inheritdoc IAllowlistHook
-    function setSwapper(address swapper_, bool isAllowed_) external onlyRole(_MANAGER_ROLE) {
+    function setSwapper(address swapper_, bool isAllowed_) external onlyRole(MANAGER_ROLE) {
         _setSwapper(swapper_, isAllowed_);
     }
 
     /// @inheritdoc IAllowlistHook
-    function setSwappers(address[] calldata swappers_, bool[] calldata isAllowed_) external onlyRole(_MANAGER_ROLE) {
+    function setSwappers(address[] calldata swappers_, bool[] calldata isAllowed_) external onlyRole(MANAGER_ROLE) {
         if (swappers_.length != isAllowed_.length) revert ArrayLengthMismatch();
 
         for (uint256 i_; i_ < swappers_.length; ++i_) {
@@ -231,7 +231,7 @@ contract AllowlistHook is BaseTickRangeHook, IAllowlistHook {
     }
 
     /// @inheritdoc IAllowlistHook
-    function setPositionManager(address positionManager_, bool isAllowed_) external onlyRole(_MANAGER_ROLE) {
+    function setPositionManager(address positionManager_, bool isAllowed_) external onlyRole(MANAGER_ROLE) {
         _setPositionManager(positionManager_, isAllowed_);
     }
 
@@ -239,7 +239,7 @@ contract AllowlistHook is BaseTickRangeHook, IAllowlistHook {
     function setPositionManagers(
         address[] calldata positionManagers_,
         bool[] calldata isAllowed_
-    ) external onlyRole(_MANAGER_ROLE) {
+    ) external onlyRole(MANAGER_ROLE) {
         if (positionManagers_.length != isAllowed_.length) revert ArrayLengthMismatch();
 
         for (uint256 i_; i_ < positionManagers_.length; ++i_) {
@@ -248,7 +248,7 @@ contract AllowlistHook is BaseTickRangeHook, IAllowlistHook {
     }
 
     /// @inheritdoc IAllowlistHook
-    function setSwapRouter(address swapRouter_, bool isAllowed_) external onlyRole(_MANAGER_ROLE) {
+    function setSwapRouter(address swapRouter_, bool isAllowed_) external onlyRole(MANAGER_ROLE) {
         _setSwapRouter(swapRouter_, isAllowed_);
     }
 
@@ -256,7 +256,7 @@ contract AllowlistHook is BaseTickRangeHook, IAllowlistHook {
     function setSwapRouters(
         address[] calldata swapRouters_,
         bool[] calldata isAllowed_
-    ) external onlyRole(_MANAGER_ROLE) {
+    ) external onlyRole(MANAGER_ROLE) {
         if (swapRouters_.length != isAllowed_.length) revert ArrayLengthMismatch();
 
         for (uint256 i_; i_ < swapRouters_.length; ++i_) {

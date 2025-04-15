@@ -70,9 +70,9 @@ contract BaseTest is Deployers, PosmTestSetup, Fuzzers {
 
     address[] public users = [admin, hookManager, upgrader, alice, bob, carol];
 
-    bytes32 internal constant _DEFAULT_ADMIN_ROLE = 0x00;
-    bytes32 internal constant _MANAGER_ROLE = keccak256("MANAGER_ROLE");
-    bytes32 internal constant _UPGRADER_ROLE = keccak256("UPGRADER_ROLE");
+    bytes32 public constant DEFAULT_ADMIN_ROLE = 0x00;
+    bytes32 public constant MANAGER_ROLE = keccak256("MANAGER_ROLE");
+    bytes32 public constant UPGRADER_ROLE = keccak256("UPGRADER_ROLE");
 
     /* ============ SetUp ============ */
 

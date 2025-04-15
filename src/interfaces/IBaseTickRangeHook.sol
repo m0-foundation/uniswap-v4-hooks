@@ -63,6 +63,12 @@ interface IBaseTickRangeHook {
 
     /* ============ External / View functions ============ */
 
+    /// @notice The role that can manage the hook.
+    function MANAGER_ROLE() external view returns (bytes32);
+
+    /// @notice The role that can upgrade the implementation.
+    function UPGRADER_ROLE() external view returns (bytes32);
+
     /// @notice Returns the lower tick of the range to limit the liquidity provision and token swaps to.
     function tickLowerBound() external view returns (int24);
 

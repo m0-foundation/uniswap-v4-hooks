@@ -26,11 +26,11 @@ abstract contract BaseTickRangeHook is IBaseTickRangeHook, BaseHookUpgradeable, 
 
     /* ============ Variables ============ */
 
-    /// @dev The role that can manage the hook.
-    bytes32 internal constant _MANAGER_ROLE = keccak256("MANAGER_ROLE");
+    /// @inheritdoc IBaseTickRangeHook
+    bytes32 public constant MANAGER_ROLE = keccak256("MANAGER_ROLE");
 
-    /// @dev The role that can upgrade the implementation.
-    bytes32 internal constant _UPGRADER_ROLE = keccak256("UPGRADER_ROLE");
+    /// @inheritdoc IBaseTickRangeHook
+    bytes32 public constant UPGRADER_ROLE = keccak256("UPGRADER_ROLE");
 
     /// @inheritdoc IBaseTickRangeHook
     int24 public tickLowerBound;
@@ -70,8 +70,8 @@ abstract contract BaseTickRangeHook is IBaseTickRangeHook, BaseHookUpgradeable, 
         if (upgrader_ == address(0)) revert ZeroUpgrader();
 
         _grantRole(DEFAULT_ADMIN_ROLE, admin_);
-        _grantRole(_MANAGER_ROLE, manager_);
-        _grantRole(_UPGRADER_ROLE, upgrader_);
+        _grantRole(MANAGER_ROLE, manager_);
+        _grantRole(UPGRADER_ROLE, upgrader_);
 
         _setTickRange(tickLowerBound_, tickUpperBound_);
     }
@@ -123,7 +123,7 @@ abstract contract BaseTickRangeHook is IBaseTickRangeHook, BaseHookUpgradeable, 
     /* ============ External Interactive functions ============ */
 
     /// @inheritdoc IBaseTickRangeHook
-    function setTickRange(int24 tickLowerBound_, int24 tickUpperBound_) external onlyRole(_MANAGER_ROLE) {
+    function setTickRange(int24 tickLowerBound_, int24 tickUpperBound_) external onlyRole(MANAGER_ROLE) {
         _setTickRange(tickLowerBound_, tickUpperBound_);
     }
 
@@ -158,7 +158,7 @@ abstract contract BaseTickRangeHook is IBaseTickRangeHook, BaseHookUpgradeable, 
 
     /**
      * @dev Called by {upgradeToAndCall} to authorize the upgrade.
-     *      Will revert if `msg.sender` has not the `_UPGRADER_ROLE`.
+     *      Will revert if `msg.sender` has not the `UPGRADER_ROLE`.
      */
-    function _authorizeUpgrade(address) internal override onlyRole(_UPGRADER_ROLE) {}
+    function _authorizeUpgrade(address) internal override onlyRole(UPGRADER_ROLE) {}
 }
