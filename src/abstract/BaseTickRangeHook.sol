@@ -17,6 +17,30 @@ import { IBaseTickRangeHook } from "../interfaces/IBaseTickRangeHook.sol";
 import { AdminMigratable } from "./AdminMigratable.sol";
 
 /**
+ * @title  Base Tick Range Hook Storage Layout
+ * @author M^0 Labs
+ * @notice Abstract contract defining the storage layout of the BaseTickRangeHook contract.
+ */
+
+abstract contract BaseTickRangeHookStorageLayout {
+    /// @custom:storage-location erc7201:M0.storage.BaseTickRangeHookV0
+    struct BaseTickRangeHookStorage {
+        int24 tickLowerBound;
+        int24 tickUpperBound;
+    }
+
+    // keccak256(abi.encode(uint256(keccak256("M0.storage.BaseTickRangeHookV0")) - 1)) & ~bytes32(uint256(0xff))
+    bytes32 private constant _BASE_TICK_RANGE_HOOK_V0_LOCATION =
+        0x0e4acb1dbeddd067e2a463e36c9921647e116f6a35d1af0e63a77cf1b7a67800;
+
+    function _getBaseTickRangeHookStorage() internal pure returns (BaseTickRangeHookStorage storage $) {
+        assembly {
+            $.slot := _BASE_TICK_RANGE_HOOK_V0_LOCATION
+        }
+    }
+}
+
+/**
  * @title  Base Tick Range Hook
  * @author M^0 Labs
  * @notice Hook restricting liquidity provision and token swaps to a specific tick range.
@@ -27,10 +51,10 @@ abstract contract BaseTickRangeHook is IBaseTickRangeHook, BaseHook, AdminMigrat
     /* ============ Variables ============ */
 
     /// @inheritdoc IBaseTickRangeHook
-    int24 public tickLowerBound;
+    bytes32 public constant MANAGER_ROLE = keccak256("MANAGER_ROLE");
 
     /// @inheritdoc IBaseTickRangeHook
-    int24 public tickUpperBound;
+    bytes32 public constant UPGRADER_ROLE = keccak256("UPGRADER_ROLE");
 
     /* ============ Constructor ============ */
 
@@ -45,8 +69,16 @@ abstract contract BaseTickRangeHook is IBaseTickRangeHook, BaseHook, AdminMigrat
         address poolManager_,
         int24 tickLowerBound_,
         int24 tickUpperBound_,
-        address owner_
+        address owner_,
+        address admin_,
+        address manager_
     ) BaseHook(IPoolManager(poolManager_)) AdminMigratable(owner_) Ownable(owner_) {
+        if (admin_ == address(0)) revert ZeroAdmin();
+        if (manager_ == address(0)) revert ZeroManager();
+
+        _grantRole(DEFAULT_ADMIN_ROLE, admin_);
+        _grantRole(MANAGER_ROLE, manager_);
+
         _setTickRange(tickLowerBound_, tickUpperBound_);
     }
 
@@ -81,7 +113,7 @@ abstract contract BaseTickRangeHook is IBaseTickRangeHook, BaseHook, AdminMigrat
      * @param  key_ The key of the pool.
      */
     function _afterSwap(PoolKey calldata key_) internal view {
-        (, int24 tickCurrent_, , ) = poolManager.getSlot0(key_.toId());
+        (, int24 tickCurrent_, , ) = _getBaseHookUpgradeableStorage().poolManager.getSlot0(key_.toId());
         _checkTick(tickCurrent_);
     }
 
@@ -90,15 +122,29 @@ abstract contract BaseTickRangeHook is IBaseTickRangeHook, BaseHook, AdminMigrat
      * @param  params_ The parameters for modifying liquidity.
      */
     function _beforeAddLiquidity(IPoolManager.ModifyLiquidityParams calldata params_) internal view {
-        if (params_.tickLower < tickLowerBound || params_.tickUpper > tickUpperBound)
-            revert InvalidTickRange(params_.tickLower, params_.tickUpper, tickLowerBound, tickUpperBound);
+        BaseTickRangeHookStorage storage $ = _getBaseTickRangeHookStorage();
+
+        if (params_.tickLower < $.tickLowerBound || params_.tickUpper > $.tickUpperBound)
+            revert InvalidTickRange(params_.tickLower, params_.tickUpper, $.tickLowerBound, $.tickUpperBound);
     }
 
     /* ============ External Interactive functions ============ */
 
     /// @inheritdoc IBaseTickRangeHook
-    function setTickRange(int24 tickLowerBound_, int24 tickUpperBound_) external onlyOwner {
+    function setTickRange(int24 tickLowerBound_, int24 tickUpperBound_) external onlyRole(MANAGER_ROLE) {
         _setTickRange(tickLowerBound_, tickUpperBound_);
+    }
+
+    /* ============ External/Public view functions ============ */
+
+    /// @inheritdoc IBaseTickRangeHook
+    function tickLowerBound() external view returns (int24) {
+        return _getBaseTickRangeHookStorage().tickLowerBound;
+    }
+
+    /// @inheritdoc IBaseTickRangeHook
+    function tickUpperBound() external view returns (int24) {
+        return _getBaseTickRangeHookStorage().tickUpperBound;
     }
 
     /* ============ Internal Interactive functions ============ */
@@ -111,8 +157,10 @@ abstract contract BaseTickRangeHook is IBaseTickRangeHook, BaseHook, AdminMigrat
     function _setTickRange(int24 tickLowerBound_, int24 tickUpperBound_) internal {
         if (tickLowerBound_ >= tickUpperBound_) revert TicksOutOfOrder(tickLowerBound_, tickUpperBound_);
 
-        tickLowerBound = tickLowerBound_;
-        tickUpperBound = tickUpperBound_;
+        BaseTickRangeHookStorage storage $ = _getBaseTickRangeHookStorage();
+
+        $.tickLowerBound = tickLowerBound_;
+        $.tickUpperBound = tickUpperBound_;
 
         emit TickRangeSet(tickLowerBound_, tickUpperBound_);
     }
@@ -124,7 +172,9 @@ abstract contract BaseTickRangeHook is IBaseTickRangeHook, BaseHook, AdminMigrat
      * @param  tick_ The tick to check.
      */
     function _checkTick(int24 tick_) internal view {
-        if (tick_ < tickLowerBound || tick_ >= tickUpperBound)
-            revert InvalidTick(tick_, tickLowerBound, tickUpperBound);
+        BaseTickRangeHookStorage storage $ = _getBaseTickRangeHookStorage();
+
+        if (tick_ < $.tickLowerBound || tick_ >= $.tickUpperBound)
+            revert InvalidTick(tick_, $.tickLowerBound, $.tickUpperBound);
     }
 }

@@ -5,9 +5,14 @@ pragma solidity 0.8.26;
 import { IHooks } from "../lib/v4-periphery/lib/v4-core/src/interfaces/IHooks.sol";
 import { IPoolManager } from "../lib/v4-periphery/lib/v4-core/src/interfaces/IPoolManager.sol";
 
+import { Actions } from "../lib/v4-periphery/src/libraries/Actions.sol";
 import { Hooks } from "../lib/v4-periphery/lib/v4-core/src/libraries/Hooks.sol";
+import { SafeCast } from "../lib/v4-periphery/lib/v4-core/src/libraries/SafeCast.sol";
 import { TickMath } from "../lib/v4-periphery/lib/v4-core/src/libraries/TickMath.sol";
 
+import { Planner, Plan } from "../lib/v4-periphery/test/shared/Planner.sol";
+
+import { Fuzzers } from "../lib/v4-periphery/lib/v4-core/src/test/Fuzzers.sol";
 import { PoolSwapTest } from "../lib/v4-periphery/lib/v4-core/src/test/PoolSwapTest.sol";
 
 import { Proxy } from "../lib/common/src/Proxy.sol";
@@ -18,7 +23,7 @@ import { IAdminMigratable } from "../src/interfaces/IAdminMigratable.sol";
 import { IBaseTickRangeHook } from "../src/interfaces/IBaseTickRangeHook.sol";
 import { IERC721Like } from "../src/interfaces/IERC721Like.sol";
 
-import { TickRangeHook } from "../src/TickRangeHook.sol";
+import { TickRangeHookHarness } from "./harness/TickRangeHookHarness.sol";
 
 import { BaseTest, Foo, Migrator } from "./utils/BaseTest.sol";
 
@@ -65,6 +70,59 @@ contract TickRangeHookTest is BaseTest {
             abi.encode(address(manager), TICK_UPPER_BOUND, TICK_UPPER_BOUND, owner),
             address(flags)
         );
+
+        tickRangeHook = TickRangeHookHarness(namespacedFlags);
+    }
+
+    /* ============ Role Management ============ */
+
+    function test_grantRole_onlyAdmin() public {
+        vm.expectRevert(
+            abi.encodeWithSelector(IAccessControl.AccessControlUnauthorizedAccount.selector, alice, DEFAULT_ADMIN_ROLE)
+        );
+
+        vm.prank(alice);
+        tickRangeHook.grantRole(DEFAULT_ADMIN_ROLE, alice);
+    }
+
+    function test_grantRole() public {
+        vm.expectEmit();
+        emit IAccessControl.RoleGranted(DEFAULT_ADMIN_ROLE, alice, admin);
+
+        vm.prank(admin);
+        tickRangeHook.grantRole(DEFAULT_ADMIN_ROLE, alice);
+    }
+
+    function test_revokeRole_onlyAdmin() public {
+        vm.expectRevert(
+            abi.encodeWithSelector(IAccessControl.AccessControlUnauthorizedAccount.selector, alice, DEFAULT_ADMIN_ROLE)
+        );
+
+        vm.prank(alice);
+        tickRangeHook.revokeRole(DEFAULT_ADMIN_ROLE, alice);
+    }
+
+    function test_revokeRole() public {
+        vm.expectEmit();
+        emit IAccessControl.RoleRevoked(MANAGER_ROLE, hookManager, admin);
+
+        vm.prank(admin);
+        tickRangeHook.revokeRole(MANAGER_ROLE, hookManager);
+    }
+
+    function test_renounceRole_onlyAdmin() public {
+        vm.expectRevert(abi.encodeWithSelector(IAccessControl.AccessControlBadConfirmation.selector));
+
+        vm.prank(alice);
+        tickRangeHook.renounceRole(DEFAULT_ADMIN_ROLE, admin);
+    }
+
+    function test_renounceRole() public {
+        vm.expectEmit();
+        emit IAccessControl.RoleRevoked(DEFAULT_ADMIN_ROLE, admin, admin);
+
+        vm.prank(admin);
+        tickRangeHook.renounceRole(DEFAULT_ADMIN_ROLE, admin);
     }
 
     /* ============ afterSwap ============ */
@@ -198,6 +256,21 @@ contract TickRangeHookTest is BaseTest {
         assertEq(tick_, 0);
     }
 
+    function testFuzz_checkTick(int24 tick_) public {
+        if (tick_ < TICK_LOWER_BOUND || tick_ >= TICK_UPPER_BOUND) {
+            vm.expectRevert(
+                abi.encodeWithSelector(
+                    IBaseTickRangeHook.InvalidTick.selector,
+                    tick_,
+                    TICK_LOWER_BOUND,
+                    TICK_UPPER_BOUND
+                )
+            );
+        }
+
+        tickRangeHook.checkTick(tick_);
+    }
+
     /* ============ beforeAddLiquidity ============ */
 
     function test_beforeAddLiquidity_invalidTickRange_outsideLowerBound() public {
@@ -255,10 +328,55 @@ contract TickRangeHookTest is BaseTest {
         assertEq(tick_, 0);
     }
 
+    function testFuzz_beforeAddLiquidity(IPoolManager.ModifyLiquidityParams memory params_) public {
+        params_ = Fuzzers.createFuzzyLiquidityParams(key, params_, SQRT_PRICE_0_0);
+
+        Plan memory planner = Planner.init().add(
+            Actions.MINT_POSITION,
+            abi.encode(
+                key,
+                params_.tickLower,
+                params_.tickUpper,
+                uint256(params_.liquidityDelta),
+                LiquidityOperationsLib.MAX_SLIPPAGE_INCREASE,
+                LiquidityOperationsLib.MAX_SLIPPAGE_INCREASE,
+                address(this),
+                ""
+            )
+        );
+
+        bytes memory calls = planner.finalizeModifyLiquidityWithClose(key);
+
+        if (params_.tickLower < TICK_LOWER_BOUND || params_.tickUpper > TICK_UPPER_BOUND) {
+            expectWrappedRevert(
+                address(tickRangeHook),
+                IHooks.beforeAddLiquidity.selector,
+                abi.encodeWithSelector(
+                    IBaseTickRangeHook.InvalidTickRange.selector,
+                    params_.tickLower,
+                    params_.tickUpper,
+                    TICK_LOWER_BOUND,
+                    TICK_UPPER_BOUND
+                )
+            );
+        }
+
+        lpm.modifyLiquidities(calls, block.timestamp + 1);
+
+        if (params_.tickLower < TICK_LOWER_BOUND || params_.tickUpper > TICK_UPPER_BOUND) return;
+
+        (uint160 sqrtPriceX96_, int24 tick_, , ) = state.getSlot0(poolId);
+
+        assertEq(sqrtPriceX96_, SQRT_PRICE_0_0);
+        assertEq(tick_, 0);
+    }
+
     /* ============ setTickRange ============ */
 
-    function test_setTickRange_onlyOwner() public {
-        vm.expectRevert(abi.encodeWithSelector(Ownable.OwnableUnauthorizedAccount.selector, alice));
+    function test_setTickRange_onlyHookManager() public {
+        vm.expectRevert(
+            abi.encodeWithSelector(IAccessControl.AccessControlUnauthorizedAccount.selector, alice, MANAGER_ROLE)
+        );
 
         vm.prank(alice);
         tickRangeHook.setTickRange(1, 2);
@@ -283,11 +401,36 @@ contract TickRangeHookTest is BaseTest {
     }
 
     function test_setTickRange() public {
-        vm.expectEmit();
-        emit IBaseTickRangeHook.TickRangeSet(1, 2);
+        int24 tickLower = 1;
+        int24 tickUpper = 2;
 
-        vm.prank(owner);
-        tickRangeHook.setTickRange(1, 2);
+        vm.expectEmit();
+        emit IBaseTickRangeHook.TickRangeSet(tickLower, tickUpper);
+
+        vm.prank(hookManager);
+        tickRangeHook.setTickRange(tickLower, tickUpper);
+
+        assertEq(tickRangeHook.tickLowerBound(), tickLower);
+        assertEq(tickRangeHook.tickUpperBound(), tickUpper);
+    }
+
+    function testFuzz_setTickRange(int24 tickLower_, int24 tickUpper_) public {
+        if (tickLower_ >= tickUpper_) {
+            vm.expectRevert(
+                abi.encodeWithSelector(IBaseTickRangeHook.TicksOutOfOrder.selector, tickLower_, tickUpper_)
+            );
+        } else {
+            vm.expectEmit();
+            emit IBaseTickRangeHook.TickRangeSet(tickLower_, tickUpper_);
+        }
+
+        vm.prank(hookManager);
+        tickRangeHook.setTickRange(tickLower_, tickUpper_);
+
+        if (tickLower_ >= tickUpper_) return;
+
+        assertEq(tickRangeHook.tickLowerBound(), tickLower_);
+        assertEq(tickRangeHook.tickUpperBound(), tickUpper_);
     }
 
     /* ============ migrate ============ */
@@ -296,8 +439,12 @@ contract TickRangeHookTest is BaseTest {
         address tickRangeHookProxy_ = address(new Proxy(address(tickRangeHook)));
         address migrator_ = address(new Migrator(address(new Foo())));
 
-        vm.expectRevert(abi.encodeWithSelector(IAdminMigratable.UnauthorizedMigration.selector));
-        IAdminMigratable(tickRangeHookProxy_).migrate(migrator_);
+        vm.expectRevert(
+            abi.encodeWithSelector(IAccessControl.AccessControlUnauthorizedAccount.selector, alice, UPGRADER_ROLE)
+        );
+
+        vm.prank(alice);
+        tickRangeHook.upgradeToAndCall(v2implementation, "");
     }
 
     function test_migrate() external {
