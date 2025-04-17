@@ -217,7 +217,7 @@ contract BaseTest is Deployers, PosmTestSetup, Fuzzers {
     }
 
     /// @dev Generates a pseudo-random array of unique addresses based on a seed and length.
-    function _generateAddressArray(uint8 seed_, uint8 len_) internal view returns (address[] memory) {
+    function _generateAddressArray(uint8 seed_, uint8 len_) internal pure returns (address[] memory) {
         address[] memory array = new address[](len_);
 
         unchecked {
@@ -230,7 +230,7 @@ contract BaseTest is Deployers, PosmTestSetup, Fuzzers {
     }
 
     /// @dev Generates a pseudo-random array of booleans based on a seed and length.
-    function _generateBooleanArray(uint8 seed_, uint8 len_) internal view returns (bool[] memory) {
+    function _generateBooleanArray(uint8 seed_, uint8 len_) internal pure returns (bool[] memory) {
         bool[] memory array = new bool[](len_);
 
         unchecked {
