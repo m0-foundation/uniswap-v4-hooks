@@ -1,6 +1,6 @@
 // SPDX-License-Identifier: UNLICENSED
 pragma solidity 0.8.26;
-
+import { console } from "../lib/forge-std/src/console.sol";
 import {
     IAccessControl
 } from "../lib/openzeppelin-contracts-upgradeable/lib/openzeppelin-contracts/contracts/access/IAccessControl.sol";
@@ -382,7 +382,7 @@ contract AllowlistHookTest is BaseTest {
 
     function test_setLiquidityProvidersAllowlist_onlyHookManager() public {
         vm.expectRevert(
-            abi.encodeWithSelector(IAccessControl.AccessControlUnauthorizedAccount.selector, alice, _MANAGER_ROLE)
+            abi.encodeWithSelector(IAccessControl.AccessControlUnauthorizedAccount.selector, alice, MANAGER_ROLE)
         );
 
         vm.prank(alice);
@@ -414,11 +414,34 @@ contract AllowlistHookTest is BaseTest {
         assertFalse(allowlistHook.isLiquidityProvidersAllowlistEnabled());
     }
 
+    function testFuzz_setLiquidityProvidersAllowlist(bool isEnabled_, uint256 index_) public {
+        address caller = _getUser(index_);
+
+        if (caller != hookManager) {
+            vm.expectRevert(
+                abi.encodeWithSelector(IAccessControl.AccessControlUnauthorizedAccount.selector, caller, MANAGER_ROLE)
+            );
+        } else {
+            // Will return early if status is the same as the current one
+            if (allowlistHook.isLiquidityProvidersAllowlistEnabled() != isEnabled_) {
+                vm.expectEmit();
+                emit IAllowlistHook.LiquidityProvidersAllowlistSet(isEnabled_);
+            }
+        }
+
+        vm.prank(caller);
+        allowlistHook.setLiquidityProvidersAllowlist(isEnabled_);
+
+        if (caller != hookManager) return;
+
+        assertEq(allowlistHook.isLiquidityProvidersAllowlistEnabled(), isEnabled_);
+    }
+
     /* ============ setSwappersAllowlist ============ */
 
     function test_setSwappersAllowlist_onlyHookManager() public {
         vm.expectRevert(
-            abi.encodeWithSelector(IAccessControl.AccessControlUnauthorizedAccount.selector, alice, _MANAGER_ROLE)
+            abi.encodeWithSelector(IAccessControl.AccessControlUnauthorizedAccount.selector, alice, MANAGER_ROLE)
         );
 
         vm.prank(alice);
@@ -450,11 +473,34 @@ contract AllowlistHookTest is BaseTest {
         assertFalse(allowlistHook.isSwappersAllowlistEnabled());
     }
 
+    function testFuzz_setSwappersAllowlist(bool isEnabled_, uint256 index_) public {
+        address caller = _getUser(index_);
+
+        if (caller != hookManager) {
+            vm.expectRevert(
+                abi.encodeWithSelector(IAccessControl.AccessControlUnauthorizedAccount.selector, caller, MANAGER_ROLE)
+            );
+        } else {
+            // Will return early if status is the same as the current one
+            if (allowlistHook.isSwappersAllowlistEnabled() != isEnabled_) {
+                vm.expectEmit();
+                emit IAllowlistHook.SwappersAllowlistSet(isEnabled_);
+            }
+        }
+
+        vm.prank(caller);
+        allowlistHook.setSwappersAllowlist(isEnabled_);
+
+        if (caller != hookManager) return;
+
+        assertEq(allowlistHook.isSwappersAllowlistEnabled(), isEnabled_);
+    }
+
     /* ============ setLiquidityProvider ============ */
 
     function test_setLiquidityProvider_onlyHookManager() public {
         vm.expectRevert(
-            abi.encodeWithSelector(IAccessControl.AccessControlUnauthorizedAccount.selector, alice, _MANAGER_ROLE)
+            abi.encodeWithSelector(IAccessControl.AccessControlUnauthorizedAccount.selector, alice, MANAGER_ROLE)
         );
 
         vm.prank(alice);
@@ -485,6 +531,31 @@ contract AllowlistHookTest is BaseTest {
         assertTrue(allowlistHook.isLiquidityProviderAllowed(alice));
     }
 
+    function testFuzz_setLiquidityProvider(address liquidityProvider_, bool isAllowed_, uint256 index_) public {
+        address caller = _getUser(index_);
+
+        if (caller != hookManager) {
+            vm.expectRevert(
+                abi.encodeWithSelector(IAccessControl.AccessControlUnauthorizedAccount.selector, caller, MANAGER_ROLE)
+            );
+        } else {
+            if (liquidityProvider_ == address(0)) {
+                vm.expectRevert(abi.encodeWithSelector(IAllowlistHook.ZeroLiquidityProvider.selector));
+                // Will return early if the status of the liquidity provider is the same as the current one
+            } else if (allowlistHook.isLiquidityProviderAllowed(liquidityProvider_) != isAllowed_) {
+                vm.expectEmit();
+                emit IAllowlistHook.LiquidityProviderSet(liquidityProvider_, isAllowed_);
+            }
+        }
+
+        vm.prank(caller);
+        allowlistHook.setLiquidityProvider(liquidityProvider_, isAllowed_);
+
+        if (caller != hookManager || liquidityProvider_ == address(0)) return;
+
+        assertEq(allowlistHook.isLiquidityProviderAllowed(liquidityProvider_), isAllowed_);
+    }
+
     /* ============ setLiquidityProviders ============ */
 
     function test_setLiquidityProviders_onlyHookManager() public {
@@ -499,7 +570,7 @@ contract AllowlistHookTest is BaseTest {
         statuses_[2] = true;
 
         vm.expectRevert(
-            abi.encodeWithSelector(IAccessControl.AccessControlUnauthorizedAccount.selector, alice, _MANAGER_ROLE)
+            abi.encodeWithSelector(IAccessControl.AccessControlUnauthorizedAccount.selector, alice, MANAGER_ROLE)
         );
 
         vm.prank(alice);
@@ -541,11 +612,50 @@ contract AllowlistHookTest is BaseTest {
         assertTrue(allowlistHook.isLiquidityProviderAllowed(carol));
     }
 
+    function testFuzz_setLiquidityProviders(uint8 seed_, uint8 len_, uint256 index_) public {
+        address caller = _getUser(index_);
+        address[] memory liquidityProviders = _generateAddressArray(seed_, len_);
+        bool[] memory isAllowed = _generateBooleanArray(seed_, len_);
+
+        uint256 liquidityProvidersLength = liquidityProviders.length;
+        uint256 isAllowedLength = isAllowed.length;
+        uint64 revertCount;
+
+        if (caller != hookManager) {
+            vm.expectRevert(
+                abi.encodeWithSelector(IAccessControl.AccessControlUnauthorizedAccount.selector, caller, MANAGER_ROLE)
+            );
+        } else {
+            if (liquidityProvidersLength != isAllowedLength) {
+                vm.expectRevert(abi.encodeWithSelector(IAllowlistHook.ArrayLengthMismatch.selector));
+            } else {
+                for (uint256 i; i < liquidityProvidersLength; ++i) {
+                    if (liquidityProviders[i] == address(0)) {
+                        revertCount++;
+                    }
+                }
+            }
+        }
+
+        if (revertCount != 0) {
+            vm.expectRevert(abi.encodeWithSelector(IAllowlistHook.ZeroLiquidityProvider.selector), revertCount);
+        }
+
+        vm.prank(caller);
+        allowlistHook.setLiquidityProviders(liquidityProviders, isAllowed);
+
+        if (caller != hookManager || liquidityProvidersLength != isAllowedLength || revertCount != 0) return;
+
+        for (uint256 j; j < liquidityProvidersLength; ++j) {
+            assertEq(allowlistHook.isLiquidityProviderAllowed(liquidityProviders[j]), isAllowed[j]);
+        }
+    }
+
     /* ============ setSwapper ============ */
 
     function test_setSwapper_onlyHookManager() public {
         vm.expectRevert(
-            abi.encodeWithSelector(IAccessControl.AccessControlUnauthorizedAccount.selector, alice, _MANAGER_ROLE)
+            abi.encodeWithSelector(IAccessControl.AccessControlUnauthorizedAccount.selector, alice, MANAGER_ROLE)
         );
 
         vm.prank(alice);
@@ -576,6 +686,31 @@ contract AllowlistHookTest is BaseTest {
         assertTrue(allowlistHook.isSwapperAllowed(alice));
     }
 
+    function testFuzz_setSwapper(address swapper_, bool isAllowed_, uint256 index_) public {
+        address caller = _getUser(index_);
+
+        if (caller != hookManager) {
+            vm.expectRevert(
+                abi.encodeWithSelector(IAccessControl.AccessControlUnauthorizedAccount.selector, caller, MANAGER_ROLE)
+            );
+        } else {
+            if (swapper_ == address(0)) {
+                vm.expectRevert(abi.encodeWithSelector(IAllowlistHook.ZeroSwapper.selector));
+                // Will return early if the status of the liquidity provider is the same as the current one
+            } else if (allowlistHook.isSwapperAllowed(swapper_) != isAllowed_) {
+                vm.expectEmit();
+                emit IAllowlistHook.SwapperSet(swapper_, isAllowed_);
+            }
+        }
+
+        vm.prank(caller);
+        allowlistHook.setSwapper(swapper_, isAllowed_);
+
+        if (caller != hookManager || swapper_ == address(0)) return;
+
+        assertEq(allowlistHook.isSwapperAllowed(swapper_), isAllowed_);
+    }
+
     /* ============ setSwappers ============ */
 
     function test_setSwappers_onlyHookManager() public {
@@ -590,7 +725,7 @@ contract AllowlistHookTest is BaseTest {
         statuses_[2] = true;
 
         vm.expectRevert(
-            abi.encodeWithSelector(IAccessControl.AccessControlUnauthorizedAccount.selector, alice, _MANAGER_ROLE)
+            abi.encodeWithSelector(IAccessControl.AccessControlUnauthorizedAccount.selector, alice, MANAGER_ROLE)
         );
 
         vm.prank(alice);
@@ -632,11 +767,50 @@ contract AllowlistHookTest is BaseTest {
         assertTrue(allowlistHook.isSwapperAllowed(carol));
     }
 
+    function testFuzz_setSwappers(uint8 seed_, uint8 len_, uint256 index_) public {
+        address caller = _getUser(index_);
+        address[] memory swappers = _generateAddressArray(seed_, len_);
+        bool[] memory isAllowed = _generateBooleanArray(seed_, len_);
+
+        uint256 swappersLength = swappers.length;
+        uint256 isAllowedLength = isAllowed.length;
+        uint64 revertCount;
+
+        if (caller != hookManager) {
+            vm.expectRevert(
+                abi.encodeWithSelector(IAccessControl.AccessControlUnauthorizedAccount.selector, caller, MANAGER_ROLE)
+            );
+        } else {
+            if (swappersLength != isAllowedLength) {
+                vm.expectRevert(abi.encodeWithSelector(IAllowlistHook.ArrayLengthMismatch.selector));
+            } else {
+                for (uint256 i; i < swappersLength; ++i) {
+                    if (swappers[i] == address(0)) {
+                        revertCount++;
+                    }
+                }
+            }
+        }
+
+        if (revertCount != 0) {
+            vm.expectRevert(abi.encodeWithSelector(IAllowlistHook.ZeroSwapper.selector), revertCount);
+        }
+
+        vm.prank(caller);
+        allowlistHook.setSwappers(swappers, isAllowed);
+
+        if (caller != hookManager || swappersLength != isAllowedLength || revertCount != 0) return;
+
+        for (uint256 j; j < swappersLength; ++j) {
+            assertEq(allowlistHook.isSwapperAllowed(swappers[j]), isAllowed[j]);
+        }
+    }
+
     /* ============ setPositionManager ============ */
 
     function test_setPositionManager_onlyHookManager() public {
         vm.expectRevert(
-            abi.encodeWithSelector(IAccessControl.AccessControlUnauthorizedAccount.selector, alice, _MANAGER_ROLE)
+            abi.encodeWithSelector(IAccessControl.AccessControlUnauthorizedAccount.selector, alice, MANAGER_ROLE)
         );
 
         vm.prank(alice);
@@ -702,6 +876,43 @@ contract AllowlistHookTest is BaseTest {
         );
     }
 
+    function testFuzz_setPositionManager(address positionManager_, bool isAllowed_, uint256 index_) public {
+        address caller = _getUser(index_);
+        uint8 initialStatus = uint8(allowlistHook.getPositionManagerStatus(positionManager_));
+
+        if (caller != hookManager) {
+            vm.expectRevert(
+                abi.encodeWithSelector(IAccessControl.AccessControlUnauthorizedAccount.selector, caller, MANAGER_ROLE)
+            );
+        } else {
+            if (positionManager_ == address(0)) {
+                vm.expectRevert(abi.encodeWithSelector(IAllowlistHook.ZeroPositionManager.selector));
+            } else if (
+                // Will return early if the status of the position manager is the same as the current one
+                (initialStatus == uint8(0) && isAllowed_) ||
+                (initialStatus == uint8(1) && !isAllowed_) ||
+                (initialStatus == uint8(2) && !isAllowed_)
+            ) {
+                vm.expectEmit();
+                emit IAllowlistHook.PositionManagerSet(positionManager_, isAllowed_);
+            }
+        }
+
+        vm.prank(caller);
+        allowlistHook.setPositionManager(positionManager_, isAllowed_);
+
+        if (caller != hookManager || positionManager_ == address(0)) return;
+
+        assertEq(
+            uint8(allowlistHook.getPositionManagerStatus(positionManager_)),
+            initialStatus == uint8(0) && !isAllowed_
+                ? uint8(IAllowlistHook.PositionManagerStatus.FORBIDDEN)
+                : isAllowed_
+                    ? uint8(IAllowlistHook.PositionManagerStatus.ALLOWED)
+                    : uint8(IAllowlistHook.PositionManagerStatus.REDUCE_ONLY)
+        );
+    }
+
     /* ============ setPositionManagers ============ */
 
     function test_setPositionManagers_onlyHookManager() public {
@@ -716,7 +927,7 @@ contract AllowlistHookTest is BaseTest {
         statuses_[2] = true;
 
         vm.expectRevert(
-            abi.encodeWithSelector(IAccessControl.AccessControlUnauthorizedAccount.selector, alice, _MANAGER_ROLE)
+            abi.encodeWithSelector(IAccessControl.AccessControlUnauthorizedAccount.selector, alice, MANAGER_ROLE)
         );
 
         vm.prank(alice);
@@ -769,11 +980,62 @@ contract AllowlistHookTest is BaseTest {
         );
     }
 
+    function testFuzz_setPositionManagers(uint8 seed_, uint8 len_, uint256 index_) public {
+        address caller = _getUser(index_);
+        address[] memory positionManagers = _generateAddressArray(seed_, len_);
+        bool[] memory isAllowed = _generateBooleanArray(seed_, len_);
+        uint8[] memory initialStatuses = new uint8[](len_);
+
+        uint256 positionManagersLength = positionManagers.length;
+        uint256 isAllowedLength = isAllowed.length;
+        uint64 revertCount;
+
+        if (caller != hookManager) {
+            vm.expectRevert(
+                abi.encodeWithSelector(IAccessControl.AccessControlUnauthorizedAccount.selector, caller, MANAGER_ROLE)
+            );
+        } else {
+            if (positionManagersLength != isAllowedLength) {
+                vm.expectRevert(abi.encodeWithSelector(IAllowlistHook.ArrayLengthMismatch.selector));
+            } else {
+                for (uint256 i; i < positionManagersLength; ++i) {
+                    address positionManager = positionManagers[i];
+
+                    if (positionManagers[i] == address(0)) {
+                        revertCount++;
+                    }
+
+                    initialStatuses[i] = uint8(allowlistHook.getPositionManagerStatus(positionManager));
+                }
+            }
+        }
+
+        if (revertCount != 0) {
+            vm.expectRevert(abi.encodeWithSelector(IAllowlistHook.ZeroPositionManager.selector), revertCount);
+        }
+
+        vm.prank(caller);
+        allowlistHook.setPositionManagers(positionManagers, isAllowed);
+
+        if (caller != hookManager || positionManagersLength != isAllowedLength || revertCount != 0) return;
+
+        for (uint256 j; j < positionManagersLength; ++j) {
+            assertEq(
+                uint8(allowlistHook.getPositionManagerStatus(positionManagers[j])),
+                initialStatuses[j] == uint8(0) && !isAllowed[j]
+                    ? uint8(IAllowlistHook.PositionManagerStatus.FORBIDDEN)
+                    : isAllowed[j]
+                        ? uint8(IAllowlistHook.PositionManagerStatus.ALLOWED)
+                        : uint8(IAllowlistHook.PositionManagerStatus.REDUCE_ONLY)
+            );
+        }
+    }
+
     /* ============ setSwapRouter ============ */
 
     function test_setSwapRouter_onlyHookManager() public {
         vm.expectRevert(
-            abi.encodeWithSelector(IAccessControl.AccessControlUnauthorizedAccount.selector, alice, _MANAGER_ROLE)
+            abi.encodeWithSelector(IAccessControl.AccessControlUnauthorizedAccount.selector, alice, MANAGER_ROLE)
         );
 
         vm.prank(alice);
@@ -816,6 +1078,33 @@ contract AllowlistHookTest is BaseTest {
         assertTrue(allowlistHook.isSwapRouterTrusted(address(mockRouter)));
     }
 
+    function testFuzz_setSwapRouter(address swapRouter_, bool isAllowed_, uint256 index_) public {
+        address caller = _getUser(index_);
+
+        if (caller != hookManager) {
+            vm.expectRevert(
+                abi.encodeWithSelector(IAccessControl.AccessControlUnauthorizedAccount.selector, caller, MANAGER_ROLE)
+            );
+        } else {
+            if (swapRouter_ == address(0)) {
+                vm.expectRevert(abi.encodeWithSelector(IAllowlistHook.ZeroSwapRouter.selector));
+            } else if (
+                // Will return early if the status of the swap router is the same as the current one
+                allowlistHook.isSwapRouterTrusted(swapRouter_) != isAllowed_
+            ) {
+                vm.expectEmit();
+                emit IAllowlistHook.SwapRouterSet(swapRouter_, isAllowed_);
+            }
+        }
+
+        vm.prank(caller);
+        allowlistHook.setSwapRouter(swapRouter_, isAllowed_);
+
+        if (caller != hookManager || swapRouter_ == address(0)) return;
+
+        assertEq(allowlistHook.isSwapRouterTrusted(swapRouter_), isAllowed_);
+    }
+
     /* ============ setSwapRouters ============ */
 
     function test_setSwapRouters_onlyHookManager() public {
@@ -830,7 +1119,7 @@ contract AllowlistHookTest is BaseTest {
         statuses_[2] = true;
 
         vm.expectRevert(
-            abi.encodeWithSelector(IAccessControl.AccessControlUnauthorizedAccount.selector, alice, _MANAGER_ROLE)
+            abi.encodeWithSelector(IAccessControl.AccessControlUnauthorizedAccount.selector, alice, MANAGER_ROLE)
         );
 
         vm.prank(alice);
@@ -872,13 +1161,52 @@ contract AllowlistHookTest is BaseTest {
         assertTrue(allowlistHook.isSwapRouterTrusted(carol));
     }
 
+    function testFuzz_setSwapRouters(uint8 seed_, uint8 len_, uint256 index_) public {
+        address caller = _getUser(index_);
+        address[] memory swapRouters = _generateAddressArray(seed_, len_);
+        bool[] memory isAllowed = _generateBooleanArray(seed_, len_);
+
+        uint256 swapRoutersLength = swapRouters.length;
+        uint256 isAllowedLength = isAllowed.length;
+        uint64 revertCount;
+
+        if (caller != hookManager) {
+            vm.expectRevert(
+                abi.encodeWithSelector(IAccessControl.AccessControlUnauthorizedAccount.selector, caller, MANAGER_ROLE)
+            );
+        } else {
+            if (swapRoutersLength != isAllowedLength) {
+                vm.expectRevert(abi.encodeWithSelector(IAllowlistHook.ArrayLengthMismatch.selector));
+            } else {
+                for (uint256 i; i < swapRoutersLength; ++i) {
+                    if (swapRouters[i] == address(0)) {
+                        revertCount++;
+                    }
+                }
+            }
+        }
+
+        if (revertCount != 0) {
+            vm.expectRevert(abi.encodeWithSelector(IAllowlistHook.ZeroSwapRouter.selector), revertCount);
+        }
+
+        vm.prank(caller);
+        allowlistHook.setSwapRouters(swapRouters, isAllowed);
+
+        if (caller != hookManager || swapRoutersLength != isAllowedLength || revertCount != 0) return;
+
+        for (uint256 j; j < swapRoutersLength; ++j) {
+            assertEq(allowlistHook.isSwapRouterTrusted(swapRouters[j]), isAllowed[j]);
+        }
+    }
+
     /* ============ upgrade ============ */
 
     function test_upgrade_onlyUpgrader() public {
         address v2implementation = address(new AllowlistHookUpgrade());
 
         vm.expectRevert(
-            abi.encodeWithSelector(IAccessControl.AccessControlUnauthorizedAccount.selector, alice, _UPGRADER_ROLE)
+            abi.encodeWithSelector(IAccessControl.AccessControlUnauthorizedAccount.selector, alice, UPGRADER_ROLE)
         );
 
         vm.prank(alice);

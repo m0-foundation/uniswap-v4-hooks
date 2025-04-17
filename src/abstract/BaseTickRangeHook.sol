@@ -17,29 +17,49 @@ import { IBaseTickRangeHook } from "../interfaces/IBaseTickRangeHook.sol";
 import { BaseHookUpgradeable } from "./BaseHookUpgradeable.sol";
 
 /**
+ * @title  Base Tick Range Hook Storage Layout
+ * @author M^0 Labs
+ * @notice Abstract contract defining the storage layout of the BaseTickRangeHook contract.
+ */
+
+abstract contract BaseTickRangeHookStorageLayout {
+    /// @custom:storage-location erc7201:M0.storage.BaseTickRangeHookV0
+    struct BaseTickRangeHookStorage {
+        int24 tickLowerBound;
+        int24 tickUpperBound;
+    }
+
+    // keccak256(abi.encode(uint256(keccak256("M0.storage.BaseTickRangeHookV0")) - 1)) & ~bytes32(uint256(0xff))
+    bytes32 private constant _BASE_TICK_RANGE_HOOK_V0_LOCATION =
+        0x0e4acb1dbeddd067e2a463e36c9921647e116f6a35d1af0e63a77cf1b7a67800;
+
+    function _getBaseTickRangeHookStorage() internal pure returns (BaseTickRangeHookStorage storage $) {
+        assembly {
+            $.slot := _BASE_TICK_RANGE_HOOK_V0_LOCATION
+        }
+    }
+}
+
+/**
  * @title  Base Tick Range Hook
  * @author M^0 Labs
  * @notice Hook restricting liquidity provision and token swaps to a specific tick range.
  */
-abstract contract BaseTickRangeHook is IBaseTickRangeHook, BaseHookUpgradeable, AccessControlUpgradeable {
+abstract contract BaseTickRangeHook is
+    IBaseTickRangeHook,
+    BaseTickRangeHookStorageLayout,
+    BaseHookUpgradeable,
+    AccessControlUpgradeable
+{
     using StateLibrary for IPoolManager;
 
     /* ============ Variables ============ */
 
-    /// @dev The default admin role. Can grant and revoke roles.
-    bytes32 internal constant _DEFAULT_ADMIN_ROLE = 0x00;
-
-    /// @dev The role that can manage the hook.
-    bytes32 internal constant _MANAGER_ROLE = keccak256("MANAGER_ROLE");
-
-    /// @dev The role that can upgrade the implementation.
-    bytes32 internal constant _UPGRADER_ROLE = keccak256("UPGRADER_ROLE");
+    /// @inheritdoc IBaseTickRangeHook
+    bytes32 public constant MANAGER_ROLE = keccak256("MANAGER_ROLE");
 
     /// @inheritdoc IBaseTickRangeHook
-    int24 public tickLowerBound;
-
-    /// @inheritdoc IBaseTickRangeHook
-    int24 public tickUpperBound;
+    bytes32 public constant UPGRADER_ROLE = keccak256("UPGRADER_ROLE");
 
     /* ============ Initializer ============ */
 
@@ -72,9 +92,9 @@ abstract contract BaseTickRangeHook is IBaseTickRangeHook, BaseHookUpgradeable, 
         if (manager_ == address(0)) revert ZeroManager();
         if (upgrader_ == address(0)) revert ZeroUpgrader();
 
-        _grantRole(_DEFAULT_ADMIN_ROLE, admin_);
-        _grantRole(_MANAGER_ROLE, manager_);
-        _grantRole(_UPGRADER_ROLE, upgrader_);
+        _grantRole(DEFAULT_ADMIN_ROLE, admin_);
+        _grantRole(MANAGER_ROLE, manager_);
+        _grantRole(UPGRADER_ROLE, upgrader_);
 
         _setTickRange(tickLowerBound_, tickUpperBound_);
     }
@@ -110,7 +130,7 @@ abstract contract BaseTickRangeHook is IBaseTickRangeHook, BaseHookUpgradeable, 
      * @param  key_ The key of the pool.
      */
     function _afterSwap(PoolKey calldata key_) internal view {
-        (, int24 tickCurrent_, , ) = poolManager.getSlot0(key_.toId());
+        (, int24 tickCurrent_, , ) = _getBaseHookUpgradeableStorage().poolManager.getSlot0(key_.toId());
         _checkTick(tickCurrent_);
     }
 
@@ -119,15 +139,29 @@ abstract contract BaseTickRangeHook is IBaseTickRangeHook, BaseHookUpgradeable, 
      * @param  params_ The parameters for modifying liquidity.
      */
     function _beforeAddLiquidity(IPoolManager.ModifyLiquidityParams calldata params_) internal view {
-        if (params_.tickLower < tickLowerBound || params_.tickUpper > tickUpperBound)
-            revert InvalidTickRange(params_.tickLower, params_.tickUpper, tickLowerBound, tickUpperBound);
+        BaseTickRangeHookStorage storage $ = _getBaseTickRangeHookStorage();
+
+        if (params_.tickLower < $.tickLowerBound || params_.tickUpper > $.tickUpperBound)
+            revert InvalidTickRange(params_.tickLower, params_.tickUpper, $.tickLowerBound, $.tickUpperBound);
     }
 
     /* ============ External Interactive functions ============ */
 
     /// @inheritdoc IBaseTickRangeHook
-    function setTickRange(int24 tickLowerBound_, int24 tickUpperBound_) external onlyRole(_MANAGER_ROLE) {
+    function setTickRange(int24 tickLowerBound_, int24 tickUpperBound_) external onlyRole(MANAGER_ROLE) {
         _setTickRange(tickLowerBound_, tickUpperBound_);
+    }
+
+    /* ============ External/Public view functions ============ */
+
+    /// @inheritdoc IBaseTickRangeHook
+    function tickLowerBound() external view returns (int24) {
+        return _getBaseTickRangeHookStorage().tickLowerBound;
+    }
+
+    /// @inheritdoc IBaseTickRangeHook
+    function tickUpperBound() external view returns (int24) {
+        return _getBaseTickRangeHookStorage().tickUpperBound;
     }
 
     /* ============ Internal Interactive functions ============ */
@@ -140,8 +174,10 @@ abstract contract BaseTickRangeHook is IBaseTickRangeHook, BaseHookUpgradeable, 
     function _setTickRange(int24 tickLowerBound_, int24 tickUpperBound_) internal {
         if (tickLowerBound_ >= tickUpperBound_) revert TicksOutOfOrder(tickLowerBound_, tickUpperBound_);
 
-        tickLowerBound = tickLowerBound_;
-        tickUpperBound = tickUpperBound_;
+        BaseTickRangeHookStorage storage $ = _getBaseTickRangeHookStorage();
+
+        $.tickLowerBound = tickLowerBound_;
+        $.tickUpperBound = tickUpperBound_;
 
         emit TickRangeSet(tickLowerBound_, tickUpperBound_);
     }
@@ -153,15 +189,17 @@ abstract contract BaseTickRangeHook is IBaseTickRangeHook, BaseHookUpgradeable, 
      * @param  tick_ The tick to check.
      */
     function _checkTick(int24 tick_) internal view {
-        if (tick_ < tickLowerBound || tick_ >= tickUpperBound)
-            revert InvalidTick(tick_, tickLowerBound, tickUpperBound);
+        BaseTickRangeHookStorage storage $ = _getBaseTickRangeHookStorage();
+
+        if (tick_ < $.tickLowerBound || tick_ >= $.tickUpperBound)
+            revert InvalidTick(tick_, $.tickLowerBound, $.tickUpperBound);
     }
 
     /* ============ Internal Upgrade function ============ */
 
     /**
      * @dev Called by {upgradeToAndCall} to authorize the upgrade.
-     *      Will revert if `msg.sender` has not the `_UPGRADER_ROLE`.
+     *      Will revert if `msg.sender` has not the `UPGRADER_ROLE`.
      */
-    function _authorizeUpgrade(address) internal override onlyRole(_UPGRADER_ROLE) {}
+    function _authorizeUpgrade(address) internal override onlyRole(UPGRADER_ROLE) {}
 }

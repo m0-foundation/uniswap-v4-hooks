@@ -12,6 +12,8 @@ import { PoolId } from "../../lib/v4-periphery/lib/v4-core/src/types/PoolId.sol"
 
 import { Deployers } from "../../lib/v4-periphery/lib/v4-core/test/utils/Deployers.sol";
 import { LiquidityAmounts } from "../../lib/v4-periphery/lib/v4-core/test/utils/LiquidityAmounts.sol";
+import { LiquidityFuzzers } from "../../lib/v4-periphery/test/shared/fuzz/LiquidityFuzzers.sol";
+import { Fuzzers } from "../../lib/v4-periphery/lib/v4-core/src/test/Fuzzers.sol";
 
 import { Actions } from "../../lib/v4-periphery/src/libraries/Actions.sol";
 import { ActionConstants } from "../../lib/v4-periphery/src/libraries/ActionConstants.sol";
@@ -32,7 +34,7 @@ import { PosmTestSetup } from "../../lib/v4-periphery/test/shared/PosmTestSetup.
 
 import { LiquidityOperationsLib } from "./helpers/LiquidityOperationsLib.sol";
 
-contract BaseTest is Deployers, PosmTestSetup {
+contract BaseTest is Deployers, PosmTestSetup, Fuzzers {
     using LiquidityOperationsLib for IPositionManager;
 
     Currency public tokenZero;
@@ -66,9 +68,11 @@ contract BaseTest is Deployers, PosmTestSetup {
     address public bob = makeAddr("bob");
     address public carol = makeAddr("carol");
 
-    bytes32 internal constant _DEFAULT_ADMIN_ROLE = 0x00;
-    bytes32 internal constant _MANAGER_ROLE = keccak256("MANAGER_ROLE");
-    bytes32 internal constant _UPGRADER_ROLE = keccak256("UPGRADER_ROLE");
+    address[] public users = [admin, hookManager, upgrader, alice, bob, carol];
+
+    bytes32 public constant DEFAULT_ADMIN_ROLE = 0x00;
+    bytes32 public constant MANAGER_ROLE = keccak256("MANAGER_ROLE");
+    bytes32 public constant UPGRADER_ROLE = keccak256("UPGRADER_ROLE");
 
     /* ============ SetUp ============ */
 
@@ -204,5 +208,37 @@ contract BaseTest is Deployers, PosmTestSetup {
                 abi.encodeWithSelector(Hooks.HookCallFailed.selector)
             )
         );
+    }
+
+    /* ============ Fuzz helpers ============ */
+
+    function _getUser(uint256 index_) internal view returns (address) {
+        return users[index_ % users.length];
+    }
+
+    /// @dev Generates a pseudo-random array of unique addresses based on a seed and length.
+    function _generateAddressArray(uint8 seed_, uint8 len_) internal pure returns (address[] memory) {
+        address[] memory array = new address[](len_);
+
+        unchecked {
+            for (uint256 i; i < len_; ++i) {
+                array[i] = address(uint160(uint256(keccak256(abi.encodePacked(seed_, i)))));
+            }
+        }
+
+        return array;
+    }
+
+    /// @dev Generates a pseudo-random array of booleans based on a seed and length.
+    function _generateBooleanArray(uint8 seed_, uint8 len_) internal pure returns (bool[] memory) {
+        bool[] memory array = new bool[](len_);
+
+        unchecked {
+            for (uint256 i; i < len_; ++i) {
+                array[i] = uint256(keccak256(abi.encodePacked(seed_, i))) & 1 == 1; // Extract least significant bit for boolean
+            }
+        }
+
+        return array;
     }
 }
