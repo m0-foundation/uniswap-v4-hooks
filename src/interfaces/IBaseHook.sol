@@ -5,7 +5,7 @@ import { IPoolManager } from "../../lib/v4-periphery/lib/v4-core/src/interfaces/
 
 /**
  * @title  Base Actions Router Like interface.
- * @author M^0 Labs
+ * @author M0 Labs
  */
 interface IBaseHook {
     /* ============ Custom Errors ============ */

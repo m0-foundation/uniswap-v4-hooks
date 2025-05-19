@@ -9,19 +9,16 @@ import { Deploy } from "../base/Deploy.s.sol";
 
 contract DeployAllowlistHookAndPool is Deploy {
     function run() public {
-        address deployer = vm.rememberKey(vm.envUint("PRIVATE_KEY"));
-
-        address admin = vm.envAddress("OWNER");
+        address admin = vm.envAddress("ADMIN");
         address manager = vm.envAddress("MANAGER");
-        address upgrader = vm.envAddress("UPGRADER");
         DeployConfig memory config = _getDeployConfig(block.chainid);
 
         vm.startBroadcast();
 
-        (, address allowlistHookProxy) = _deployAllowlistHook(deployer, admin, manager, upgrader, config);
+        address allowlistHook = _deployAllowlistHook(admin, manager, config);
 
         vm.recordLogs();
-        _deployPool(config, IHooks(allowlistHookProxy));
+        _deployPool(config, IHooks(allowlistHook));
 
         Vm.Log[] memory logs = vm.getRecordedLogs();
         _logPoolDeployment(logs);

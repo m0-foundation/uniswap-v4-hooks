@@ -5,14 +5,6 @@ import { console } from "../../lib/forge-std/src/console.sol";
 import { Script } from "../../lib/forge-std/src/Script.sol";
 import { Vm } from "../../lib/forge-std/src/Vm.sol";
 
-import { Upgrades } from "../../lib/openzeppelin-foundry-upgrades/src/Upgrades.sol";
-import { Options } from "../../lib/openzeppelin-foundry-upgrades/src/Options.sol";
-import { Utils } from "../../lib/openzeppelin-foundry-upgrades/src/internal/Utils.sol";
-
-import {
-    ERC1967Proxy
-} from "../../lib/openzeppelin-contracts-upgradeable/lib/openzeppelin-contracts/contracts/proxy/ERC1967/ERC1967Proxy.sol";
-
 import { IHooks } from "../../lib/v4-periphery/lib/v4-core/src/interfaces/IHooks.sol";
 import { IPoolManager } from "../../lib/v4-periphery/lib/v4-core/src/interfaces/IPoolManager.sol";
 
@@ -31,155 +23,79 @@ import { Config } from "./Config.sol";
 
 contract Deploy is Config, Script {
     function _deployTickRangeHook(
-        address deployer_,
         address admin_,
         address manager_,
-        address upgrader_,
         DeployConfig memory config_
-    ) internal returns (address, address) {
-        bytes memory implementationInitializeCall = abi.encodeCall(
-            TickRangeHook.initialize,
-            (config_.poolManager, config_.tickLowerBound, config_.tickUpperBound, admin_, manager_, upgrader_)
+    ) internal returns (address) {
+        // Mine a salt that will produce a hook address with the correct flags
+        (address hookAddress_, bytes32 salt_) = HookMiner.find(
+            CREATE2_DEPLOYER,
+            uint160(Hooks.BEFORE_ADD_LIQUIDITY_FLAG | Hooks.AFTER_SWAP_FLAG),
+            type(TickRangeHook).creationCode,
+            abi.encode(address(config_.poolManager), config_.tickLowerBound, config_.tickUpperBound, admin_, manager_)
         );
 
-        (address tickRangeHook, address hookAddress, bytes32 salt) = _mineHook(
-            deployer_,
-            implementationInitializeCall,
-            uint160(Hooks.BEFORE_ADD_LIQUIDITY_FLAG | Hooks.AFTER_SWAP_FLAG)
+        // Deploy the hook using CREATE2
+        TickRangeHook tickRangeHook_ = new TickRangeHook{ salt: salt_ }(
+            address(config_.poolManager),
+            config_.tickLowerBound,
+            config_.tickUpperBound,
+            admin_,
+            manager_
         );
-
-        address proxyAddress = _deployUUPSProxy("TickRangeHook.sol:TickRangeHook", implementationInitializeCall, salt);
-        TickRangeHook tickRangeHookProxy = TickRangeHook(proxyAddress);
 
         // Check that our proxy has an address that encodes the correct permissions
-        Hooks.validateHookPermissions(tickRangeHookProxy, tickRangeHookProxy.getHookPermissions());
+        Hooks.validateHookPermissions(tickRangeHook_, tickRangeHook_.getHookPermissions());
 
-        require(proxyAddress == hookAddress, "TickRangeHook: hook address mismatch");
+        require(address(tickRangeHook_) == hookAddress_, "TickRangeHook: hook address mismatch");
 
         console.log("TickRangeHook deployed!");
-        console.log("TickRangeHook implementation:", tickRangeHook);
-        console.log("TickRangeHook proxy:", proxyAddress);
+        console.log("Hook address: ", address(tickRangeHook_));
 
-        return (tickRangeHook, proxyAddress);
+        return address(tickRangeHook_);
     }
 
     function _deployAllowlistHook(
-        address deployer_,
         address admin_,
         address manager_,
-        address upgrader_,
         DeployConfig memory config_
-    ) internal returns (address, address) {
-        bytes memory implementationInitializeCall = abi.encodeCall(
-            AllowlistHook.initialize,
-            (
-                config_.posm,
+    ) internal returns (address) {
+        // Mine a salt that will produce a hook address with the correct flags
+        (address hookAddress_, bytes32 salt_) = HookMiner.find(
+            CREATE2_DEPLOYER,
+            uint160(Hooks.BEFORE_ADD_LIQUIDITY_FLAG | Hooks.BEFORE_SWAP_FLAG | Hooks.AFTER_SWAP_FLAG),
+            type(AllowlistHook).creationCode,
+            abi.encode(
+                address(config_.posm),
                 config_.swapRouter,
-                config_.poolManager,
+                address(config_.poolManager),
                 config_.tickLowerBound,
                 config_.tickUpperBound,
                 admin_,
-                manager_,
-                upgrader_
+                manager_
             )
         );
 
-        (address allowlistHook, address hookAddress, bytes32 salt) = _mineHook(
-            deployer_,
-            implementationInitializeCall,
-            uint160(Hooks.BEFORE_ADD_LIQUIDITY_FLAG | Hooks.BEFORE_SWAP_FLAG | Hooks.AFTER_SWAP_FLAG)
+        // Deploy the hook using CREATE2
+        AllowlistHook allowlistHook_ = new AllowlistHook{ salt: salt_ }(
+            address(config_.posm),
+            config_.swapRouter,
+            address(config_.poolManager),
+            config_.tickLowerBound,
+            config_.tickUpperBound,
+            admin_,
+            manager_
         );
-
-        address proxyAddress = _deployUUPSProxy("AllowlistHook.sol:AllowlistHook", implementationInitializeCall, salt);
-        AllowlistHook allowlistHookProxy = AllowlistHook(proxyAddress);
 
         // Check that our proxy has an address that encodes the correct permissions
-        Hooks.validateHookPermissions(allowlistHookProxy, allowlistHookProxy.getHookPermissions());
+        Hooks.validateHookPermissions(allowlistHook_, allowlistHook_.getHookPermissions());
 
-        require(proxyAddress == hookAddress, "AllowlistHook: hook address mismatch");
+        require(address(allowlistHook_) == hookAddress_, "AllowlistHook: hook address mismatch");
 
         console.log("AllowlistHook deployed!");
-        console.log("AllowlistHook implementation:", allowlistHook);
-        console.log("AllowlistHook proxy:", proxyAddress);
+        console.log("Hook address: ", address(allowlistHook_));
 
-        return (allowlistHook, proxyAddress);
-    }
-
-    function _mineHook(
-        address deployer_,
-        bytes memory implementationInitializeCall_,
-        uint160 flags_
-    ) internal view returns (address implementationAddress, address hookAddress, bytes32 salt) {
-        // Compute the address where the implementation will be deployed
-        implementationAddress = vm.computeCreateAddress(deployer_, vm.getNonce(deployer_));
-
-        // Mine a salt that will produce a hook address with the correct flags
-        (hookAddress, salt) = HookMiner.find(
-            CREATE2_DEPLOYER,
-            flags_,
-            type(ERC1967Proxy).creationCode,
-            abi.encode(implementationAddress, implementationInitializeCall_)
-        );
-    }
-
-    /**
-     * @dev Deploys a UUPS proxy with a salt using the given contract as the implementation.
-     * @param contractName_ Name of the contract to use as the implementation,
-     * e.g. "MyContract.sol" or "MyContract.sol:MyContract" or artifact path relative to the project root directory.
-     * @param initializerData_ Encoded calldata of the initializer function to call during creation of the proxy.
-     * @param salt_ Salt to use for the CREATE2 deployment of the proxy.
-     * @return Proxy address.
-     */
-    function _deployUUPSProxy(
-        string memory contractName_,
-        bytes memory initializerData_,
-        bytes32 salt_
-    ) internal returns (address) {
-        Options memory opts;
-        address implementation = Upgrades.deployImplementation(contractName_, opts);
-
-        return
-            _deploy(
-                "lib/openzeppelin-contracts-upgradeable/lib/openzeppelin-contracts/contracts/proxy/ERC1967/ERC1967Proxy.sol:ERC1967Proxy",
-                abi.encode(implementation, initializerData_),
-                salt_
-            );
-    }
-
-    function _deploy(
-        string memory contractName_,
-        bytes memory constructorData_,
-        bytes32 salt_
-    ) internal returns (address) {
-        bytes memory creationCode = Vm(Utils.CHEATCODE_ADDRESS).getCode(contractName_);
-        address deployedAddress = _deployFromBytecodeWithSalt(abi.encodePacked(creationCode, constructorData_), salt_);
-
-        if (deployedAddress == address(0)) {
-            revert(
-                string(
-                    abi.encodePacked(
-                        "Failed to deploy contract ",
-                        contractName_,
-                        ' using constructor data "',
-                        string(constructorData_),
-                        '"'
-                    )
-                )
-            );
-        }
-
-        return deployedAddress;
-    }
-
-    function _deployFromBytecodeWithSalt(bytes memory bytecode_, bytes32 salt_) internal returns (address) {
-        address addr;
-
-        /// @solidity memory-safe-assembly
-        assembly {
-            addr := create2(0, add(bytecode_, 32), mload(bytecode_), salt_)
-        }
-
-        return addr;
+        return address(allowlistHook_);
     }
 
     function _deployPool(DeployConfig memory config_, IHooks hook_) internal returns (PoolKey memory pool_) {

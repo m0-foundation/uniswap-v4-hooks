@@ -3,7 +3,7 @@ pragma solidity 0.8.26;
 
 /**
  * @title  Allowlist Hook Interface
- * @author M^0 Labs
+ * @author M0 Labs
  * @notice Hook restricting liquidity provision and token swaps to a specific tick range and allowlisted addresses.
  */
 interface IAllowlistHook {

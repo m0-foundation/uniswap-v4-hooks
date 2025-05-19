@@ -10,11 +10,11 @@ import { BaseTickRangeHook } from "./abstract/BaseTickRangeHook.sol";
 
 /**
  * @title  Tick Range Hook
- * @author M^0 Labs
+ * @author M0 Labs
  * @notice Hook restricting liquidity provision and token swaps to a specific tick range.
  */
 contract TickRangeHook is BaseTickRangeHook {
-    /* ============ Initializer ============ */
+    /* ============ Constructor ============ */
 
     /**
      * @notice Constructs the TickRangeHook contract.
@@ -23,25 +23,14 @@ contract TickRangeHook is BaseTickRangeHook {
      * @param  tickUpperBound_ The upper tick of the range to limit the liquidity provision and token swaps to.
      * @param  admin_           The address admnistrating the hook. Can grant and revoke roles.
      * @param  manager_         The address managing the hook.
-     * @param  upgrader_        The address allowed to upgrade the implementation.
      */
-    function initialize(
+    constructor(
         address poolManager_,
         int24 tickLowerBound_,
         int24 tickUpperBound_,
         address admin_,
-        address manager_,
-        address upgrader_
-    ) public virtual initializer {
-        __BaseTickRangeHookUpgradeable_init(
-            poolManager_,
-            tickLowerBound_,
-            tickUpperBound_,
-            admin_,
-            manager_,
-            upgrader_
-        );
-    }
+        address manager_
+    ) BaseTickRangeHook(poolManager_, tickLowerBound_, tickUpperBound_, admin_, manager_) {}
 
     /* ============ Hook functions ============ */
 

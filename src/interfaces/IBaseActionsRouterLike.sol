@@ -3,7 +3,7 @@ pragma solidity ^0.8.26;
 
 /**
  * @title  Base Actions Router Like interface.
- * @author M^0 Labs
+ * @author M0 Labs
  */
 interface IBaseActionsRouterLike {
     /**

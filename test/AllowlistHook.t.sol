@@ -1,9 +1,8 @@
 // SPDX-License-Identifier: UNLICENSED
+
 pragma solidity 0.8.26;
-import { console } from "../lib/forge-std/src/console.sol";
-import {
-    IAccessControl
-} from "../lib/openzeppelin-contracts-upgradeable/lib/openzeppelin-contracts/contracts/access/IAccessControl.sol";
+
+import { IAccessControl } from "../lib/openzeppelin-contracts/contracts/access/IAccessControl.sol";
 
 import { IHooks } from "../lib/v4-periphery/lib/v4-core/src/interfaces/IHooks.sol";
 import { IPoolManager } from "../lib/v4-periphery/lib/v4-core/src/interfaces/IPoolManager.sol";
@@ -24,48 +23,36 @@ import { IERC721Like } from "../src/interfaces/IERC721Like.sol";
 
 import { AllowlistHook } from "../src/AllowlistHook.sol";
 
+import { AllowlistHookHarness } from "./harness/AllowlistHookHarness.sol";
+
 import { LiquidityOperationsLib } from "./utils/helpers/LiquidityOperationsLib.sol";
 import { BaseTest } from "./utils/BaseTest.sol";
-import { AllowlistHookUpgrade } from "./utils/Mocks.sol";
 
 contract AllowlistHookTest is BaseTest {
     using LiquidityOperationsLib for IPositionManager;
 
-    // Deploy the implementation contract
-    AllowlistHook public allowlistHookImplementation = new AllowlistHook();
-    AllowlistHook public allowlistHook;
+    AllowlistHookHarness public allowlistHook;
 
     uint160 public flags = uint160(Hooks.BEFORE_ADD_LIQUIDITY_FLAG | Hooks.AFTER_SWAP_FLAG | Hooks.BEFORE_SWAP_FLAG);
 
     function setUp() public override {
         super.setUp();
 
-        // Deploy the proxy contract to the mined address
-        bytes memory implementationInitializeCall = abi.encodeCall(
-            AllowlistHook.initialize,
-            (
+        deployCodeTo(
+            "AllowlistHookHarness.sol",
+            abi.encode(
                 address(lpm),
                 address(swapRouter),
                 address(manager),
                 TICK_LOWER_BOUND,
                 TICK_UPPER_BOUND,
                 admin,
-                hookManager,
-                upgrader
-            )
+                hookManager
+            ),
+            address(flags)
         );
 
-        bytes memory proxyConstructorArgs = abi.encode(allowlistHookImplementation, implementationInitializeCall);
-        address namespacedFlags = address(flags ^ (0x4444 << 144)); // Namespace the hook to avoid collisions
-
-        deployCodeTo(
-            "lib/openzeppelin-contracts-upgradeable/lib/openzeppelin-contracts/contracts/proxy/ERC1967/ERC1967Proxy.sol:ERC1967Proxy",
-            proxyConstructorArgs,
-            namespacedFlags
-        );
-
-        allowlistHook = AllowlistHook(namespacedFlags);
-        Hooks.validateHookPermissions(allowlistHook, allowlistHook.getHookPermissions());
+        allowlistHook = AllowlistHookHarness(address(flags));
 
         initPool(allowlistHook);
 
@@ -1198,27 +1185,5 @@ contract AllowlistHookTest is BaseTest {
         for (uint256 j; j < swapRoutersLength; ++j) {
             assertEq(allowlistHook.isSwapRouterTrusted(swapRouters[j]), isAllowed[j]);
         }
-    }
-
-    /* ============ upgrade ============ */
-
-    function test_upgrade_onlyUpgrader() public {
-        address v2implementation = address(new AllowlistHookUpgrade());
-
-        vm.expectRevert(
-            abi.encodeWithSelector(IAccessControl.AccessControlUnauthorizedAccount.selector, alice, UPGRADER_ROLE)
-        );
-
-        vm.prank(alice);
-        allowlistHook.upgradeToAndCall(v2implementation, "");
-    }
-
-    function test_upgrade() public {
-        address v2implementation = address(new AllowlistHookUpgrade());
-
-        vm.prank(upgrader);
-        allowlistHook.upgradeToAndCall(v2implementation, "");
-
-        assertEq(AllowlistHookUpgrade(address(allowlistHook)).bar(), 1);
     }
 }

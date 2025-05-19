@@ -4,10 +4,6 @@ pragma solidity 0.8.26;
 import { Test } from "../../lib/forge-std/src/Test.sol";
 import { IERC20 } from "../../lib/forge-std/src/interfaces/IERC20.sol";
 
-import {
-    IAccessControl
-} from "../../lib/openzeppelin-contracts-upgradeable/lib/openzeppelin-contracts/contracts/access/IAccessControl.sol";
-
 import { IAllowanceTransfer } from "../../lib/v4-periphery/lib/permit2/src/interfaces/IAllowanceTransfer.sol";
 import { IHooks } from "../../lib/v4-periphery/lib/v4-core/src/interfaces/IHooks.sol";
 import { IPoolManager } from "../../lib/v4-periphery/lib/v4-core/src/interfaces/IPoolManager.sol";
@@ -51,7 +47,6 @@ contract DeployTest is Deploy, Test {
     address public constant DEPLOYER = 0xF2f1ACbe0BA726fEE8d75f3E32900526874740BB;
     address public constant ADMIN = 0x7F7489582b64ABe46c074A45d758d701c2CA5446; // MXON
     address public constant MANAGER = 0x431169728D75bd02f4053435b87D15c8d1FB2C72; // M0 Labs
-    address public constant UPGRADER = 0x431169728D75bd02f4053435b87D15c8d1FB2C72; // M0 Labs
 
     address public constant ZEROX_SETTLER = 0x0d0E364aa7852291883C162B22D6D81f6355428F;
 
@@ -67,10 +62,10 @@ contract DeployTest is Deploy, Test {
         config = _getDeployConfig(block.chainid);
 
         vm.prank(DEPLOYER);
-        (, address allowlistHookProxy_) = _deployAllowlistHook(DEPLOYER, ADMIN, MANAGER, UPGRADER, config);
+        address allowlistHook_ = _deployAllowlistHook(ADMIN, MANAGER, config);
 
-        poolKey = _deployPool(config, IHooks(allowlistHookProxy_));
-        allowlistHook = AllowlistHook(allowlistHookProxy_);
+        poolKey = _deployPool(config, IHooks(allowlistHook_));
+        allowlistHook = AllowlistHook(allowlistHook_);
 
         swapRouter = IUniversalRouterLike(config.swapRouter);
     }

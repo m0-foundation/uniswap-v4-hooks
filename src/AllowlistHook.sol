@@ -16,45 +16,45 @@ import { IAllowlistHook } from "./interfaces/IAllowlistHook.sol";
 import { IBaseActionsRouterLike } from "./interfaces/IBaseActionsRouterLike.sol";
 
 /**
- * @title  Allowlist Hook Storage Layout
- * @author M^0 Labs
- * @notice Abstract contract defining the storage layout of the AllowlistHook contract.
- */
-
-abstract contract AllowlistHookStorageLayout is IAllowlistHook {
-    /// @custom:storage-location erc7201:M0.storage.AllowlistHookV0
-    struct AllowlistHookStorage {
-        bool isLiquidityProvidersAllowlistEnabled;
-        bool isSwappersAllowlistEnabled;
-        mapping(address positionManager => PositionManagerStatus positionManagerStatus) positionManagers;
-        mapping(address swapRouter => bool isSwapRouterTrusted) swapRouters;
-        mapping(address liquidityProvider => bool isLiquidityProviderAllowed) liquidityProvidersAllowlist;
-        mapping(address swapper => bool isSwapperAllowed) swappersAllowlist;
-    }
-
-    // keccak256(abi.encode(uint256(keccak256("M0.storage.AllowlistHookV0")) - 1)) & ~bytes32(uint256(0xff))
-    bytes32 private constant _ALLOWLIST_HOOK_V0_LOCATION =
-        0x012690e2bc2d6709c0c24ad5057b6f4444803285aec60d9a2256a7c0fad1c800;
-
-    function _getAllowlistHookStorage() internal pure returns (AllowlistHookStorage storage $) {
-        assembly {
-            $.slot := _ALLOWLIST_HOOK_V0_LOCATION
-        }
-    }
-}
-
-/**
  * @title  Allowlist Hook
- * @author M^0 Labs
+ * @author M0 Labs
  * @notice Hook restricting liquidity provision and token swaps to a specific tick range and allowlisted addresses.
  */
-contract AllowlistHook is BaseTickRangeHook, AllowlistHookStorageLayout {
+contract AllowlistHook is IAllowlistHook, BaseTickRangeHook {
     using CurrencyLibrary for Currency;
 
-    /* ============ Initializer ============ */
+    /* ============ Variables ============ */
+
+    /// @inheritdoc IAllowlistHook
+    bool public isLiquidityProvidersAllowlistEnabled;
+
+    /// @inheritdoc IAllowlistHook
+    bool public isSwappersAllowlistEnabled;
 
     /**
-     * @notice Initialize the AllowlistHook contract.
+     * @notice The PositionManagerStatus for a given positionManager contract. Only trusted position managers can
+     *         invoke the beforeAddLiquidity and beforeRemoveLiquidity hooks. When a position manager is removed, it
+     *         is designated as REDUCE_ONLY to allow users to remove their liquidity or migrate to a new position
+     *         manager.
+     */
+    mapping(address positionManager => PositionManagerStatus positionManagerStatus) internal _positionManagers;
+
+    /**
+     * @notice Mapping of Swap Routers to their trusted status.
+     * @dev    Only trusted Routers can invoke the beforeSwap hook.
+     */
+    mapping(address swapRouter => bool isSwapRouterTrusted) internal _swapRouters;
+
+    /// @notice Mapping of Liquidity Providers to their allowed status.
+    mapping(address liquidityProvider => bool isLiquidityProviderAllowed) internal _liquidityProvidersAllowlist;
+
+    /// @notice Mapping of Swappers to their allowed status.
+    mapping(address swapper => bool isSwapperAllowed) internal _swappersAllowlist;
+
+    /* ============ Constructor ============ */
+
+    /**
+     * @notice Constructs the AllowlistHook contract.
      * @param  positionManager_ The initial Uniswap V4 Position Manager contract address allowed to modify liquidity.
      * @param  swapRouter_      The initial Uniswap V4 Swap Router contract address allowed to swap.
      * @param  poolManager_     The Uniswap V4 Pool Manager contract address.
@@ -62,33 +62,20 @@ contract AllowlistHook is BaseTickRangeHook, AllowlistHookStorageLayout {
      * @param  tickUpperBound_  The upper tick of the range to limit the liquidity provision and token swaps to.
      * @param  admin_           The address admnistrating the hook. Can grant and revoke roles.
      * @param  manager_         The address managing the hook.
-     * @param  upgrader_        The address allowed to upgrade the implementation.
      */
-    function initialize(
+    constructor(
         address positionManager_,
         address swapRouter_,
         address poolManager_,
         int24 tickLowerBound_,
         int24 tickUpperBound_,
         address admin_,
-        address manager_,
-        address upgrader_
-    ) public initializer {
-        __BaseTickRangeHookUpgradeable_init(
-            poolManager_,
-            tickLowerBound_,
-            tickUpperBound_,
-            admin_,
-            manager_,
-            upgrader_
-        );
-
-        AllowlistHookStorage storage $ = _getAllowlistHookStorage();
-
-        _setPositionManager($, positionManager_, true);
-        _setSwapRouter($, swapRouter_, true);
-        _setLiquidityProvidersAllowlist($, true);
-        _setSwappersAllowlist($, true);
+        address manager_
+    ) BaseTickRangeHook(poolManager_, tickLowerBound_, tickUpperBound_, admin_, manager_) {
+        _setPositionManager(positionManager_, true);
+        _setSwapRouter(swapRouter_, true);
+        _setLiquidityProvidersAllowlist(true);
+        _setSwappersAllowlist(true);
     }
 
     /* ============ Hook functions ============ */
@@ -129,10 +116,8 @@ contract AllowlistHook is BaseTickRangeHook, AllowlistHookStorageLayout {
         IPoolManager.SwapParams calldata /* params */,
         bytes calldata /* hookData */
     ) internal override returns (bytes4, BeforeSwapDelta, uint24) {
-        AllowlistHookStorage storage $ = _getAllowlistHookStorage();
-
-        if ($.isSwappersAllowlistEnabled) {
-            if (!$.swapRouters[sender_]) {
+        if (isSwappersAllowlistEnabled) {
+            if (!_swapRouters[sender_]) {
                 revert SwapRouterNotTrusted(sender_);
             }
 
@@ -175,10 +160,8 @@ contract AllowlistHook is BaseTickRangeHook, AllowlistHookStorageLayout {
         IPoolManager.ModifyLiquidityParams calldata params_,
         bytes calldata /* hookData */
     ) internal override returns (bytes4) {
-        AllowlistHookStorage storage $ = _getAllowlistHookStorage();
-
-        if ($.isLiquidityProvidersAllowlistEnabled) {
-            if ($.positionManagers[sender_] != PositionManagerStatus.ALLOWED) {
+        if (isLiquidityProvidersAllowlistEnabled) {
+            if (_positionManagers[sender_] != PositionManagerStatus.ALLOWED) {
                 revert PositionManagerNotTrusted(sender_);
             }
 
@@ -197,17 +180,17 @@ contract AllowlistHook is BaseTickRangeHook, AllowlistHookStorageLayout {
 
     /// @inheritdoc IAllowlistHook
     function setLiquidityProvidersAllowlist(bool isEnabled_) external onlyRole(MANAGER_ROLE) {
-        _setLiquidityProvidersAllowlist(_getAllowlistHookStorage(), isEnabled_);
+        _setLiquidityProvidersAllowlist(isEnabled_);
     }
 
     /// @inheritdoc IAllowlistHook
     function setSwappersAllowlist(bool isEnabled_) external onlyRole(MANAGER_ROLE) {
-        _setSwappersAllowlist(_getAllowlistHookStorage(), isEnabled_);
+        _setSwappersAllowlist(isEnabled_);
     }
 
     /// @inheritdoc IAllowlistHook
     function setLiquidityProvider(address liquidityProvider_, bool isAllowed_) external onlyRole(MANAGER_ROLE) {
-        _setLiquidityProvider(_getAllowlistHookStorage(), liquidityProvider_, isAllowed_);
+        _setLiquidityProvider(liquidityProvider_, isAllowed_);
     }
 
     /// @inheritdoc IAllowlistHook
@@ -217,32 +200,28 @@ contract AllowlistHook is BaseTickRangeHook, AllowlistHookStorageLayout {
     ) external onlyRole(MANAGER_ROLE) {
         if (liquidityProviders_.length != isAllowed_.length) revert ArrayLengthMismatch();
 
-        AllowlistHookStorage storage $ = _getAllowlistHookStorage();
-
         for (uint256 i_; i_ < liquidityProviders_.length; ++i_) {
-            _setLiquidityProvider($, liquidityProviders_[i_], isAllowed_[i_]);
+            _setLiquidityProvider(liquidityProviders_[i_], isAllowed_[i_]);
         }
     }
 
     /// @inheritdoc IAllowlistHook
     function setSwapper(address swapper_, bool isAllowed_) external onlyRole(MANAGER_ROLE) {
-        _setSwapper(_getAllowlistHookStorage(), swapper_, isAllowed_);
+        _setSwapper(swapper_, isAllowed_);
     }
 
     /// @inheritdoc IAllowlistHook
     function setSwappers(address[] calldata swappers_, bool[] calldata isAllowed_) external onlyRole(MANAGER_ROLE) {
         if (swappers_.length != isAllowed_.length) revert ArrayLengthMismatch();
 
-        AllowlistHookStorage storage $ = _getAllowlistHookStorage();
-
         for (uint256 i_; i_ < swappers_.length; ++i_) {
-            _setSwapper($, swappers_[i_], isAllowed_[i_]);
+            _setSwapper(swappers_[i_], isAllowed_[i_]);
         }
     }
 
     /// @inheritdoc IAllowlistHook
     function setPositionManager(address positionManager_, bool isAllowed_) external onlyRole(MANAGER_ROLE) {
-        _setPositionManager(_getAllowlistHookStorage(), positionManager_, isAllowed_);
+        _setPositionManager(positionManager_, isAllowed_);
     }
 
     /// @inheritdoc IAllowlistHook
@@ -252,16 +231,14 @@ contract AllowlistHook is BaseTickRangeHook, AllowlistHookStorageLayout {
     ) external onlyRole(MANAGER_ROLE) {
         if (positionManagers_.length != isAllowed_.length) revert ArrayLengthMismatch();
 
-        AllowlistHookStorage storage $ = _getAllowlistHookStorage();
-
         for (uint256 i_; i_ < positionManagers_.length; ++i_) {
-            _setPositionManager($, positionManagers_[i_], isAllowed_[i_]);
+            _setPositionManager(positionManagers_[i_], isAllowed_[i_]);
         }
     }
 
     /// @inheritdoc IAllowlistHook
     function setSwapRouter(address swapRouter_, bool isAllowed_) external onlyRole(MANAGER_ROLE) {
-        _setSwapRouter(_getAllowlistHookStorage(), swapRouter_, isAllowed_);
+        _setSwapRouter(swapRouter_, isAllowed_);
     }
 
     /// @inheritdoc IAllowlistHook
@@ -271,104 +248,84 @@ contract AllowlistHook is BaseTickRangeHook, AllowlistHookStorageLayout {
     ) external onlyRole(MANAGER_ROLE) {
         if (swapRouters_.length != isAllowed_.length) revert ArrayLengthMismatch();
 
-        AllowlistHookStorage storage $ = _getAllowlistHookStorage();
-
         for (uint256 i_; i_ < swapRouters_.length; ++i_) {
-            _setSwapRouter($, swapRouters_[i_], isAllowed_[i_]);
+            _setSwapRouter(swapRouters_[i_], isAllowed_[i_]);
         }
     }
 
     /* ============ External/Public view functions ============ */
 
     /// @inheritdoc IAllowlistHook
-    function isLiquidityProvidersAllowlistEnabled() external view returns (bool) {
-        return _getAllowlistHookStorage().isLiquidityProvidersAllowlistEnabled;
-    }
-
-    /// @inheritdoc IAllowlistHook
-    function isSwappersAllowlistEnabled() external view returns (bool) {
-        return _getAllowlistHookStorage().isSwappersAllowlistEnabled;
-    }
-
-    /// @inheritdoc IAllowlistHook
     function getPositionManagerStatus(address positionManager_) external view returns (PositionManagerStatus) {
-        return _getAllowlistHookStorage().positionManagers[positionManager_];
+        return _positionManagers[positionManager_];
     }
 
     /// @inheritdoc IAllowlistHook
     function isSwapRouterTrusted(address swapRouter_) external view returns (bool) {
-        return _getAllowlistHookStorage().swapRouters[swapRouter_];
+        return _swapRouters[swapRouter_];
     }
 
     /// @inheritdoc IAllowlistHook
     function isLiquidityProviderAllowed(address liquidityProvider_) public view returns (bool) {
-        return _getAllowlistHookStorage().liquidityProvidersAllowlist[liquidityProvider_];
+        return _liquidityProvidersAllowlist[liquidityProvider_];
     }
 
     /// @inheritdoc IAllowlistHook
     function isSwapperAllowed(address swapper_) public view returns (bool) {
-        return _getAllowlistHookStorage().swappersAllowlist[swapper_];
+        return _swappersAllowlist[swapper_];
     }
 
     /* ============ Internal Interactive functions ============ */
 
     /**
      * @notice Sets the liquidity providers allowlist status.
-     * @param  $          The AllowlistHookStorage struct.
      * @param  isEnabled_ Boolean indicating whether the liquidity providers allowlist is enabled or not.
      */
-    function _setLiquidityProvidersAllowlist(AllowlistHookStorage storage $, bool isEnabled_) internal {
-        if ($.isLiquidityProvidersAllowlistEnabled == isEnabled_) return;
+    function _setLiquidityProvidersAllowlist(bool isEnabled_) internal {
+        if (isLiquidityProvidersAllowlistEnabled == isEnabled_) return;
 
-        $.isLiquidityProvidersAllowlistEnabled = isEnabled_;
+        isLiquidityProvidersAllowlistEnabled = isEnabled_;
         emit LiquidityProvidersAllowlistSet(isEnabled_);
     }
 
     /**
      * @notice Sets the swappers allowlist status.
-     * @param  $          The AllowlistHookStorage struct.
      * @param  isEnabled_ Boolean indicating whether the swappers allowlist is enabled or not.
      */
-    function _setSwappersAllowlist(AllowlistHookStorage storage $, bool isEnabled_) internal {
-        if ($.isSwappersAllowlistEnabled == isEnabled_) return;
+    function _setSwappersAllowlist(bool isEnabled_) internal {
+        if (isSwappersAllowlistEnabled == isEnabled_) return;
 
-        $.isSwappersAllowlistEnabled = isEnabled_;
+        isSwappersAllowlistEnabled = isEnabled_;
         emit SwappersAllowlistSet(isEnabled_);
     }
 
     /**
      * @dev   Sets the allowlist status of a liquidity provider.
-     * @param $                  The AllowlistHookStorage struct.
      * @param liquidityProvider_ The address of the liquidity provider.
      * @param isAllowed_         Boolean indicating whether the liquidity provider is allowed or not.
      */
-    function _setLiquidityProvider(
-        AllowlistHookStorage storage $,
-        address liquidityProvider_,
-        bool isAllowed_
-    ) internal {
+    function _setLiquidityProvider(address liquidityProvider_, bool isAllowed_) internal {
         if (liquidityProvider_ == address(0)) revert ZeroLiquidityProvider();
-        if ($.liquidityProvidersAllowlist[liquidityProvider_] == isAllowed_) return;
+        if (_liquidityProvidersAllowlist[liquidityProvider_] == isAllowed_) return;
 
-        $.liquidityProvidersAllowlist[liquidityProvider_] = isAllowed_;
+        _liquidityProvidersAllowlist[liquidityProvider_] = isAllowed_;
         emit LiquidityProviderSet(liquidityProvider_, isAllowed_);
     }
 
     /**
      * @dev   Sets the Uniswap V4 Position Manager contract address allowed to modify liquidity.
-     * @param $                The AllowlistHookStorage struct.
      * @param positionManager_ The address of the Position Manager to set.
      * @param isAllowed_       Whether the Position Manager is allowed to modify liquidity or not.
      */
-    function _setPositionManager(AllowlistHookStorage storage $, address positionManager_, bool isAllowed_) internal {
+    function _setPositionManager(address positionManager_, bool isAllowed_) internal {
         if (positionManager_ == address(0)) revert ZeroPositionManager();
 
         // Return early if the position manager is already in the desired state.
-        if (($.positionManagers[positionManager_] == PositionManagerStatus.ALLOWED) ? isAllowed_ : !isAllowed_) {
+        if ((_positionManagers[positionManager_] == PositionManagerStatus.ALLOWED) ? isAllowed_ : !isAllowed_) {
             return;
         }
 
-        $.positionManagers[positionManager_] = isAllowed_
+        _positionManagers[positionManager_] = isAllowed_
             ? PositionManagerStatus.ALLOWED
             : PositionManagerStatus.REDUCE_ONLY;
 
@@ -377,29 +334,27 @@ contract AllowlistHook is BaseTickRangeHook, AllowlistHookStorageLayout {
 
     /**
      * @dev   Sets the allowlist status of a swapper.
-     * @param $          The AllowlistHookStorage struct.
      * @param swapper_   The address of the swapper.
      * @param isAllowed_ Boolean indicating whether the swapper is allowed or not.
      */
-    function _setSwapper(AllowlistHookStorage storage $, address swapper_, bool isAllowed_) internal {
+    function _setSwapper(address swapper_, bool isAllowed_) internal {
         if (swapper_ == address(0)) revert ZeroSwapper();
-        if ($.swappersAllowlist[swapper_] == isAllowed_) return;
+        if (_swappersAllowlist[swapper_] == isAllowed_) return;
 
-        $.swappersAllowlist[swapper_] = isAllowed_;
+        _swappersAllowlist[swapper_] = isAllowed_;
         emit SwapperSet(swapper_, isAllowed_);
     }
 
     /**
      * @dev   Sets the status of the Swap Router contract address.
-     * @param $           The AllowlistHookStorage struct.
      * @param swapRouter_ The Swap Router address.
      * @param isAllowed_  Whether the Swap Router is allowed to swap or not.
      */
-    function _setSwapRouter(AllowlistHookStorage storage $, address swapRouter_, bool isAllowed_) internal {
+    function _setSwapRouter(address swapRouter_, bool isAllowed_) internal {
         if (swapRouter_ == address(0)) revert ZeroSwapRouter();
-        if ($.swapRouters[swapRouter_] == isAllowed_) return;
+        if (_swapRouters[swapRouter_] == isAllowed_) return;
 
-        $.swapRouters[swapRouter_] = isAllowed_;
+        _swapRouters[swapRouter_] = isAllowed_;
         emit SwapRouterSet(swapRouter_, isAllowed_);
     }
 }

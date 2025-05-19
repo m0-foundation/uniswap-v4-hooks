@@ -1,4 +1,5 @@
 // SPDX-License-Identifier: UNLICENSED
+
 pragma solidity 0.8.26;
 
 import { IHooks } from "../../lib/v4-periphery/lib/v4-core/src/interfaces/IHooks.sol";
@@ -63,16 +64,14 @@ contract BaseTest is Deployers, PosmTestSetup, Fuzzers {
     address public mockPositionManager = makeAddr("positionManager");
     address public admin = makeAddr("admin");
     address public hookManager = makeAddr("hookManager");
-    address public upgrader = makeAddr("upgrader");
     address public alice = makeAddr("alice");
     address public bob = makeAddr("bob");
     address public carol = makeAddr("carol");
 
-    address[] public users = [admin, hookManager, upgrader, alice, bob, carol];
+    address[] public users = [admin, hookManager, alice, bob, carol];
 
     bytes32 public constant DEFAULT_ADMIN_ROLE = 0x00;
     bytes32 public constant MANAGER_ROLE = keccak256("MANAGER_ROLE");
-    bytes32 public constant UPGRADER_ROLE = keccak256("UPGRADER_ROLE");
 
     /* ============ SetUp ============ */
 

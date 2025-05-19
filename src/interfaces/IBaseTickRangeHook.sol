@@ -3,7 +3,7 @@ pragma solidity 0.8.26;
 
 /**
  * @title  Base Tick Range Hook Interface
- * @author M^0 Labs
+ * @author M0 Labs
  * @notice Base Hook allowing users to provide liquidity and swap tokens to a specific tick range only.
  */
 interface IBaseTickRangeHook {
@@ -48,9 +48,6 @@ interface IBaseTickRangeHook {
     /// @notice Emitted when the manager address in `initialize` is zero.
     error ZeroManager();
 
-    /// @notice Emitted when the upgrader address in `initialize` is zero.
-    error ZeroUpgrader();
-
     /* ============ External / Interactive functions ============ */
 
     /**
@@ -65,9 +62,6 @@ interface IBaseTickRangeHook {
 
     /// @notice The role that can manage the hook.
     function MANAGER_ROLE() external view returns (bytes32);
-
-    /// @notice The role that can upgrade the implementation.
-    function UPGRADER_ROLE() external view returns (bytes32);
 
     /// @notice Returns the lower tick of the range to limit the liquidity provision and token swaps to.
     function tickLowerBound() external view returns (int24);
