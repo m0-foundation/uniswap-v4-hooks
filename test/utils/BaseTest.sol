@@ -2,6 +2,9 @@
 
 pragma solidity 0.8.26;
 
+import { OperatorTestPrep } from "../../lib/predicate-contracts/test/helpers/utility/OperatorTestPrep.sol";
+import { ServiceManagerSetup } from "../../lib/predicate-contracts/test/helpers/utility/ServiceManagerSetup.sol";
+
 import { IHooks } from "../../lib/v4-periphery/lib/v4-core/src/interfaces/IHooks.sol";
 
 import { CustomRevert } from "../../lib/v4-periphery/lib/v4-core/src/libraries/CustomRevert.sol";
@@ -13,7 +16,6 @@ import { PoolId } from "../../lib/v4-periphery/lib/v4-core/src/types/PoolId.sol"
 
 import { Deployers } from "../../lib/v4-periphery/lib/v4-core/test/utils/Deployers.sol";
 import { LiquidityAmounts } from "../../lib/v4-periphery/lib/v4-core/test/utils/LiquidityAmounts.sol";
-import { LiquidityFuzzers } from "../../lib/v4-periphery/test/shared/fuzz/LiquidityFuzzers.sol";
 import { Fuzzers } from "../../lib/v4-periphery/lib/v4-core/src/test/Fuzzers.sol";
 
 import { Actions } from "../../lib/v4-periphery/src/libraries/Actions.sol";
@@ -35,7 +37,7 @@ import { PosmTestSetup } from "../../lib/v4-periphery/test/shared/PosmTestSetup.
 
 import { LiquidityOperationsLib } from "./helpers/LiquidityOperationsLib.sol";
 
-contract BaseTest is Deployers, PosmTestSetup, Fuzzers {
+contract BaseTest is Deployers, PosmTestSetup, Fuzzers, OperatorTestPrep, ServiceManagerSetup {
     using LiquidityOperationsLib for IPositionManager;
 
     Currency public tokenZero;
@@ -75,7 +77,9 @@ contract BaseTest is Deployers, PosmTestSetup, Fuzzers {
 
     /* ============ SetUp ============ */
 
-    function setUp() public virtual {
+    function setUp() public virtual override {
+        super.setUp();
+
         SQRT_PRICE_0_0 = TickMath.getSqrtPriceAtTick(0);
 
         deployFreshManagerAndRouters();

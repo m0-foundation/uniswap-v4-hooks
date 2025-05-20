@@ -9,9 +9,23 @@ contract AllowlistHookHarness is AllowlistHook {
         address positionManager_,
         address swapRouter_,
         address poolManager_,
+        address serviceManager_,
+        string memory policyID_,
         int24 tickLowerBound_,
         int24 tickUpperBound_,
         address admin_,
         address manager_
-    ) AllowlistHook(positionManager_, swapRouter_, poolManager_, tickLowerBound_, tickUpperBound_, admin_, manager_) {}
+    )
+        AllowlistHook(
+            positionManager_,
+            swapRouter_,
+            poolManager_,
+            serviceManager_,
+            policyID_,
+            tickLowerBound_,
+            tickUpperBound_,
+            admin_,
+            manager_
+        )
+    {}
 }

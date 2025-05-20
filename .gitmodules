@@ -13,3 +13,6 @@
 	path = lib/openzeppelin-contracts
 	url = https://github.com/OpenZeppelin/openzeppelin-contracts
 	branch = release-v5.3
+[submodule "lib/predicate-contracts"]
+	path = lib/predicate-contracts
+	url = https://github.com/PredicateLabs/predicate-contracts

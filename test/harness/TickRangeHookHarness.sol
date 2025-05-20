@@ -1,8 +1,6 @@
 // SPDX-License-Identifier: UNLICENSED
 pragma solidity 0.8.26;
 
-import { Hooks } from "../../lib/v4-periphery/lib/v4-core/src/libraries/Hooks.sol";
-
 import { TickRangeHook } from "../../src/TickRangeHook.sol";
 
 contract TickRangeHookHarness is TickRangeHook {

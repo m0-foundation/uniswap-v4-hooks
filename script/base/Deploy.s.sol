@@ -60,20 +60,24 @@ contract Deploy is Config, Script {
         address manager_,
         DeployConfig memory config_
     ) internal returns (address) {
+        bytes memory constructorArgs = abi.encode(
+            address(config_.posm),
+            config_.swapRouter,
+            address(config_.poolManager),
+            address(config_.serviceManager),
+            config_.policyID,
+            config_.tickLowerBound,
+            config_.tickUpperBound,
+            admin_,
+            manager_
+        );
+
         // Mine a salt that will produce a hook address with the correct flags
         (address hookAddress_, bytes32 salt_) = HookMiner.find(
             CREATE2_DEPLOYER,
             uint160(Hooks.BEFORE_ADD_LIQUIDITY_FLAG | Hooks.BEFORE_SWAP_FLAG | Hooks.AFTER_SWAP_FLAG),
             type(AllowlistHook).creationCode,
-            abi.encode(
-                address(config_.posm),
-                config_.swapRouter,
-                address(config_.poolManager),
-                config_.tickLowerBound,
-                config_.tickUpperBound,
-                admin_,
-                manager_
-            )
+            constructorArgs
         );
 
         // Deploy the hook using CREATE2
@@ -81,6 +85,8 @@ contract Deploy is Config, Script {
             address(config_.posm),
             config_.swapRouter,
             address(config_.poolManager),
+            address(config_.serviceManager),
+            config_.policyID,
             config_.tickLowerBound,
             config_.tickUpperBound,
             admin_,

@@ -4,6 +4,8 @@ pragma solidity 0.8.26;
 
 import { IAccessControl } from "../lib/openzeppelin-contracts/contracts/access/IAccessControl.sol";
 
+import { PredicateMessage } from "../lib/predicate-contracts/src/interfaces/IPredicateClient.sol";
+
 import { IHooks } from "../lib/v4-periphery/lib/v4-core/src/interfaces/IHooks.sol";
 import { IPoolManager } from "../lib/v4-periphery/lib/v4-core/src/interfaces/IPoolManager.sol";
 
@@ -21,14 +23,14 @@ import { IAllowlistHook } from "../src/interfaces/IAllowlistHook.sol";
 import { IBaseActionsRouterLike } from "../src/interfaces/IBaseActionsRouterLike.sol";
 import { IERC721Like } from "../src/interfaces/IERC721Like.sol";
 
-import { AllowlistHook } from "../src/AllowlistHook.sol";
-
 import { AllowlistHookHarness } from "./harness/AllowlistHookHarness.sol";
 
 import { LiquidityOperationsLib } from "./utils/helpers/LiquidityOperationsLib.sol";
+import { PredicateHelpers } from "./utils/helpers/PredicateHelpers.sol";
+
 import { BaseTest } from "./utils/BaseTest.sol";
 
-contract AllowlistHookTest is BaseTest {
+contract AllowlistHookTest is BaseTest, PredicateHelpers {
     using LiquidityOperationsLib for IPositionManager;
 
     AllowlistHookHarness public allowlistHook;
@@ -44,6 +46,8 @@ contract AllowlistHookTest is BaseTest {
                 address(lpm),
                 address(swapRouter),
                 address(manager),
+                address(serviceManager),
+                policyID,
                 TICK_LOWER_BOUND,
                 TICK_UPPER_BOUND,
                 admin,
@@ -57,6 +61,16 @@ contract AllowlistHookTest is BaseTest {
         initPool(allowlistHook);
 
         IERC721Like(address(lpm)).setApprovalForAll(address(allowlistHook), true);
+    }
+
+    modifier permissionedOperators() {
+        vm.startPrank(address(this));
+        address[] memory operators = new address[](2);
+        operators[0] = operatorOne;
+        operators[1] = operatorTwo;
+        serviceManager.addPermissionedOperators(operators);
+        vm.stopPrank();
+        _;
     }
 
     /* ============ beforeSwap ============ */
@@ -89,8 +103,57 @@ contract AllowlistHookTest is BaseTest {
         mockRouter.executeActions{ value: value_ }(data_);
     }
 
-    function test_beforeSwap_zeroForOne_exactInput() public {
-        int256 amountSpecified_ = 10_000e18;
+    function test_beforeSwap_invalidPredicateMessage() public permissionedOperators prepOperatorRegistration(true) {
+        int256 amountSpecified = 10_000e18;
+        string memory taskId = "unique-identifier";
+        PredicateMessage memory message = _getPredicateMessage(
+            key,
+            taskId,
+            policyID,
+            operatorOneAlias,
+            operatorOneAliasPk,
+            address(serviceManager),
+            address(this),
+            address(allowlistHook),
+            true,
+            amountSpecified
+        );
+
+        vm.prank(hookManager);
+        allowlistHook.setLiquidityProvider(address(this), true);
+
+        mintNewPosition(SQRT_PRICE_0_0, TICK_LOWER_BOUND, TICK_UPPER_BOUND, 1_000_000e18, 1_000_000e18);
+
+        vm.prank(hookManager);
+        allowlistHook.setSwapper(address(this), true);
+
+        vm.mockCall(
+            address(swapRouter),
+            abi.encodeWithSelector(IBaseActionsRouterLike.msgSender.selector),
+            abi.encode(address(this))
+        );
+
+        expectWrappedRevert(
+            address(allowlistHook),
+            IHooks.beforeSwap.selector,
+            abi.encodeWithSelector(0x08c379a0, "Predicate.validateSignatures: Invalid signature") // Error selector
+        );
+
+        swapRouter.swap(
+            key,
+            IPoolManager.SwapParams({
+                zeroForOne: false,
+                amountSpecified: amountSpecified,
+                sqrtPriceLimitX96: SQRT_PRICE_0_0 + 1
+            }),
+            PoolSwapTest.TestSettings({ takeClaims: false, settleUsingBurn: false }),
+            abi.encode(message)
+        );
+    }
+
+    function test_beforeSwap_predicateCheckDisabled() public {
+        vm.prank(hookManager);
+        allowlistHook.setPredicateCheck(false);
 
         vm.prank(hookManager);
         allowlistHook.setLiquidityProvider(address(this), true);
@@ -113,7 +176,7 @@ contract AllowlistHookTest is BaseTest {
             key,
             IPoolManager.SwapParams({
                 zeroForOne: true,
-                amountSpecified: -amountSpecified_,
+                amountSpecified: -10_000e18,
                 sqrtPriceLimitX96: TickMath.getSqrtPriceAtTick(-1)
             }),
             PoolSwapTest.TestSettings({ takeClaims: false, settleUsingBurn: false }),
@@ -121,8 +184,21 @@ contract AllowlistHookTest is BaseTest {
         );
     }
 
-    function test_beforeSwap_zeroForOne_exactOutput() public {
-        int256 amountSpecified_ = 10_000e18;
+    function test_beforeSwap_zeroForOne_exactInput() public permissionedOperators prepOperatorRegistration(true) {
+        int256 amountSpecified = 10_000e18;
+        string memory taskId = "unique-identifier";
+        PredicateMessage memory message = _getPredicateMessage(
+            key,
+            taskId,
+            policyID,
+            operatorOneAlias,
+            operatorOneAliasPk,
+            address(serviceManager),
+            address(this),
+            address(allowlistHook),
+            true,
+            -amountSpecified
+        );
 
         vm.prank(hookManager);
         allowlistHook.setLiquidityProvider(address(this), true);
@@ -145,16 +221,74 @@ contract AllowlistHookTest is BaseTest {
             key,
             IPoolManager.SwapParams({
                 zeroForOne: true,
-                amountSpecified: amountSpecified_,
+                amountSpecified: -amountSpecified,
                 sqrtPriceLimitX96: TickMath.getSqrtPriceAtTick(-1)
             }),
             PoolSwapTest.TestSettings({ takeClaims: false, settleUsingBurn: false }),
-            ""
+            abi.encode(message)
         );
     }
 
-    function test_beforeSwap_oneForZero_exactInput() public {
-        int256 amountSpecified_ = 10_000e18;
+    function test_beforeSwap_zeroForOne_exactOutput() public permissionedOperators prepOperatorRegistration(true) {
+        int256 amountSpecified = 10_000e18;
+        string memory taskId = "unique-identifier";
+        PredicateMessage memory message = _getPredicateMessage(
+            key,
+            taskId,
+            policyID,
+            operatorOneAlias,
+            operatorOneAliasPk,
+            address(serviceManager),
+            address(this),
+            address(allowlistHook),
+            true,
+            amountSpecified
+        );
+
+        vm.prank(hookManager);
+        allowlistHook.setLiquidityProvider(address(this), true);
+
+        mintNewPosition(SQRT_PRICE_0_0, TICK_LOWER_BOUND, TICK_UPPER_BOUND, 1_000_000e18, 1_000_000e18);
+
+        vm.prank(hookManager);
+        allowlistHook.setTickRange(-1, TICK_UPPER_BOUND);
+
+        vm.prank(hookManager);
+        allowlistHook.setSwapper(address(this), true);
+
+        vm.mockCall(
+            address(swapRouter),
+            abi.encodeWithSelector(IBaseActionsRouterLike.msgSender.selector),
+            abi.encode(address(this))
+        );
+
+        swapRouter.swap(
+            key,
+            IPoolManager.SwapParams({
+                zeroForOne: true,
+                amountSpecified: amountSpecified,
+                sqrtPriceLimitX96: TickMath.getSqrtPriceAtTick(-1)
+            }),
+            PoolSwapTest.TestSettings({ takeClaims: false, settleUsingBurn: false }),
+            abi.encode(message)
+        );
+    }
+
+    function test_beforeSwap_oneForZero_exactInput() public permissionedOperators prepOperatorRegistration(true) {
+        int256 amountSpecified = 10_000e18;
+        string memory taskId = "unique-identifier";
+        PredicateMessage memory message = _getPredicateMessage(
+            key,
+            taskId,
+            policyID,
+            operatorOneAlias,
+            operatorOneAliasPk,
+            address(serviceManager),
+            address(this),
+            address(allowlistHook),
+            false,
+            -amountSpecified
+        );
 
         vm.prank(hookManager);
         allowlistHook.setLiquidityProvider(address(this), true);
@@ -174,16 +308,29 @@ contract AllowlistHookTest is BaseTest {
             key,
             IPoolManager.SwapParams({
                 zeroForOne: false,
-                amountSpecified: -amountSpecified_,
+                amountSpecified: -amountSpecified,
                 sqrtPriceLimitX96: SQRT_PRICE_0_0 + 1
             }),
             PoolSwapTest.TestSettings({ takeClaims: false, settleUsingBurn: false }),
-            ""
+            abi.encode(message)
         );
     }
 
-    function test_beforeSwap_oneForZero_exactOutput() public {
-        int256 amountSpecified_ = 10_000e18;
+    function test_beforeSwap_oneForZero_exactOutput() public permissionedOperators prepOperatorRegistration(true) {
+        int256 amountSpecified = 10_000e18;
+        string memory taskId = "unique-identifier";
+        PredicateMessage memory message = _getPredicateMessage(
+            key,
+            taskId,
+            policyID,
+            operatorOneAlias,
+            operatorOneAliasPk,
+            address(serviceManager),
+            address(this),
+            address(allowlistHook),
+            false,
+            amountSpecified
+        );
 
         vm.prank(hookManager);
         allowlistHook.setLiquidityProvider(address(this), true);
@@ -203,15 +350,30 @@ contract AllowlistHookTest is BaseTest {
             key,
             IPoolManager.SwapParams({
                 zeroForOne: false,
-                amountSpecified: amountSpecified_,
+                amountSpecified: amountSpecified,
                 sqrtPriceLimitX96: SQRT_PRICE_0_0 + 1
             }),
             PoolSwapTest.TestSettings({ takeClaims: false, settleUsingBurn: false }),
-            ""
+            abi.encode(message)
         );
     }
 
-    function test_beforeSwap() public {
+    function test_beforeSwap() public permissionedOperators prepOperatorRegistration(true) {
+        int256 amountSpecified = 10_000e18;
+        string memory taskId = "unique-identifier";
+        PredicateMessage memory message = _getPredicateMessage(
+            key,
+            taskId,
+            policyID,
+            operatorOneAlias,
+            operatorOneAliasPk,
+            address(serviceManager),
+            address(this),
+            address(allowlistHook),
+            false,
+            amountSpecified
+        );
+
         vm.prank(hookManager);
         allowlistHook.setLiquidityProvider(address(this), true);
 
@@ -238,11 +400,11 @@ contract AllowlistHookTest is BaseTest {
             key,
             IPoolManager.SwapParams({
                 zeroForOne: false,
-                amountSpecified: 10_000e18,
+                amountSpecified: amountSpecified,
                 sqrtPriceLimitX96: SQRT_PRICE_0_0 + 1
             }),
             PoolSwapTest.TestSettings({ takeClaims: false, settleUsingBurn: false }),
-            ""
+            abi.encode(message)
         );
 
         (uint160 sqrtPriceX96_, int24 tick_, , ) = state.getSlot0(poolId);
@@ -363,6 +525,72 @@ contract AllowlistHookTest is BaseTest {
 
         // But should not be able to add liquidity anymore via this Position Manager.
         lpm.mint(positionConfig_, positionLiquidity_, address(this), "");
+    }
+
+    /* ============ setPredicateCheck ============ */
+
+    function test_setPredicateCheck_onlyHookManager() public {
+        vm.expectRevert(
+            abi.encodeWithSelector(IAccessControl.AccessControlUnauthorizedAccount.selector, alice, MANAGER_ROLE)
+        );
+
+        vm.prank(alice);
+        allowlistHook.setPredicateCheck(false);
+    }
+
+    function test_setPredicateCheck() public {
+        // Enabled by default at deployment
+        assertTrue(allowlistHook.isPredicateCheckEnabled());
+
+        bool isCheckEnabled = false;
+
+        vm.expectEmit();
+        emit IAllowlistHook.PredicateCheckSet(isCheckEnabled);
+
+        vm.prank(hookManager);
+        allowlistHook.setPredicateCheck(isCheckEnabled);
+    }
+
+    /* ============ setPredicateManager ============ */
+
+    function test_setPredicateManager_onlyHookManager() public {
+        vm.expectRevert(
+            abi.encodeWithSelector(IAccessControl.AccessControlUnauthorizedAccount.selector, alice, MANAGER_ROLE)
+        );
+
+        vm.prank(alice);
+        allowlistHook.setPredicateManager(makeAddr("newPredicateManager"));
+    }
+
+    function test_setPredicateManager() public {
+        address newPredicateManager = makeAddr("newPredicateManager");
+
+        vm.expectEmit();
+        emit IAllowlistHook.PredicateManagerUpdated(newPredicateManager);
+
+        vm.prank(hookManager);
+        allowlistHook.setPredicateManager(newPredicateManager);
+    }
+
+    /* ============ setPolicy ============ */
+
+    function test_setPolicy_onlyHookManager() public {
+        vm.expectRevert(
+            abi.encodeWithSelector(IAccessControl.AccessControlUnauthorizedAccount.selector, alice, MANAGER_ROLE)
+        );
+
+        vm.prank(alice);
+        allowlistHook.setPolicy("test-policy");
+    }
+
+    function test_setPolicy() public {
+        string memory policyID = "test-policy";
+
+        vm.expectEmit();
+        emit IAllowlistHook.PolicyUpdated(policyID);
+
+        vm.prank(hookManager);
+        allowlistHook.setPolicy(policyID);
     }
 
     /* ============ setLiquidityProvidersAllowlist ============ */

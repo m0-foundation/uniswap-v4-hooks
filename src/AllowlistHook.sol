@@ -1,6 +1,9 @@
 // SPDX-License-Identifier: BUSL-1.1
 pragma solidity 0.8.26;
 
+import { IPredicateClient, PredicateMessage } from "../lib/predicate-contracts/src/interfaces/IPredicateClient.sol";
+import { PredicateClient } from "../lib/predicate-contracts/src/mixins/PredicateClient.sol";
+
 import { IPoolManager } from "../lib/v4-periphery/lib/v4-core/src/interfaces/IPoolManager.sol";
 
 import { Hooks } from "../lib/v4-periphery/lib/v4-core/src/libraries/Hooks.sol";
@@ -20,13 +23,16 @@ import { IBaseActionsRouterLike } from "./interfaces/IBaseActionsRouterLike.sol"
  * @author M0 Labs
  * @notice Hook restricting liquidity provision and token swaps to a specific tick range and allowlisted addresses.
  */
-contract AllowlistHook is IAllowlistHook, BaseTickRangeHook {
+contract AllowlistHook is IAllowlistHook, BaseTickRangeHook, PredicateClient {
     using CurrencyLibrary for Currency;
 
     /* ============ Variables ============ */
 
     /// @inheritdoc IAllowlistHook
     bool public isLiquidityProvidersAllowlistEnabled;
+
+    /// @inheritdoc IAllowlistHook
+    bool public isPredicateCheckEnabled;
 
     /// @inheritdoc IAllowlistHook
     bool public isSwappersAllowlistEnabled;
@@ -58,6 +64,8 @@ contract AllowlistHook is IAllowlistHook, BaseTickRangeHook {
      * @param  positionManager_ The initial Uniswap V4 Position Manager contract address allowed to modify liquidity.
      * @param  swapRouter_      The initial Uniswap V4 Swap Router contract address allowed to swap.
      * @param  poolManager_     The Uniswap V4 Pool Manager contract address.
+     * @param  serviceManager_  Predicate's service manager contract address.
+     * @param  policyID_        Predicate's policy ID.
      * @param  tickLowerBound_  The lower tick of the range to limit the liquidity provision and token swaps to.
      * @param  tickUpperBound_  The upper tick of the range to limit the liquidity provision and token swaps to.
      * @param  admin_           The address admnistrating the hook. Can grant and revoke roles.
@@ -67,14 +75,21 @@ contract AllowlistHook is IAllowlistHook, BaseTickRangeHook {
         address positionManager_,
         address swapRouter_,
         address poolManager_,
+        address serviceManager_,
+        string memory policyID_,
         int24 tickLowerBound_,
         int24 tickUpperBound_,
         address admin_,
         address manager_
     ) BaseTickRangeHook(poolManager_, tickLowerBound_, tickUpperBound_, admin_, manager_) {
+        _initPredicateClient(serviceManager_, policyID_);
+        emit PredicateManagerUpdated(serviceManager_);
+        emit PolicyUpdated(policyID_);
+
         _setPositionManager(positionManager_, true);
         _setSwapRouter(swapRouter_, true);
         _setLiquidityProvidersAllowlist(true);
+        _setPredicateCheck(true);
         _setSwappersAllowlist(true);
     }
 
@@ -107,14 +122,17 @@ contract AllowlistHook is IAllowlistHook, BaseTickRangeHook {
     /**
      * @dev    Hook that is called before a swap is executed.
      * @dev    Will revert if the sender is not allowed to swap.
-     * @param  sender_ The address of the sender initiating the swap (i.e. most commonly the Swap Router).
+     * @param  sender_   The address of the sender initiating the swap (i.e. most commonly the Swap Router).
+     * @param  key_      Underlying pool configuration information.
+     * @param  params_   Swap parameters including direction and amount.
+     * @param  hookData_ Encoded authorization message from Predicate.
      * @return A tuple containing the selector of this function, the delta for the swap, and the LP fee.
      */
     function _beforeSwap(
         address sender_,
-        PoolKey calldata /* poolKey */,
-        IPoolManager.SwapParams calldata /* params */,
-        bytes calldata /* hookData */
+        PoolKey calldata key_,
+        IPoolManager.SwapParams calldata params_,
+        bytes calldata hookData_
     ) internal override returns (bytes4, BeforeSwapDelta, uint24) {
         if (isSwappersAllowlistEnabled) {
             if (!_swapRouters[sender_]) {
@@ -123,8 +141,33 @@ contract AllowlistHook is IAllowlistHook, BaseTickRangeHook {
 
             address caller_ = IBaseActionsRouterLike(sender_).msgSender();
 
+            // NOTE: Revert early if the caller is not allowed to swap.
             if (!isSwapperAllowed(caller_)) {
                 revert SwapperNotAllowed(caller_);
+            }
+
+            // NOTE: Bypass the Predicate check if disabled.
+            if (!isPredicateCheckEnabled) {
+                return (this.beforeSwap.selector, BeforeSwapDeltaLibrary.ZERO_DELTA, 0);
+            }
+
+            // NOTE: Otherwise, perform the check.
+            PredicateMessage memory predicateMessage_ = abi.decode(hookData_, (PredicateMessage));
+
+            bytes memory encodeSigAndArgs_ = abi.encodeWithSignature(
+                "_beforeSwap(address,address,address,uint24,int24,address,bool,int256)",
+                caller_,
+                key_.currency0,
+                key_.currency1,
+                key_.fee,
+                key_.tickSpacing,
+                address(key_.hooks),
+                params_.zeroForOne,
+                params_.amountSpecified
+            );
+
+            if (!_authorizeTransaction(predicateMessage_, encodeSigAndArgs_, caller_, 0)) {
+                revert PredicateAuthorizationFailed(caller_);
             }
         }
 
@@ -150,23 +193,25 @@ contract AllowlistHook is IAllowlistHook, BaseTickRangeHook {
     /**
      * @dev    Hook that is called before liquidity is added.
      * @dev    Will revert if the sender is not allowed to add liquidity.
-     * @param  sender_ The address of the sender adding liquidity (i.e. most commonly the Position Manager).
-     * @param  params_ The parameters for modifying liquidity.
+     * @param  sender_   The address of the sender initiating the addition of liquidity (i.e. most commonly the Position Manager).
+     * @param  params_   The parameters for modifying liquidity.
      * @return The selector of this function.
      */
     function _beforeAddLiquidity(
         address sender_,
-        PoolKey calldata /* key */,
+        PoolKey calldata /* key_ */,
         IPoolManager.ModifyLiquidityParams calldata params_,
-        bytes calldata /* hookData */
+        bytes calldata /* hookData_ */
     ) internal override returns (bytes4) {
         if (isLiquidityProvidersAllowlistEnabled) {
+            // NOTE: revert early if the Position Manager is not trusted.
             if (_positionManagers[sender_] != PositionManagerStatus.ALLOWED) {
                 revert PositionManagerNotTrusted(sender_);
             }
 
             address caller_ = IBaseActionsRouterLike(sender_).msgSender();
 
+            // NOTE: Revert early if the caller is not allowed to add liquidity.
             if (!isLiquidityProviderAllowed(caller_)) {
                 revert LiquidityProviderNotAllowed(caller_);
             }
@@ -177,6 +222,23 @@ contract AllowlistHook is IAllowlistHook, BaseTickRangeHook {
     }
 
     /* ============ External Interactive functions ============ */
+
+    /// @inheritdoc IAllowlistHook
+    function setPredicateCheck(bool isEnabled_) external onlyRole(MANAGER_ROLE) {
+        _setPredicateCheck(isEnabled_);
+    }
+
+    /// @inheritdoc IPredicateClient
+    function setPredicateManager(address predicateManager_) external onlyRole(MANAGER_ROLE) {
+        _setPredicateManager(predicateManager_);
+        emit PredicateManagerUpdated(predicateManager_);
+    }
+
+    /// @inheritdoc IPredicateClient
+    function setPolicy(string memory policyID_) external onlyRole(MANAGER_ROLE) {
+        _setPolicy(policyID_);
+        emit PolicyUpdated(policyID_);
+    }
 
     /// @inheritdoc IAllowlistHook
     function setLiquidityProvidersAllowlist(bool isEnabled_) external onlyRole(MANAGER_ROLE) {
@@ -286,6 +348,17 @@ contract AllowlistHook is IAllowlistHook, BaseTickRangeHook {
 
         isLiquidityProvidersAllowlistEnabled = isEnabled_;
         emit LiquidityProvidersAllowlistSet(isEnabled_);
+    }
+
+    /**
+     * @notice Sets the Predicate check status.
+     * @param  isEnabled_ Boolean indicating whether the Predicate check is enabled or not.
+     */
+    function _setPredicateCheck(bool isEnabled_) internal {
+        if (isPredicateCheckEnabled == isEnabled_) return;
+
+        isPredicateCheckEnabled = isEnabled_;
+        emit PredicateCheckSet(isEnabled_);
     }
 
     /**

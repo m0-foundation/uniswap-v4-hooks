@@ -4,15 +4,16 @@ pragma solidity 0.8.26;
 import { Test } from "../../lib/forge-std/src/Test.sol";
 import { IERC20 } from "../../lib/forge-std/src/interfaces/IERC20.sol";
 
+import { PredicateMessage } from "../../lib/predicate-contracts/src/interfaces/IPredicateClient.sol";
+import { IPredicateManager, Task } from "../../lib/predicate-contracts/src/interfaces/IPredicateManager.sol";
+
 import { IAllowanceTransfer } from "../../lib/v4-periphery/lib/permit2/src/interfaces/IAllowanceTransfer.sol";
 import { IHooks } from "../../lib/v4-periphery/lib/v4-core/src/interfaces/IHooks.sol";
 import { IPoolManager } from "../../lib/v4-periphery/lib/v4-core/src/interfaces/IPoolManager.sol";
 import { StateLibrary } from "../../lib/v4-periphery/lib/v4-core/src/libraries/StateLibrary.sol";
 import { TickMath } from "../../lib/v4-periphery/lib/v4-core/src/libraries/TickMath.sol";
-import { Currency } from "../../lib/v4-periphery/lib/v4-core/src/types/Currency.sol";
 import { PoolKey } from "../../lib/v4-periphery/lib/v4-core/src/types/PoolKey.sol";
 
-import { PoolSwapTest } from "../../lib/v4-periphery/lib/v4-core/src/test/PoolSwapTest.sol";
 import { LiquidityAmounts } from "../../lib/v4-periphery/lib/v4-core/test/utils/LiquidityAmounts.sol";
 
 import { IV4Router } from "../../lib/v4-periphery/src/interfaces/IV4Router.sol";
@@ -22,17 +23,15 @@ import { Actions } from "../../lib/v4-periphery/src/libraries/Actions.sol";
 
 import { PositionConfig } from "../../lib/v4-periphery/test/shared/PositionConfig.sol";
 
-import { IAllowlistHook } from "../../src/interfaces/IAllowlistHook.sol";
-import { IBaseHook } from "../../src/interfaces/IBaseHook.sol";
-
 import { AllowlistHook } from "../../src/AllowlistHook.sol";
 
 import { Deploy } from "../../script/base/Deploy.s.sol";
 
 import { LiquidityOperationsLib } from "../utils/helpers/LiquidityOperationsLib.sol";
+import { PredicateHelpers } from "../utils/helpers/PredicateHelpers.sol";
 import { IUniversalRouterLike } from "../utils/interfaces/IUniversalRouterLike.sol";
 
-contract DeployTest is Deploy, Test {
+contract DeployTest is Deploy, Test, PredicateHelpers {
     using LiquidityOperationsLib for IPositionManager;
     using StateLibrary for IPoolManager;
 
@@ -48,7 +47,11 @@ contract DeployTest is Deploy, Test {
     address public constant ADMIN = 0x7F7489582b64ABe46c074A45d758d701c2CA5446; // MXON
     address public constant MANAGER = 0x431169728D75bd02f4053435b87D15c8d1FB2C72; // M0 Labs
 
-    address public constant ZEROX_SETTLER = 0x0d0E364aa7852291883C162B22D6D81f6355428F;
+    // Predicate addresses
+    address public constant SERVICE_MANAGER = 0xf6f4A30EeF7cf51Ed4Ee1415fB3bFDAf3694B0d2;
+
+    address public operator;
+    uint256 public operatorPrivateKey;
 
     address public constant WRAPPED_M_HOLDER = 0xfF95c5f35F4ffB9d5f596F898ac1ae38D62749c2;
 
@@ -58,7 +61,10 @@ contract DeployTest is Deploy, Test {
     uint256 public mainnetFork;
 
     function setUp() public {
-        mainnetFork = vm.createSelectFork(vm.envString("MAINNET_RPC_URL"));
+        mainnetFork = vm.createSelectFork(vm.envString("MAINNET_RPC_URL"), 22_591_440);
+
+        (operator, operatorPrivateKey) = makeAddrAndKey("operator");
+
         config = _getDeployConfig(block.chainid);
 
         vm.prank(DEPLOYER);
@@ -74,9 +80,6 @@ contract DeployTest is Deploy, Test {
 
     function testFork_swapViaUniswapRouter() public {
         vm.selectFork(mainnetFork);
-
-        vm.prank(MANAGER);
-        allowlistHook.setSwapRouter(ZEROX_SETTLER, true);
 
         vm.prank(MANAGER);
         allowlistHook.setLiquidityProvider(alice, true);
@@ -129,6 +132,41 @@ contract DeployTest is Deploy, Test {
 
         vm.stopPrank();
 
+        int256 amountSpecified = int256(uint256(swapAmountOut));
+        string memory taskId = "unique-identifier";
+
+        PredicateMessage memory message = _getPredicateMessage(
+            poolKey,
+            taskId,
+            config.policyID,
+            operator,
+            operatorPrivateKey,
+            SERVICE_MANAGER,
+            address(bob),
+            address(allowlistHook),
+            false,
+            amountSpecified
+        );
+
+        Task memory task = _getTask(
+            poolKey,
+            taskId,
+            config.policyID,
+            address(bob),
+            address(allowlistHook),
+            false,
+            amountSpecified
+        );
+
+        address[] memory signerAddresses = _getSignerAddresses(operator);
+        bytes[] memory signatures = _getSignatures(task, operatorPrivateKey, SERVICE_MANAGER);
+
+        vm.mockCall(
+            SERVICE_MANAGER,
+            abi.encodeWithSelector(IPredicateManager.validateSignatures.selector, task, signerAddresses, signatures),
+            abi.encode(true)
+        );
+
         bytes memory commands = abi.encodePacked(uint8(0x10)); // V4 Swap command
         bytes[] memory inputs = new bytes[](1);
         bytes memory actions = abi.encodePacked(
@@ -144,7 +182,7 @@ contract DeployTest is Deploy, Test {
                 zeroForOne: false,
                 amountOut: swapAmountOut,
                 amountInMaximum: swapAmountIn,
-                hookData: bytes("")
+                hookData: abi.encode(message)
             })
         );
 

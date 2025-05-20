@@ -17,7 +17,6 @@ import { Planner, Plan } from "../lib/v4-periphery/test/shared/Planner.sol";
 import { Fuzzers } from "../lib/v4-periphery/lib/v4-core/src/test/Fuzzers.sol";
 import { PoolSwapTest } from "../lib/v4-periphery/lib/v4-core/src/test/PoolSwapTest.sol";
 
-import { IBaseHook } from "../src/interfaces/IBaseHook.sol";
 import { IBaseTickRangeHook } from "../src/interfaces/IBaseTickRangeHook.sol";
 import { IERC721Like } from "../src/interfaces/IERC721Like.sol";
 
