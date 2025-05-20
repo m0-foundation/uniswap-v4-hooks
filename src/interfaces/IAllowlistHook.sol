@@ -10,6 +10,18 @@ interface IAllowlistHook {
     /* ============ Events ============ */
 
     /**
+     * @notice Emitted when the Predicate's policy ID is updated.
+     * @param  policyID The new policy ID.
+     */
+    event PolicyUpdated(string policyID);
+
+    /**
+     * @notice Emitted when the Predicate's manager contract address is updated.
+     * @param  predicateManager The new Predicate manager contract address.
+     */
+    event PredicateManagerUpdated(address predicateManager);
+
+    /**
      * @notice Emitted when the liquidity providers allowlist status is set.
      * @param  isEnabled Boolean indicating whether the liquidity providers allowlist is enabled or not.
      */
@@ -67,6 +79,12 @@ interface IAllowlistHook {
     error PositionManagerNotTrusted(address positionManager);
 
     /**
+     * @notice Error emitted when a caller is not authorized by Predicate.
+     * @param  caller The address of the caller that is not authorized.
+     */
+    error PredicateAuthorizationFailed(address caller);
+
+    /**
      * @notice Error emitted in beforeSwap if the caller is not allowed to swap.
      * @param  swapper The address of the swapper that is not allowed.
      */
@@ -105,22 +123,43 @@ interface IAllowlistHook {
     /* ============ External Interactive functions ============ */
 
     /**
+     * @notice Sets the Predicate manager contract used to authorize transactions.
+     * @dev    MUST only be callable by the current Hook manager.
+     * @param  predicateManager The new Predicate manager contract address.
+     */
+    function setPredicateManager(address predicateManager) external;
+
+    /**
+     * @notice Sets Predicate's policy ID read by Predicate Operators.
+     * @dev    MUST only be callable by the current Hook manager.
+     * @param  policyID The new policy ID.
+     */
+    function setPolicy(string memory policyID) external;
+
+    /**
      * @notice Sets the liquidity providers allowlist status.
-     * @dev    MUST only be callable by the current manager.
+     * @dev    MUST only be callable by the current Hook manager.
      * @param  isEnabled Boolean indicating whether the liquidity providers allowlist is enabled or not.
      */
     function setLiquidityProvidersAllowlist(bool isEnabled) external;
 
     /**
+     * @notice Sets the Predicate check status.
+     * @dev    MUST only be callable by the current Hook manager.
+     * @param  isEnabled Boolean indicating whether the Predicate check is enabled or not.
+     */
+    function setPredicateCheck(bool isEnabled) external;
+
+    /**
      * @notice Sets the swappers allowlist status.
-     * @dev    MUST only be callable by the current manager.
+     * @dev    MUST only be callable by the current Hook manager.
      * @param  isEnabled Boolean indicating whether the swappers allowlist is enabled or not.
      */
     function setSwappersAllowlist(bool isEnabled) external;
 
     /**
      * @notice Sets the allowlist status of a liquidity provider.
-     * @dev    MUST only be callable by the current manager.
+     * @dev    MUST only be callable by the current Hook manager.
      * @param  liquidityProvider The address of the liquidity provider.
      * @param  isAllowed         Boolean indicating whether the liquidity provider is allowed or not.
      */
@@ -128,7 +167,7 @@ interface IAllowlistHook {
 
     /**
      * @notice Sets the allowlist status for multiple liquidity providers.
-     * @dev    MUST only be callable by the current manager.
+     * @dev    MUST only be callable by the current Hook manager.
      * @param  liquidityProviders The array of liquidity provider addresses.
      * @param  isAllowed          The array of boolean values indicating the allowed status for each liquidity provider.
      */
@@ -136,7 +175,7 @@ interface IAllowlistHook {
 
     /**
      * @notice Sets the status of the Uniswap V4 Position Manager contract address.
-     * @dev    MUST only be callable by the current manager.
+     * @dev    MUST only be callable by the current Hook manager.
      * @param  positionManager The Uniswap V4 Position Manager address.
      * @param  isAllowed       Boolean indicating whether the Position Manager is allowed to modify liquidity or not.
      */
@@ -144,7 +183,7 @@ interface IAllowlistHook {
 
     /**
      * @notice Sets the status of multiple Uniswap V4 Position Manager contract addresses.
-     * @dev    MUST only be callable by the current manager.
+     * @dev    MUST only be callable by the current Hook manager.
      * @param  positionManagers The array of Position Manager addresses.
      * @param  isAllowed        The array of boolean values indicating the allowed status for each Position Manager.
      */
@@ -152,7 +191,7 @@ interface IAllowlistHook {
 
     /**
      * @notice Sets the allowlist status of a swapper.
-     * @dev    MUST only be callable by the current manager.
+     * @dev    MUST only be callable by the current Hook manager.
      * @param  swapper   The address of the swapper.
      * @param  isAllowed Boolean indicating whether the swapper is allowed or not.
      */
@@ -160,7 +199,7 @@ interface IAllowlistHook {
 
     /**
      * @notice Sets the allowlist status for multiple swappers.
-     * @dev    MUST only be callable by the current manager.
+     * @dev    MUST only be callable by the current Hook manager.
      * @param  swappers  The array of swapper addresses.
      * @param  isAllowed The array of boolean values indicating the allowed status for each swapper.
      */
@@ -168,7 +207,7 @@ interface IAllowlistHook {
 
     /**
      * @notice Sets the status of the Swap Router contract address.
-     * @dev    MUST only be callable by the current manager.
+     * @dev    MUST only be callable by the current Hook manager.
      * @param  swapRouter The Swap Router address.
      * @param  isAllowed  Boolean indicating whether the Swap Router is allowed to swap or not.
      */
@@ -176,7 +215,7 @@ interface IAllowlistHook {
 
     /**
      * @notice Sets the status of the Swap Router contract address.
-     * @dev    MUST only be callable by the current manager.
+     * @dev    MUST only be callable by the current Hook manager.
      * @param  swapRouters The array of Swap Router addresses.
      * @param  isAllowed   The array of boolean values indicating the allowed status for each Swap Router.
      */
@@ -189,6 +228,12 @@ interface IAllowlistHook {
      * @dev    Enabled by default at deployment.
      */
     function isLiquidityProvidersAllowlistEnabled() external view returns (bool);
+
+    /**
+     * @notice Whether Predicate is enabled or not.
+     * @dev    Enabled by default at deployment.
+     */
+    function isPredicateEnabled() external view returns (bool);
 
     /**
      * @notice Whether the swappers allowlist is enabled or not.
