@@ -14,34 +14,35 @@ This feature is particularly useful for stable pairs that want to prevent their 
 
 #### Architecture
 
-_BaseTickRangeHook_ is an abstract contract that other hooks can inherit to restrict swaps and liquidity provision.
+_BaseTickRangeHook_ is an abstract contract that other hooks can inherit from to restrict swaps and liquidity provision.
 
-Inherits from OpenZeppelin's Ownable2Step contract, making it ownable.
+It inherits from OpenZeppelin’s AccessControl and allows an admin to manage one role:
 
-The deployer sets the tick range during deployment, and the contract owner can modify it at any time.
+- manager role - address that manages the hook and sets the different parameters
+
+The deployer sets the tick range during deployment, and the hook manager can modify it at any time.
 
 Since the tick range is enforced, any swap that would move the tick outside this range will revert. Additionally, changes to the tick range may cause in-progress swaps to revert.
 
-Liquidity providers may be unable to add liquidity to their positions if the tick range has been updated since they first created their position.
+Liquidity providers may be unable to add liquidity to their positions if the tick range has been updated since they first created their position. They are able to remove their liquidity at any time, even if not inside the current tick range.
 
 ### Allowlist hook
 
 #### Overview
 
 The contract maintains two separate allowlists—one for swappers and one for liquidity providers—to restrict which addresses can interact with the pool.
+
 It also inherits from the Tick Range hook contract to restrict liquidity provision and token swaps within a specific tick range.
 
-Additionally, a swap cap can be set to limit the total amount of tokens that can be swapped through the pool.
+[Predicate](https://docs.predicate.io/essentials/introduction) is used to perform ongoing compliance checks for addresses on the swappers allowlist.
 
 #### Architecture
 
 Inherits from the _BaseTickRangeHook_ abstract contract and its functionalities.
 
-Inherits from OpenZeppelin's Ownable2Step contract, making it ownable.
+Inherits from the _PredicateClient_ to perform Predicate checks when swapping and adding liquidity.
 
-Both allowlists are enabled by default upon deployment and can be disabled later by the contract owner.
-
-At deployment, the swap cap is disabled, but the contract owner can set it afterward.
+Both allowlists and the Predicate check are enabled by default upon deployment and can be disabled later by the hook manager.
 
 ## Development
 
