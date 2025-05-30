@@ -5,14 +5,11 @@ gas_reports = ["*"]
 gas_reports_ignore = []
 ignored_error_codes = []
 verbosity = 3
-# Used to deploy UUPS proxy deterministically via CREATE2
+# Used to deploy deterministically via CREATE2
 always_use_create_2_factory = true
-ast = true
-ffi = true
-build_info = true
 bytecode_hash = "none"
 cbor_metadata = false
-extra_output = ["storageLayout"]
+# libs = ["node_modules", "lib"]
 
 [profile.production]
 optimizer = true

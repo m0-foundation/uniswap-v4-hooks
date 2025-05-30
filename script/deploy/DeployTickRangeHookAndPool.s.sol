@@ -9,19 +9,16 @@ import { Deploy } from "../base/Deploy.s.sol";
 
 contract DeployTickRangeHookAndPool is Deploy {
     function run() public {
-        address deployer = vm.rememberKey(vm.envUint("PRIVATE_KEY"));
-
-        address admin = vm.envAddress("OWNER");
+        address admin = vm.envAddress("ADMIN");
         address manager = vm.envAddress("MANAGER");
-        address upgrader = vm.envAddress("UPGRADER");
         DeployConfig memory config = _getDeployConfig(block.chainid);
 
         vm.startBroadcast();
 
-        (, address tickRangeHookProxy) = _deployTickRangeHook(deployer, admin, manager, upgrader, config);
+        address tickRangeHook = _deployTickRangeHook(admin, manager, config);
 
         vm.recordLogs();
-        _deployPool(config, IHooks(tickRangeHookProxy));
+        _deployPool(config, IHooks(tickRangeHook));
 
         Vm.Log[] memory logs = vm.getRecordedLogs();
         _logPoolDeployment(logs);

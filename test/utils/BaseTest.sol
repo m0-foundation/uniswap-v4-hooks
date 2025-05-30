@@ -1,5 +1,9 @@
 // SPDX-License-Identifier: UNLICENSED
+
 pragma solidity 0.8.26;
+
+import { OperatorTestPrep } from "../../lib/predicate-contracts/test/helpers/utility/OperatorTestPrep.sol";
+import { ServiceManagerSetup } from "../../lib/predicate-contracts/test/helpers/utility/ServiceManagerSetup.sol";
 
 import { IHooks } from "../../lib/v4-periphery/lib/v4-core/src/interfaces/IHooks.sol";
 
@@ -12,7 +16,6 @@ import { PoolId } from "../../lib/v4-periphery/lib/v4-core/src/types/PoolId.sol"
 
 import { Deployers } from "../../lib/v4-periphery/lib/v4-core/test/utils/Deployers.sol";
 import { LiquidityAmounts } from "../../lib/v4-periphery/lib/v4-core/test/utils/LiquidityAmounts.sol";
-import { LiquidityFuzzers } from "../../lib/v4-periphery/test/shared/fuzz/LiquidityFuzzers.sol";
 import { Fuzzers } from "../../lib/v4-periphery/lib/v4-core/src/test/Fuzzers.sol";
 
 import { Actions } from "../../lib/v4-periphery/src/libraries/Actions.sol";
@@ -34,7 +37,7 @@ import { PosmTestSetup } from "../../lib/v4-periphery/test/shared/PosmTestSetup.
 
 import { LiquidityOperationsLib } from "./helpers/LiquidityOperationsLib.sol";
 
-contract BaseTest is Deployers, PosmTestSetup, Fuzzers {
+contract BaseTest is Deployers, PosmTestSetup, Fuzzers, OperatorTestPrep, ServiceManagerSetup {
     using LiquidityOperationsLib for IPositionManager;
 
     Currency public tokenZero;
@@ -63,20 +66,20 @@ contract BaseTest is Deployers, PosmTestSetup, Fuzzers {
     address public mockPositionManager = makeAddr("positionManager");
     address public admin = makeAddr("admin");
     address public hookManager = makeAddr("hookManager");
-    address public upgrader = makeAddr("upgrader");
     address public alice = makeAddr("alice");
     address public bob = makeAddr("bob");
     address public carol = makeAddr("carol");
 
-    address[] public users = [admin, hookManager, upgrader, alice, bob, carol];
+    address[] public users = [admin, hookManager, alice, bob, carol];
 
     bytes32 public constant DEFAULT_ADMIN_ROLE = 0x00;
     bytes32 public constant MANAGER_ROLE = keccak256("MANAGER_ROLE");
-    bytes32 public constant UPGRADER_ROLE = keccak256("UPGRADER_ROLE");
 
     /* ============ SetUp ============ */
 
-    function setUp() public virtual {
+    function setUp() public virtual override {
+        super.setUp();
+
         SQRT_PRICE_0_0 = TickMath.getSqrtPriceAtTick(0);
 
         deployFreshManagerAndRouters();
