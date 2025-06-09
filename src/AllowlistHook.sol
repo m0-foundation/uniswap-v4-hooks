@@ -38,12 +38,10 @@ contract AllowlistHook is IAllowlistHook, BaseTickRangeHook, PredicateClient {
     bool public isSwappersAllowlistEnabled;
 
     /**
-     * @notice The PositionManagerStatus for a given positionManager contract. Only trusted position managers can
-     *         invoke the beforeAddLiquidity and beforeRemoveLiquidity hooks. When a position manager is removed, it
-     *         is designated as REDUCE_ONLY to allow users to remove their liquidity or migrate to a new position
-     *         manager.
+     * @notice Mapping of Position Managers to their trusted status.
+     * @dev    Only trusted Position Managers can invoke the beforeAddLiquidity hook.
      */
-    mapping(address positionManager => PositionManagerStatus positionManagerStatus) internal _positionManagers;
+    mapping(address positionManager => bool isPositionManagerTrusted) internal _positionManagers;
 
     /**
      * @notice Mapping of Swap Routers to their trusted status.
@@ -135,7 +133,8 @@ contract AllowlistHook is IAllowlistHook, BaseTickRangeHook, PredicateClient {
         bytes calldata hookData_
     ) internal override returns (bytes4, BeforeSwapDelta, uint24) {
         if (isSwappersAllowlistEnabled) {
-            if (!_swapRouters[sender_]) {
+            // NOTE: Revert early if the Swap Router is not trusted.
+            if (!isSwapRouterTrusted(sender_)) {
                 revert SwapRouterNotTrusted(sender_);
             }
 
@@ -205,7 +204,7 @@ contract AllowlistHook is IAllowlistHook, BaseTickRangeHook, PredicateClient {
     ) internal override returns (bytes4) {
         if (isLiquidityProvidersAllowlistEnabled) {
             // NOTE: revert early if the Position Manager is not trusted.
-            if (_positionManagers[sender_] != PositionManagerStatus.ALLOWED) {
+            if (!isPositionManagerTrusted(sender_)) {
                 revert PositionManagerNotTrusted(sender_);
             }
 
@@ -315,15 +314,15 @@ contract AllowlistHook is IAllowlistHook, BaseTickRangeHook, PredicateClient {
         }
     }
 
-    /* ============ External/Public view functions ============ */
+    /* ============ Public view functions ============ */
 
     /// @inheritdoc IAllowlistHook
-    function getPositionManagerStatus(address positionManager_) external view returns (PositionManagerStatus) {
+    function isPositionManagerTrusted(address positionManager_) public view returns (bool) {
         return _positionManagers[positionManager_];
     }
 
     /// @inheritdoc IAllowlistHook
-    function isSwapRouterTrusted(address swapRouter_) external view returns (bool) {
+    function isSwapRouterTrusted(address swapRouter_) public view returns (bool) {
         return _swapRouters[swapRouter_];
     }
 
@@ -393,14 +392,10 @@ contract AllowlistHook is IAllowlistHook, BaseTickRangeHook, PredicateClient {
     function _setPositionManager(address positionManager_, bool isAllowed_) internal {
         if (positionManager_ == address(0)) revert ZeroPositionManager();
 
-        // Return early if the position manager is already in the desired state.
-        if ((_positionManagers[positionManager_] == PositionManagerStatus.ALLOWED) ? isAllowed_ : !isAllowed_) {
-            return;
-        }
+        // NOTE: Return early if the Position Manager is already in the desired state.
+        if (_positionManagers[positionManager_] == isAllowed_) return;
 
-        _positionManagers[positionManager_] = isAllowed_
-            ? PositionManagerStatus.ALLOWED
-            : PositionManagerStatus.REDUCE_ONLY;
+        _positionManagers[positionManager_] = isAllowed_;
 
         emit PositionManagerSet(positionManager_, isAllowed_);
     }
@@ -425,6 +420,8 @@ contract AllowlistHook is IAllowlistHook, BaseTickRangeHook, PredicateClient {
      */
     function _setSwapRouter(address swapRouter_, bool isAllowed_) internal {
         if (swapRouter_ == address(0)) revert ZeroSwapRouter();
+
+        // NOTE: Return early if the Swap Router is already in the desired state.
         if (_swapRouters[swapRouter_] == isAllowed_) return;
 
         _swapRouters[swapRouter_] = isAllowed_;
