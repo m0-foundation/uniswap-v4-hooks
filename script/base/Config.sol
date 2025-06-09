@@ -1,6 +1,8 @@
 // SPDX-License-Identifier: UNLICENSED
 pragma solidity ^0.8.26;
 
+import { Currency } from "../../lib/v4-periphery/lib/v4-core/src/types/Currency.sol";
+
 /// @notice Shared configuration between scripts
 contract Config {
     struct DeployConfig {
@@ -9,8 +11,8 @@ contract Config {
         address swapRouter;
         address serviceManager;
         string policyID;
-        address usdc;
-        address wrappedM;
+        Currency currency0;
+        Currency currency1;
         uint24 fee;
         int24 tickLowerBound;
         int24 tickUpperBound;
@@ -106,7 +108,10 @@ contract Config {
 
     function _getDeployConfig(uint256 chainId_) internal pure returns (DeployConfig memory) {
         // Mainnet configs
-        if (chainId_ == ETHEREUM_CHAIN_ID)
+        if (chainId_ == ETHEREUM_CHAIN_ID) {
+            (Currency currency0_, Currency currency1_) = _sortCurrencies(USDC_ETHEREUM, WRAPPED_M);
+            (int24 tickLowerBound_, int24 tickUpperBound_) = _sortTicks(currency0_, TICK_LOWER_BOUND, TICK_UPPER_BOUND);
+
             return
                 DeployConfig({
                     poolManager: POOL_MANAGER_ETHEREUM,
@@ -114,15 +119,19 @@ contract Config {
                     swapRouter: SWAP_ROUTER_ETHEREUM,
                     serviceManager: SERVICE_MANAGER_ETHEREUM,
                     policyID: POLICY_ID_ETHEREUM,
-                    usdc: USDC_ETHEREUM,
-                    wrappedM: WRAPPED_M,
+                    currency0: currency0_,
+                    currency1: currency1_,
                     fee: SWAP_FEE,
-                    tickLowerBound: TICK_LOWER_BOUND,
-                    tickUpperBound: TICK_UPPER_BOUND,
+                    tickLowerBound: tickLowerBound_,
+                    tickUpperBound: tickUpperBound_,
                     tickSpacing: TICK_SPACING
                 });
+        }
 
-        if (chainId_ == ARBITRUM_CHAIN_ID)
+        if (chainId_ == ARBITRUM_CHAIN_ID) {
+            (Currency currency0_, Currency currency1_) = _sortCurrencies(USDC_ARBITRUM, WRAPPED_M);
+            (int24 tickLowerBound_, int24 tickUpperBound_) = _sortTicks(currency0_, TICK_LOWER_BOUND, TICK_UPPER_BOUND);
+
             return
                 DeployConfig({
                     poolManager: POOL_MANAGER_ARBITRUM,
@@ -130,15 +139,19 @@ contract Config {
                     swapRouter: SWAP_ROUTER_ARBITRUM,
                     serviceManager: SERVICE_MANAGER_ARBITRUM,
                     policyID: POLICY_ID_ARBITRUM,
-                    usdc: USDC_ARBITRUM,
-                    wrappedM: WRAPPED_M,
+                    currency0: currency0_,
+                    currency1: currency1_,
                     fee: SWAP_FEE,
-                    tickLowerBound: TICK_LOWER_BOUND,
-                    tickUpperBound: TICK_UPPER_BOUND,
+                    tickLowerBound: tickLowerBound_,
+                    tickUpperBound: tickUpperBound_,
                     tickSpacing: TICK_SPACING
                 });
+        }
 
-        if (chainId_ == OPTIMISM_CHAIN_ID)
+        if (chainId_ == OPTIMISM_CHAIN_ID) {
+            (Currency currency0_, Currency currency1_) = _sortCurrencies(USDC_OPTIMISM, WRAPPED_M);
+            (int24 tickLowerBound_, int24 tickUpperBound_) = _sortTicks(currency0_, TICK_LOWER_BOUND, TICK_UPPER_BOUND);
+
             return
                 DeployConfig({
                     poolManager: POOL_MANAGER_OPTIMISM,
@@ -146,15 +159,19 @@ contract Config {
                     swapRouter: SWAP_ROUTER_OPTIMISM,
                     serviceManager: SERVICE_MANAGER_OPTIMISM,
                     policyID: POLICY_ID_OPTIMISM,
-                    usdc: USDC_OPTIMISM,
-                    wrappedM: WRAPPED_M,
+                    currency0: currency0_,
+                    currency1: currency1_,
                     fee: SWAP_FEE,
-                    tickLowerBound: TICK_LOWER_BOUND,
-                    tickUpperBound: TICK_UPPER_BOUND,
+                    tickLowerBound: tickLowerBound_,
+                    tickUpperBound: tickUpperBound_,
                     tickSpacing: TICK_SPACING
                 });
+        }
 
-        if (chainId_ == UNICHAIN_CHAIN_ID)
+        if (chainId_ == UNICHAIN_CHAIN_ID) {
+            (Currency currency0_, Currency currency1_) = _sortCurrencies(USDC_UNICHAIN, WRAPPED_M);
+            (int24 tickLowerBound_, int24 tickUpperBound_) = _sortTicks(currency0_, TICK_LOWER_BOUND, TICK_UPPER_BOUND);
+
             return
                 DeployConfig({
                     poolManager: POOL_MANAGER_UNICHAIN,
@@ -162,16 +179,20 @@ contract Config {
                     swapRouter: SWAP_ROUTER_UNICHAIN,
                     serviceManager: SERVICE_MANAGER_UNICHAIN,
                     policyID: POLICY_ID_UNICHAIN,
-                    usdc: USDC_UNICHAIN,
-                    wrappedM: WRAPPED_M,
+                    currency0: currency0_,
+                    currency1: currency1_,
                     fee: SWAP_FEE,
-                    tickLowerBound: TICK_LOWER_BOUND,
-                    tickUpperBound: TICK_UPPER_BOUND,
+                    tickLowerBound: tickLowerBound_,
+                    tickUpperBound: tickUpperBound_,
                     tickSpacing: TICK_SPACING
                 });
+        }
 
         // Testnet configs
-        if (chainId_ == SEPOLIA_CHAIN_ID)
+        if (chainId_ == SEPOLIA_CHAIN_ID) {
+            (Currency currency0_, Currency currency1_) = _sortCurrencies(USDC_SEPOLIA, WRAPPED_M);
+            (int24 tickLowerBound_, int24 tickUpperBound_) = _sortTicks(currency0_, TICK_LOWER_BOUND, TICK_UPPER_BOUND);
+
             return
                 DeployConfig({
                     poolManager: POOL_MANAGER_SEPOLIA,
@@ -179,15 +200,19 @@ contract Config {
                     swapRouter: SWAP_ROUTER_SEPOLIA,
                     serviceManager: SERVICE_MANAGER_SEPOLIA,
                     policyID: POLICY_ID_SEPOLIA,
-                    usdc: USDC_SEPOLIA,
-                    wrappedM: WRAPPED_M,
+                    currency0: currency0_,
+                    currency1: currency1_,
                     fee: SWAP_FEE,
-                    tickLowerBound: TICK_LOWER_BOUND,
-                    tickUpperBound: TICK_UPPER_BOUND,
+                    tickLowerBound: tickLowerBound_,
+                    tickUpperBound: tickUpperBound_,
                     tickSpacing: TICK_SPACING
                 });
+        }
 
-        if (chainId_ == ARBITRUM_SEPOLIA_CHAIN_ID)
+        if (chainId_ == ARBITRUM_SEPOLIA_CHAIN_ID) {
+            (Currency currency0_, Currency currency1_) = _sortCurrencies(USDC_ARBITRUM_SEPOLIA, WRAPPED_M);
+            (int24 tickLowerBound_, int24 tickUpperBound_) = _sortTicks(currency0_, TICK_LOWER_BOUND, TICK_UPPER_BOUND);
+
             return
                 DeployConfig({
                     poolManager: POOL_MANAGER_ARBITRUM_SEPOLIA,
@@ -195,15 +220,19 @@ contract Config {
                     swapRouter: SWAP_ROUTER_ARBITRUM_SEPOLIA,
                     serviceManager: SERVICE_MANAGER_ARBITRUM_SEPOLIA,
                     policyID: POLICY_ID_ARBITRUM_SEPOLIA,
-                    usdc: USDC_ARBITRUM_SEPOLIA,
-                    wrappedM: WRAPPED_M,
+                    currency0: currency0_,
+                    currency1: currency1_,
                     fee: SWAP_FEE,
-                    tickLowerBound: TICK_LOWER_BOUND,
-                    tickUpperBound: TICK_UPPER_BOUND,
+                    tickLowerBound: tickLowerBound_,
+                    tickUpperBound: tickUpperBound_,
                     tickSpacing: TICK_SPACING
                 });
+        }
 
-        if (chainId_ == UNICHAIN_SEPOLIA_CHAIN_ID)
+        if (chainId_ == UNICHAIN_SEPOLIA_CHAIN_ID) {
+            (Currency currency0_, Currency currency1_) = _sortCurrencies(USDC_UNICHAIN_SEPOLIA, WRAPPED_M);
+            (int24 tickLowerBound_, int24 tickUpperBound_) = _sortTicks(currency0_, TICK_LOWER_BOUND, TICK_UPPER_BOUND);
+
             return
                 DeployConfig({
                     poolManager: POOL_MANAGER_UNICHAIN_SEPOLIA,
@@ -211,14 +240,37 @@ contract Config {
                     swapRouter: SWAP_ROUTER_UNICHAIN_SEPOLIA,
                     serviceManager: SERVICE_MANAGER_UNICHAIN_SEPOLIA,
                     policyID: POLICY_ID_UNICHAIN_SEPOLIA,
-                    usdc: USDC_UNICHAIN_SEPOLIA,
-                    wrappedM: WRAPPED_M,
+                    currency0: currency0_,
+                    currency1: currency1_,
                     fee: SWAP_FEE,
-                    tickLowerBound: TICK_LOWER_BOUND,
-                    tickUpperBound: TICK_UPPER_BOUND,
+                    tickLowerBound: tickLowerBound_,
+                    tickUpperBound: tickUpperBound_,
                     tickSpacing: TICK_SPACING
                 });
+        }
 
         revert UnsupportedChain(chainId_);
+    }
+
+    function _sortCurrencies(
+        address tokenA_,
+        address tokenB_
+    ) internal pure returns (Currency currency0_, Currency currency1_) {
+        (currency0_, currency1_) = tokenA_ < tokenB_
+            ? (Currency.wrap(tokenA_), Currency.wrap(tokenB_))
+            : (Currency.wrap(tokenB_), Currency.wrap(tokenA_));
+    }
+
+    /// @dev Flips and negates tickLowerBound and tickUpperBound if currency0 != Wrapped M
+    function _sortTicks(
+        Currency currency0_,
+        int24 tickLowerBound_,
+        int24 tickUpperBound_
+    ) internal pure returns (int24, int24) {
+        if (Currency.unwrap(currency0_) != WRAPPED_M) {
+            return (-tickUpperBound_, -tickLowerBound_);
+        }
+
+        return (tickLowerBound_, tickUpperBound_);
     }
 }
