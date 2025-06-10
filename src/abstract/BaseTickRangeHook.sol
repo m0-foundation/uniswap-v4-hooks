@@ -41,7 +41,7 @@ abstract contract BaseTickRangeHook is IBaseTickRangeHook, BaseHook, AccessContr
      * @param  poolManager_    The Uniswap V4 Pool Manager contract address.
      * @param  tickLowerBound_ The lower tick of the range to limit the liquidity provision and token swaps to.
      * @param  tickUpperBound_ The upper tick of the range to limit the liquidity provision and token swaps to.
-     * @param  admin_          The address admnistrating the hook. Can grant and revoke roles.
+     * @param  admin_          The address administrating the hook. Can grant and revoke roles.
      * @param  manager_        The address managing the hook.
      */
     constructor(

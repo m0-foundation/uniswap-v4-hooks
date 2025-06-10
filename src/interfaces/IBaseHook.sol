@@ -4,7 +4,7 @@ pragma solidity ^0.8.26;
 import { IPoolManager } from "../../lib/v4-periphery/lib/v4-core/src/interfaces/IPoolManager.sol";
 
 /**
- * @title  Base Actions Router Like interface.
+ * @title  Base Hook interface.
  * @author M0 Labs
  */
 interface IBaseHook {
