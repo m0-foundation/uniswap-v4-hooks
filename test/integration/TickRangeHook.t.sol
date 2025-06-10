@@ -20,7 +20,7 @@ import { BaseTest } from "../utils/BaseTest.sol";
 contract TickRangeHookIntegrationTest is BaseTest {
     TickRangeHook public tickRangeHook;
 
-    uint160 public flags = uint160(Hooks.BEFORE_ADD_LIQUIDITY_FLAG | Hooks.AFTER_SWAP_FLAG);
+    uint160 public flags = uint160(Hooks.BEFORE_ADD_LIQUIDITY_FLAG | Hooks.BEFORE_SWAP_FLAG | Hooks.AFTER_SWAP_FLAG);
 
     function setUp() public override {
         super.setUp();
@@ -106,5 +106,121 @@ contract TickRangeHookIntegrationTest is BaseTest {
             PoolSwapTest.TestSettings({ takeClaims: false, settleUsingBurn: false }),
             ""
         );
+    }
+
+    /* ============ afterSwap ============ */
+
+    function test_afterSwap_moveTickCloserToRange() public {
+        int24 tickLowerBound_ = 0;
+        int24 tickUpperBound_ = 10;
+
+        vm.prank(hookManager);
+        tickRangeHook.setTickRange(tickLowerBound_, tickUpperBound_);
+
+        // We initialize the pool at tick 5
+        initPool(tickRangeHook, SQRT_PRICE_5_0);
+
+        (uint160 sqrtPriceX96_, int24 tick_, , ) = state.getSlot0(poolId);
+
+        assertEq(sqrtPriceX96_, SQRT_PRICE_5_0);
+        assertEq(tick_, 5);
+
+        // Then provide liquidity between tick 0 and tick 10
+        mintNewPosition(SQRT_PRICE_5_0, tickLowerBound_, tickUpperBound_, 1_000_000e6, 1_000_000e6);
+
+        // Update the tick range
+        tickLowerBound_ = 5;
+        tickUpperBound_ = 20;
+
+        vm.prank(hookManager);
+        tickRangeHook.setTickRange(tickLowerBound_, tickUpperBound_);
+
+        // Then provide liquidity between tick 5 and tick 20
+        mintNewPosition(SQRT_PRICE_5_0, tickLowerBound_, tickUpperBound_, 1_000_000e6, 1_000_000e6);
+
+        // Update the tick range
+        tickLowerBound_ = 20;
+        tickUpperBound_ = 30;
+
+        vm.prank(hookManager);
+        tickRangeHook.setTickRange(tickLowerBound_, tickUpperBound_);
+
+        (, tick_, , ) = state.getSlot0(poolId);
+        assertEq(tick_, 5);
+
+        // Should revert since tick is moving further below the range
+        expectWrappedRevert(
+            address(tickRangeHook),
+            IHooks.afterSwap.selector,
+            abi.encodeWithSelector(IBaseTickRangeHook.InvalidTick.selector, 2, tickLowerBound_, tickUpperBound_)
+        );
+
+        swapRouter.swap(
+            key,
+            IPoolManager.SwapParams({
+                zeroForOne: true,
+                amountSpecified: 500_000e6,
+                sqrtPriceLimitX96: SQRT_PRICE_0_0
+            }),
+            PoolSwapTest.TestSettings({ takeClaims: false, settleUsingBurn: false }),
+            ""
+        );
+
+        (, tick_, , ) = state.getSlot0(poolId);
+        assertEq(tick_, 5);
+
+        tick_ = 31;
+
+        // Should revert since tick is moving further above the range
+        expectWrappedRevert(
+            address(tickRangeHook),
+            IHooks.afterSwap.selector,
+            abi.encodeWithSelector(IBaseTickRangeHook.InvalidTick.selector, tick_, tickLowerBound_, tickUpperBound_)
+        );
+
+        swapRouter.swap(
+            key,
+            IPoolManager.SwapParams({
+                zeroForOne: false,
+                amountSpecified: 2_000_000e6,
+                sqrtPriceLimitX96: TickMath.getSqrtPriceAtTick(tick_)
+            }),
+            PoolSwapTest.TestSettings({ takeClaims: false, settleUsingBurn: false }),
+            ""
+        );
+
+        tick_ = 19;
+
+        // Should succeed since tick is moving closer to the range
+        swapRouter.swap(
+            key,
+            IPoolManager.SwapParams({
+                zeroForOne: false,
+                amountSpecified: 2_000_000e6,
+                sqrtPriceLimitX96: TickMath.getSqrtPriceAtTick(tick_)
+            }),
+            PoolSwapTest.TestSettings({ takeClaims: false, settleUsingBurn: false }),
+            ""
+        );
+
+        (, tick_, , ) = state.getSlot0(poolId);
+        assertEq(tick_, 19);
+
+        tick_ = 25;
+
+        // Should succeed to bring tick in range
+        swapRouter.swap(
+            key,
+            IPoolManager.SwapParams({
+                zeroForOne: false,
+                amountSpecified: 2_000_000e6,
+                sqrtPriceLimitX96: TickMath.getSqrtPriceAtTick(tick_)
+            }),
+            PoolSwapTest.TestSettings({ takeClaims: false, settleUsingBurn: false }),
+            ""
+        );
+
+        (, tick_, , ) = state.getSlot0(poolId);
+        assertEq(tick_, 25);
     }
 }

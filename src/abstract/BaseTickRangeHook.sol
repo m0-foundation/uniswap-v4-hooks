@@ -34,6 +34,9 @@ abstract contract BaseTickRangeHook is IBaseTickRangeHook, BaseHook, AccessContr
     /// @inheritdoc IBaseTickRangeHook
     int24 public tickUpperBound;
 
+    /// @dev Transient storage slot for storing the current tick before a swap occurs.
+    uint256 internal constant _TICK_BEFORE_SLOT = 0;
+
     /* ============ Constructor ============ */
 
     /**
@@ -75,7 +78,7 @@ abstract contract BaseTickRangeHook is IBaseTickRangeHook, BaseHook, AccessContr
                 beforeRemoveLiquidity: false,
                 afterAddLiquidity: false,
                 afterRemoveLiquidity: false,
-                beforeSwap: false,
+                beforeSwap: true,
                 afterSwap: true,
                 beforeDonate: false,
                 afterDonate: false,
@@ -87,12 +90,30 @@ abstract contract BaseTickRangeHook is IBaseTickRangeHook, BaseHook, AccessContr
     }
 
     /**
+     * @dev    Hook that is called before a swap is executed.
+     * @param  key_ The key of the pool.
+     */
+    function _beforeSwap(PoolKey calldata key_) internal {
+        (, int24 currentTick_, , ) = poolManager.getSlot0(key_.toId());
+
+        assembly {
+            tstore(_TICK_BEFORE_SLOT, currentTick_)
+        }
+    }
+
+    /**
      * @dev    Hook that is called after a swap is executed.
      * @param  key_ The key of the pool.
      */
     function _afterSwap(PoolKey calldata key_) internal view {
+        int24 tickBefore_;
         (, int24 tickCurrent_, , ) = poolManager.getSlot0(key_.toId());
-        _checkTick(tickCurrent_);
+
+        assembly {
+            tickBefore_ := tload(_TICK_BEFORE_SLOT)
+        }
+
+        _checkTick(tickCurrent_, tickBefore_);
     }
 
     /**
@@ -130,11 +151,26 @@ abstract contract BaseTickRangeHook is IBaseTickRangeHook, BaseHook, AccessContr
     /* ============ Internal View functions ============ */
 
     /**
-     * @notice Checks if the tick is within the defined tick range.
-     * @param  tick_ The tick to check.
+     * @notice Checks if the tick is closer or within the defined tick range.
+     * @param  tick_        The tick to check.
+     * @param  tickBefore_  The tick before the swap occured.
      */
-    function _checkTick(int24 tick_) internal view {
-        if (tick_ < tickLowerBound || tick_ >= tickUpperBound)
-            revert InvalidTick(tick_, tickLowerBound, tickUpperBound);
+    function _checkTick(int24 tick_, int24 tickBefore_) internal view {
+        // If the current tick is within the allowed range, proceed as usual
+        if (tick_ >= tickLowerBound && tick_ < tickUpperBound) {
+            return;
+        }
+
+        // If the tick is outside the range, check if it's moving closer to the range
+        if (tickBefore_ < tickLowerBound && tick_ < tickLowerBound) {
+            // For ticks below the lower bound, check if moving closer to lower bound
+            if (tick_ > tickBefore_) return;
+        } else if (tickBefore_ >= tickUpperBound && tick_ >= tickUpperBound) {
+            // For ticks above the upper bound, check if moving closer to upper bound
+            if (tick_ < tickBefore_) return;
+        }
+
+        // If not moving closer to the range, revert
+        revert InvalidTick(tick_, tickLowerBound, tickUpperBound);
     }
 }

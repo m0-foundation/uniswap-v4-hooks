@@ -4,6 +4,7 @@ pragma solidity 0.8.26;
 import { IPoolManager } from "../lib/v4-periphery/lib/v4-core/src/interfaces/IPoolManager.sol";
 
 import { BalanceDelta } from "../lib/v4-periphery/lib/v4-core/src/types/BalanceDelta.sol";
+import { BeforeSwapDelta, BeforeSwapDeltaLibrary } from "../lib/v4-periphery/lib/v4-core/src/types/BeforeSwapDelta.sol";
 import { PoolKey } from "../lib/v4-periphery/lib/v4-core/src/types/PoolKey.sol";
 
 import { BaseTickRangeHook } from "./abstract/BaseTickRangeHook.sol";
@@ -35,12 +36,27 @@ contract TickRangeHook is BaseTickRangeHook {
     /* ============ Hook functions ============ */
 
     /**
+     * @dev    Hook that is called before a swap is executed.
+     * @param  key_ The key of the pool.
+     * @return A tuple containing the selector of this function and the hook's delta in unspecified currency.
+     */
+    function _beforeSwap(
+        address /* sender */,
+        PoolKey calldata key_,
+        IPoolManager.SwapParams calldata /* params */,
+        bytes calldata /* hookData */
+    ) internal override returns (bytes4, BeforeSwapDelta, uint24) {
+        super._beforeSwap(key_);
+        return (this.beforeSwap.selector, BeforeSwapDeltaLibrary.ZERO_DELTA, 0);
+    }
+
+    /**
      * @dev    Hook that is called after a swap is executed.
      * @param  key_ The key of the pool.
      * @return A tuple containing the selector of this function and the hook's delta in unspecified currency.
      */
     function _afterSwap(
-        address /* sender_ */,
+        address /* sender */,
         PoolKey calldata key_,
         IPoolManager.SwapParams calldata /* params */,
         BalanceDelta /* delta */,

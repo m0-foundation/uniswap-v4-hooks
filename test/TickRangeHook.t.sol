@@ -30,7 +30,7 @@ contract TickRangeHookTest is BaseTest {
 
     TickRangeHookHarness public tickRangeHook;
 
-    uint160 public flags = uint160(Hooks.BEFORE_ADD_LIQUIDITY_FLAG | Hooks.AFTER_SWAP_FLAG);
+    uint160 public flags = uint160(Hooks.BEFORE_ADD_LIQUIDITY_FLAG | Hooks.BEFORE_SWAP_FLAG | Hooks.AFTER_SWAP_FLAG);
 
     function setUp() public override {
         super.setUp();
@@ -240,6 +240,86 @@ contract TickRangeHookTest is BaseTest {
         );
     }
 
+    function test_afterSwap_bringTickCloserToLowerBound() public {
+        (uint160 sqrtPriceX96_, int24 tick_, , ) = state.getSlot0(poolId);
+
+        assertEq(sqrtPriceX96_, SQRT_PRICE_0_0);
+        assertEq(tick_, 0);
+
+        int24 tickLowerBound_ = 5;
+        int24 tickUpperBound_ = 10;
+
+        vm.prank(hookManager);
+        tickRangeHook.setTickRange(tickLowerBound_, tickUpperBound_);
+
+        (uint128 positionLiquidity_, uint256 tokenId_) = mintNewPosition(
+            SQRT_PRICE_0_0,
+            tickLowerBound_,
+            tickUpperBound_,
+            1_000_000e6,
+            1_000_000e6
+        );
+
+        assertEq(lpm.getPositionLiquidity(tokenId_), positionLiquidity_);
+
+        tick_ = 4;
+
+        swapRouter.swap(
+            key,
+            IPoolManager.SwapParams({
+                zeroForOne: false,
+                amountSpecified: 1_000_000e6, // Exact input for output
+                sqrtPriceLimitX96: TickMath.getSqrtPriceAtTick(tick_)
+            }),
+            PoolSwapTest.TestSettings({ takeClaims: false, settleUsingBurn: false }),
+            ""
+        );
+
+        (, tick_, , ) = state.getSlot0(poolId);
+
+        assertEq(tick_, 4);
+    }
+
+    function test_afterSwap_bringTickCloserToUpperBound() public {
+        (uint160 sqrtPriceX96_, int24 tick_, , ) = state.getSlot0(poolId);
+
+        assertEq(sqrtPriceX96_, SQRT_PRICE_0_0);
+        assertEq(tick_, 0);
+
+        int24 tickLowerBound_ = -10;
+        int24 tickUpperBound_ = -5;
+
+        vm.prank(hookManager);
+        tickRangeHook.setTickRange(tickLowerBound_, tickUpperBound_);
+
+        (uint128 positionLiquidity_, uint256 tokenId_) = mintNewPosition(
+            SQRT_PRICE_0_0,
+            tickLowerBound_,
+            tickUpperBound_,
+            1_000_000e6,
+            1_000_000e6
+        );
+
+        assertEq(lpm.getPositionLiquidity(tokenId_), positionLiquidity_);
+
+        tick_ = -4;
+
+        swapRouter.swap(
+            key,
+            IPoolManager.SwapParams({
+                zeroForOne: true,
+                amountSpecified: -1_000_000e6, // Exact output for input
+                sqrtPriceLimitX96: TickMath.getSqrtPriceAtTick(tick_)
+            }),
+            PoolSwapTest.TestSettings({ takeClaims: false, settleUsingBurn: false }),
+            ""
+        );
+
+        (, tick_, , ) = state.getSlot0(poolId);
+
+        assertEq(tick_, -4);
+    }
+
     function test_afterSwap() public {
         (uint128 positionLiquidity_, uint256 tokenId_) = mintNewPosition(
             SQRT_PRICE_0_0,
@@ -268,8 +348,12 @@ contract TickRangeHookTest is BaseTest {
         assertEq(tick_, 0);
     }
 
-    function testFuzz_checkTick(int24 tick_) public {
-        if (tick_ < TICK_LOWER_BOUND || tick_ >= TICK_UPPER_BOUND) {
+    function testFuzz_checkTick(int24 tick_, int24 tickBefore_) public {
+        bool withinRange = (tick_ >= TICK_LOWER_BOUND && tick_ < TICK_UPPER_BOUND);
+        bool movingCloserBelow = (tickBefore_ < TICK_LOWER_BOUND && tick_ < TICK_LOWER_BOUND && tick_ > tickBefore_);
+        bool movingCloserAbove = (tickBefore_ >= TICK_UPPER_BOUND && tick_ >= TICK_UPPER_BOUND && tick_ < tickBefore_);
+
+        if (!(withinRange || movingCloserBelow || movingCloserAbove)) {
             vm.expectRevert(
                 abi.encodeWithSelector(
                     IBaseTickRangeHook.InvalidTick.selector,
@@ -280,7 +364,7 @@ contract TickRangeHookTest is BaseTest {
             );
         }
 
-        tickRangeHook.checkTick(tick_);
+        tickRangeHook.checkTick(tick_, tickBefore_);
     }
 
     /* ============ beforeAddLiquidity ============ */
