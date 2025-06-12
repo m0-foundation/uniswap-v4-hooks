@@ -35,22 +35,6 @@ contract TickRangeHook is BaseTickRangeHook {
     /* ============ Hook functions ============ */
 
     /**
-     * @dev    Hook that is called after a swap is executed.
-     * @param  key_ The key of the pool.
-     * @return A tuple containing the selector of this function and the hook's delta in unspecified currency.
-     */
-    function _afterSwap(
-        address /* sender_ */,
-        PoolKey calldata key_,
-        IPoolManager.SwapParams calldata /* params */,
-        BalanceDelta /* delta */,
-        bytes calldata /* hookData */
-    ) internal view override returns (bytes4, int128) {
-        super._afterSwap(key_);
-        return (this.afterSwap.selector, int128(0));
-    }
-
-    /**
      * @dev    Hook that is called before liquidity is added.
      * @dev    Will revert if the sender is not allowed to add liquidity.
      * @param  params_ The parameters for modifying liquidity.

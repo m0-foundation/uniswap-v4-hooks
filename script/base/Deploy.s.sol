@@ -30,7 +30,7 @@ contract Deploy is Config, Script {
         // Mine a salt that will produce a hook address with the correct flags
         (address hookAddress_, bytes32 salt_) = HookMiner.find(
             CREATE2_DEPLOYER,
-            uint160(Hooks.BEFORE_ADD_LIQUIDITY_FLAG | Hooks.AFTER_SWAP_FLAG),
+            uint160(Hooks.BEFORE_ADD_LIQUIDITY_FLAG),
             type(TickRangeHook).creationCode,
             abi.encode(address(config_.poolManager), config_.tickLowerBound, config_.tickUpperBound, admin_, manager_)
         );
@@ -75,7 +75,7 @@ contract Deploy is Config, Script {
         // Mine a salt that will produce a hook address with the correct flags
         (address hookAddress_, bytes32 salt_) = HookMiner.find(
             CREATE2_DEPLOYER,
-            uint160(Hooks.BEFORE_ADD_LIQUIDITY_FLAG | Hooks.BEFORE_SWAP_FLAG | Hooks.AFTER_SWAP_FLAG),
+            uint160(Hooks.BEFORE_ADD_LIQUIDITY_FLAG | Hooks.BEFORE_SWAP_FLAG),
             type(AllowlistHook).creationCode,
             constructorArgs
         );

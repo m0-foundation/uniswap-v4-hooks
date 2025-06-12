@@ -107,7 +107,7 @@ contract AllowlistHook is IAllowlistHook, BaseTickRangeHook, PredicateClient {
                 afterAddLiquidity: false,
                 afterRemoveLiquidity: false,
                 beforeSwap: true,
-                afterSwap: true,
+                afterSwap: false,
                 beforeDonate: false,
                 afterDonate: false,
                 beforeSwapReturnDelta: false,
@@ -171,22 +171,6 @@ contract AllowlistHook is IAllowlistHook, BaseTickRangeHook, PredicateClient {
         }
 
         return (this.beforeSwap.selector, BeforeSwapDeltaLibrary.ZERO_DELTA, 0);
-    }
-
-    /**
-     * @dev    Hook that is called after a swap is executed.
-     * @param  key_ The key of the pool.
-     * @return A tuple containing the selector of this function and the hook's delta in unspecified currency.
-     */
-    function _afterSwap(
-        address /* sender */,
-        PoolKey calldata key_,
-        IPoolManager.SwapParams calldata /* params */,
-        BalanceDelta /* delta */,
-        bytes calldata /* hookData */
-    ) internal view override returns (bytes4, int128) {
-        super._afterSwap(key_);
-        return (this.afterSwap.selector, int128(0));
     }
 
     /**
