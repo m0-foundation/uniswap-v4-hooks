@@ -114,18 +114,6 @@ interface IAllowlistHook {
     /// @notice Error emitted when the Uniswap V4 Router address is set to the zero address.
     error ZeroSwapRouter();
 
-    /* ============ Enums ============ */
-
-    /// @notice The status for a Position Manager contract.
-    enum PositionManagerStatus {
-        /// @dev This contract cannot be used to manage positions (the default value).
-        FORBIDDEN,
-        /// @dev This contract can be used for all liquidity operations.
-        ALLOWED,
-        /// @dev This contract can only be used to reduce or close a liquidity position.
-        REDUCE_ONLY
-    }
-
     /* ============ External Interactive functions ============ */
 
     /**
@@ -235,13 +223,11 @@ interface IAllowlistHook {
 
     /**
      * @notice Gets the status of a given Position Manager.
-     * @dev    Only trusted position managers can invoke the beforeAddLiquidity and beforeRemoveLiquidity hooks.
-     *         When a position manager is removed, it is designated as REDUCE_ONLY
-     *         to allow users to remove their liquidity or migrate to a new position manager.
+     * @dev    Only trusted Position Managers can invoke the beforeAddLiquidity hook.
      * @param  positionManager The address of the Position Manager.
-     * @return The status of the Position Manager.
+     * @return True if the Position Manager is trusted, false otherwise.
      */
-    function getPositionManagerStatus(address positionManager) external view returns (PositionManagerStatus);
+    function isPositionManagerTrusted(address positionManager) external view returns (bool);
 
     /**
      * @notice Checks if a Swap Router is trusted.

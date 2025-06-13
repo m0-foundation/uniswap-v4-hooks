@@ -55,10 +55,7 @@ contract DeployTest is Deploy, Test {
         assertTrue(IAccessControl(allowlistHook_).hasRole(keccak256("MANAGER_ROLE"), MANAGER));
 
         assertTrue(IAllowlistHook(allowlistHook_).isSwapRouterTrusted(config.swapRouter));
-        assertEq(
-            uint8(IAllowlistHook(allowlistHook_).getPositionManagerStatus(address(config.posm))),
-            uint8(IAllowlistHook.PositionManagerStatus.ALLOWED)
-        );
+        assertTrue(IAllowlistHook(allowlistHook_).isPositionManagerTrusted(address(config.posm)));
 
         assertEq(IBaseTickRangeHook(allowlistHook_).tickLowerBound(), config.tickLowerBound);
         assertEq(IBaseTickRangeHook(allowlistHook_).tickUpperBound(), config.tickUpperBound);

@@ -448,10 +448,7 @@ contract AllowlistHookTest is BaseTest, PredicateHelpers {
         vm.prank(hookManager);
         allowlistHook.setPositionManager(address(lpm), false);
 
-        assertEq(
-            uint8(allowlistHook.getPositionManagerStatus(address(lpm))),
-            uint8(IAllowlistHook.PositionManagerStatus.REDUCE_ONLY)
-        );
+        assertFalse(allowlistHook.isPositionManagerTrusted(address(lpm)));
 
         expectWrappedRevert(
             address(allowlistHook),
@@ -509,10 +506,7 @@ contract AllowlistHookTest is BaseTest, PredicateHelpers {
         vm.prank(hookManager);
         allowlistHook.setPositionManager(address(lpm), false);
 
-        assertEq(
-            uint8(allowlistHook.getPositionManagerStatus(address(lpm))),
-            uint8(IAllowlistHook.PositionManagerStatus.REDUCE_ONLY)
-        );
+        assertFalse(allowlistHook.isPositionManagerTrusted(address(lpm)));
 
         // Liquidity Provider should still be able to remove liquidity.
         lpm.decreaseLiquidity(tokenId_, positionConfig_, positionLiquidity_, "");
@@ -1040,10 +1034,7 @@ contract AllowlistHookTest is BaseTest, PredicateHelpers {
     }
 
     function test_setPositionManager_noChange() public {
-        assertEq(
-            uint8(allowlistHook.getPositionManagerStatus(mockPositionManager)),
-            uint8(IAllowlistHook.PositionManagerStatus.FORBIDDEN)
-        );
+        assertFalse(allowlistHook.isPositionManagerTrusted(mockPositionManager));
 
         vm.expectEmit();
         emit IAllowlistHook.PositionManagerSet(mockPositionManager, true);
@@ -1051,25 +1042,16 @@ contract AllowlistHookTest is BaseTest, PredicateHelpers {
         vm.prank(hookManager);
         allowlistHook.setPositionManager(mockPositionManager, true);
 
-        assertEq(
-            uint8(allowlistHook.getPositionManagerStatus(mockPositionManager)),
-            uint8(IAllowlistHook.PositionManagerStatus.ALLOWED)
-        );
+        assertTrue(allowlistHook.isPositionManagerTrusted(mockPositionManager));
 
         vm.prank(hookManager);
         allowlistHook.setPositionManager(mockPositionManager, true);
 
-        assertEq(
-            uint8(allowlistHook.getPositionManagerStatus(mockPositionManager)),
-            uint8(IAllowlistHook.PositionManagerStatus.ALLOWED)
-        );
+        assertTrue(allowlistHook.isPositionManagerTrusted(mockPositionManager));
     }
 
     function test_setPositionManager() public {
-        assertEq(
-            uint8(allowlistHook.getPositionManagerStatus(mockPositionManager)),
-            uint8(IAllowlistHook.PositionManagerStatus.FORBIDDEN)
-        );
+        assertFalse(allowlistHook.isPositionManagerTrusted(mockPositionManager));
 
         vm.expectEmit();
         emit IAllowlistHook.PositionManagerSet(mockPositionManager, true);
@@ -1077,23 +1059,16 @@ contract AllowlistHookTest is BaseTest, PredicateHelpers {
         vm.prank(hookManager);
         allowlistHook.setPositionManager(mockPositionManager, true);
 
-        assertEq(
-            uint8(allowlistHook.getPositionManagerStatus(mockPositionManager)),
-            uint8(IAllowlistHook.PositionManagerStatus.ALLOWED)
-        );
+        assertTrue(allowlistHook.isPositionManagerTrusted(mockPositionManager));
 
         vm.prank(hookManager);
         allowlistHook.setPositionManager(mockPositionManager, false);
 
-        assertEq(
-            uint8(allowlistHook.getPositionManagerStatus(mockPositionManager)),
-            uint8(IAllowlistHook.PositionManagerStatus.REDUCE_ONLY)
-        );
+        assertFalse(allowlistHook.isPositionManagerTrusted(mockPositionManager));
     }
 
     function testFuzz_setPositionManager(address positionManager_, bool isAllowed_, uint256 index_) public {
         address caller = _getUser(index_);
-        uint8 initialStatus = uint8(allowlistHook.getPositionManagerStatus(positionManager_));
 
         if (caller != hookManager) {
             vm.expectRevert(
@@ -1104,9 +1079,7 @@ contract AllowlistHookTest is BaseTest, PredicateHelpers {
                 vm.expectRevert(abi.encodeWithSelector(IAllowlistHook.ZeroPositionManager.selector));
             } else if (
                 // Will return early if the status of the position manager is the same as the current one
-                (initialStatus == uint8(0) && isAllowed_) ||
-                (initialStatus == uint8(1) && !isAllowed_) ||
-                (initialStatus == uint8(2) && !isAllowed_)
+                allowlistHook.isPositionManagerTrusted(positionManager_) != isAllowed_
             ) {
                 vm.expectEmit();
                 emit IAllowlistHook.PositionManagerSet(positionManager_, isAllowed_);
@@ -1118,14 +1091,7 @@ contract AllowlistHookTest is BaseTest, PredicateHelpers {
 
         if (caller != hookManager || positionManager_ == address(0)) return;
 
-        assertEq(
-            uint8(allowlistHook.getPositionManagerStatus(positionManager_)),
-            initialStatus == uint8(0) && !isAllowed_
-                ? uint8(IAllowlistHook.PositionManagerStatus.FORBIDDEN)
-                : isAllowed_
-                    ? uint8(IAllowlistHook.PositionManagerStatus.ALLOWED)
-                    : uint8(IAllowlistHook.PositionManagerStatus.REDUCE_ONLY)
-        );
+        assertEq(allowlistHook.isPositionManagerTrusted(positionManager_), isAllowed_);
     }
 
     /* ============ setPositionManagers ============ */
@@ -1179,27 +1145,16 @@ contract AllowlistHookTest is BaseTest, PredicateHelpers {
         vm.prank(hookManager);
         allowlistHook.setPositionManagers(positionManagers_, statuses_);
 
-        assertEq(
-            uint8(allowlistHook.getPositionManagerStatus(alice)),
-            uint8(IAllowlistHook.PositionManagerStatus.ALLOWED)
-        );
-
-        assertEq(
-            uint8(allowlistHook.getPositionManagerStatus(bob)),
-            uint8(IAllowlistHook.PositionManagerStatus.FORBIDDEN)
-        );
-
-        assertEq(
-            uint8(allowlistHook.getPositionManagerStatus(carol)),
-            uint8(IAllowlistHook.PositionManagerStatus.ALLOWED)
-        );
+        assertTrue(allowlistHook.isPositionManagerTrusted(alice));
+        assertFalse(allowlistHook.isPositionManagerTrusted(bob));
+        assertTrue(allowlistHook.isPositionManagerTrusted(carol));
     }
 
     function testFuzz_setPositionManagers(uint8 seed_, uint8 len_, uint256 index_) public {
         address caller = _getUser(index_);
         address[] memory positionManagers = _generateAddressArray(seed_, len_);
         bool[] memory isAllowed = _generateBooleanArray(seed_, len_);
-        uint8[] memory initialStatuses = new uint8[](len_);
+        bool[] memory initialStatuses = new bool[](len_);
 
         uint256 positionManagersLength = positionManagers.length;
         uint256 isAllowedLength = isAllowed.length;
@@ -1220,7 +1175,7 @@ contract AllowlistHookTest is BaseTest, PredicateHelpers {
                         revertCount++;
                     }
 
-                    initialStatuses[i] = uint8(allowlistHook.getPositionManagerStatus(positionManager));
+                    initialStatuses[i] = allowlistHook.isPositionManagerTrusted(positionManager);
                 }
             }
         }
@@ -1235,14 +1190,7 @@ contract AllowlistHookTest is BaseTest, PredicateHelpers {
         if (caller != hookManager || positionManagersLength != isAllowedLength || revertCount != 0) return;
 
         for (uint256 j; j < positionManagersLength; ++j) {
-            assertEq(
-                uint8(allowlistHook.getPositionManagerStatus(positionManagers[j])),
-                initialStatuses[j] == uint8(0) && !isAllowed[j]
-                    ? uint8(IAllowlistHook.PositionManagerStatus.FORBIDDEN)
-                    : isAllowed[j]
-                        ? uint8(IAllowlistHook.PositionManagerStatus.ALLOWED)
-                        : uint8(IAllowlistHook.PositionManagerStatus.REDUCE_ONLY)
-            );
+            assertEq(allowlistHook.isPositionManagerTrusted(positionManagers[j]), isAllowed[j]);
         }
     }
 
