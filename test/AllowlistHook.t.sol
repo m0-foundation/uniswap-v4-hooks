@@ -23,7 +23,7 @@ import { IAllowlistHook } from "../src/interfaces/IAllowlistHook.sol";
 import { IBaseActionsRouterLike } from "../src/interfaces/IBaseActionsRouterLike.sol";
 import { IERC721Like } from "../src/interfaces/IERC721Like.sol";
 
-import { AllowlistHookHarness } from "./harness/AllowlistHookHarness.sol";
+import { AllowlistHook } from "../src/AllowlistHook.sol";
 
 import { LiquidityOperationsLib } from "./utils/helpers/LiquidityOperationsLib.sol";
 import { PredicateHelpers } from "./utils/helpers/PredicateHelpers.sol";
@@ -33,15 +33,15 @@ import { BaseTest } from "./utils/BaseTest.sol";
 contract AllowlistHookTest is BaseTest, PredicateHelpers {
     using LiquidityOperationsLib for IPositionManager;
 
-    AllowlistHookHarness public allowlistHook;
+    AllowlistHook public allowlistHook;
 
-    uint160 public flags = uint160(Hooks.BEFORE_ADD_LIQUIDITY_FLAG | Hooks.AFTER_SWAP_FLAG | Hooks.BEFORE_SWAP_FLAG);
+    uint160 public flags = uint160(Hooks.BEFORE_ADD_LIQUIDITY_FLAG | Hooks.BEFORE_SWAP_FLAG);
 
     function setUp() public override {
         super.setUp();
 
         deployCodeTo(
-            "AllowlistHookHarness.sol",
+            "AllowlistHook.sol",
             abi.encode(
                 address(lpm),
                 address(swapRouter),
@@ -56,7 +56,7 @@ contract AllowlistHookTest is BaseTest, PredicateHelpers {
             address(flags)
         );
 
-        allowlistHook = AllowlistHookHarness(address(flags));
+        allowlistHook = AllowlistHook(address(flags));
 
         initPool(allowlistHook);
 
