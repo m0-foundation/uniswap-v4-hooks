@@ -104,10 +104,7 @@ contract DeployTest is Deploy, Test {
         assertTrue(IAccessControl(allowlistHook_).hasRole(keccak256("MANAGER_ROLE"), MANAGER));
 
         assertTrue(IAllowlistHook(allowlistHook_).isSwapRouterTrusted(config.swapRouter));
-        assertEq(
-            uint8(IAllowlistHook(allowlistHook_).getPositionManagerStatus(address(config.posm))),
-            uint8(IAllowlistHook.PositionManagerStatus.ALLOWED)
-        );
+        assertTrue(IAllowlistHook(allowlistHook_).isPositionManagerTrusted(address(config.posm)));
 
         int24 tickLowerBound_ = IBaseTickRangeHook(allowlistHook_).tickLowerBound();
         int24 tickUpperBound_ = IBaseTickRangeHook(allowlistHook_).tickUpperBound();
