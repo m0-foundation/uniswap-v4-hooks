@@ -6,8 +6,18 @@
 update:; forge update
 
 # Deployment helpers
-deploy-local :; FOUNDRY_PROFILE=production forge script script/Deploy.s.sol --rpc-url localhost --broadcast -v
+## Local
+deploy-allowlist-hook-local :; FOUNDRY_PROFILE=production forge script script/deploy/DeployAllowlistHook.s.sol:DeployAllowlistHook --rpc-url localhost --broadcast -v
+deploy-allowlist-hook-and-pool-local :; FOUNDRY_PROFILE=production forge script script/deploy/DeployAllowlistHookAndPool.s.sol:DeployAllowlistHookAndPool --rpc-url localhost --broadcast -v
+deploy-tick-range-hook-local :; FOUNDRY_PROFILE=production forge script script/deploy/DeployTickRangeHook.s.sol:DeployTickRangeHook --rpc-url localhost --broadcast -v
+deploy-tick-range-hook-and-pool-local :; FOUNDRY_PROFILE=production forge script script/deploy/DeployTickRangeHookAndPool.s.sol:DeployTickRangeHookAndPool --rpc-url localhost --broadcast -v
+
+## Sepolia
 deploy-sepolia :; FOUNDRY_PROFILE=production forge script script/Deploy.s.sol --rpc-url sepolia --broadcast -vvv
+
+# Local testing
+add-liquidity-local :; forge script script/dev/AddLiquidity.s.sol:AddLiquidity --rpc-url localhost --broadcast -vvv
+swap-local :; forge script script/dev/Swap.s.sol:Swap --rpc-url localhost --broadcast -vvv
 
 # Run slither
 slither :; FOUNDRY_PROFILE=production forge build --build-info --skip '*/test/**' --skip '*/script/**' --force && slither --compile-force-framework foundry --ignore-compile --sarif results.sarif --config-file slither.config.json .
