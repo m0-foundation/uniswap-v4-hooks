@@ -105,17 +105,15 @@ contract Deploy is Config, Script {
     }
 
     function _deployPool(DeployConfig memory config_, IHooks hook_) internal returns (PoolKey memory pool_) {
-        (Currency currency0_, Currency currency1_) = _sortCurrencies(address(config_.usdc), address(config_.wrappedM));
-
         pool_ = PoolKey({
-            currency0: currency0_,
-            currency1: currency1_,
+            currency0: config_.currency0,
+            currency1: config_.currency1,
             fee: config_.fee,
             tickSpacing: config_.tickSpacing,
             hooks: hook_
         });
 
-        IPoolManager(config_.poolManager).initialize(pool_, TickMath.getSqrtPriceAtTick(0));
+        IPoolManager(config_.poolManager).initialize(pool_, 79230143144055126352967237632); // Sqrt Price at tick 0.5
     }
 
     function _logPoolDeployment(Vm.Log[] memory logs_) internal pure {
@@ -133,14 +131,5 @@ contract Deploy is Config, Script {
                 console.log("Pool hooks:", address(eventHooks_));
             }
         }
-    }
-
-    function _sortCurrencies(
-        address tokenA_,
-        address tokenB_
-    ) internal pure returns (Currency currency0_, Currency currency1_) {
-        (currency0_, currency1_) = tokenA_ < tokenB_
-            ? (Currency.wrap(tokenA_), Currency.wrap(tokenB_))
-            : (Currency.wrap(tokenB_), Currency.wrap(tokenA_));
     }
 }
