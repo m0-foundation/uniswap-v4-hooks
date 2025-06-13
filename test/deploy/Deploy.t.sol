@@ -40,8 +40,8 @@ contract DeployTest is Deploy, Test {
 
     /// forge-config: default.allow_internal_expect_revert = true
     function testFork_getConfig_unsupportedChain() public {
-        vm.expectRevert(abi.encodeWithSelector(Config.UnsupportedChain.selector, block.chainid));
-        _getDeployConfig(block.chainid);
+        vm.expectRevert(abi.encodeWithSelector(Config.UnsupportedChain.selector, 0));
+        _getDeployConfig(0);
     }
 
     /* ============ deployAllowlistHook ============ */

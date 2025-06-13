@@ -22,7 +22,7 @@ contract Config {
     error UnsupportedChain(uint256 chainId);
 
     // Swap Fee in bps
-    uint24 public constant SWAP_FEE = 100;
+    uint24 public constant SWAP_FEE = 0;
 
     int24 public constant TICK_LOWER_BOUND = 0;
     int24 public constant TICK_UPPER_BOUND = 1;
@@ -35,6 +35,7 @@ contract Config {
     uint256 public constant UNICHAIN_CHAIN_ID = 130;
 
     // Testnet chain IDs
+    uint256 public constant LOCAL_CHAIN_ID = 31337;
     uint256 public constant SEPOLIA_CHAIN_ID = 11155111;
     uint256 public constant ARBITRUM_SEPOLIA_CHAIN_ID = 421614;
     uint256 public constant OPTIMISM_SEPOLIA_CHAIN_ID = 11155420;
@@ -189,6 +190,26 @@ contract Config {
         }
 
         // Testnet configs
+        if (chainId_ == LOCAL_CHAIN_ID) {
+            (Currency currency0_, Currency currency1_) = _sortCurrencies(USDC_ETHEREUM, WRAPPED_M);
+            (int24 tickLowerBound_, int24 tickUpperBound_) = _sortTicks(currency0_, TICK_LOWER_BOUND, TICK_UPPER_BOUND);
+
+            return
+                DeployConfig({
+                    poolManager: POOL_MANAGER_ETHEREUM,
+                    posm: POSM_ETHEREUM,
+                    swapRouter: SWAP_ROUTER_ETHEREUM,
+                    serviceManager: SERVICE_MANAGER_ETHEREUM,
+                    policyID: POLICY_ID_ETHEREUM,
+                    currency0: currency0_,
+                    currency1: currency1_,
+                    fee: SWAP_FEE,
+                    tickLowerBound: tickLowerBound_,
+                    tickUpperBound: tickUpperBound_,
+                    tickSpacing: TICK_SPACING
+                });
+        }
+
         if (chainId_ == SEPOLIA_CHAIN_ID) {
             (Currency currency0_, Currency currency1_) = _sortCurrencies(USDC_SEPOLIA, WRAPPED_M);
             (int24 tickLowerBound_, int24 tickUpperBound_) = _sortTicks(currency0_, TICK_LOWER_BOUND, TICK_UPPER_BOUND);
