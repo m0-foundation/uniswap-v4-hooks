@@ -12,7 +12,7 @@ contract TickRangeHookHarness is TickRangeHook {
         address manager_
     ) TickRangeHook(poolManager_, tickLowerBound_, tickUpperBound_, admin_, manager_) {}
 
-    function checkTick(int24 tick_) external view {
-        _checkTick(tick_);
+    function checkTick(int24 tick_, int24 tickBefore_) external view {
+        _checkTick(tick_, tickBefore_);
     }
 }

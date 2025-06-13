@@ -170,6 +170,7 @@ contract AllowlistHook is IAllowlistHook, BaseTickRangeHook, PredicateClient {
             }
         }
 
+        super._beforeSwap(key_);
         return (this.beforeSwap.selector, BeforeSwapDeltaLibrary.ZERO_DELTA, 0);
     }
 
