@@ -20,7 +20,7 @@ import { BaseTest } from "../utils/BaseTest.sol";
 contract TickRangeHookIntegrationTest is BaseTest {
     TickRangeHook public tickRangeHook;
 
-    uint160 public flags = uint160(Hooks.BEFORE_ADD_LIQUIDITY_FLAG | Hooks.AFTER_SWAP_FLAG);
+    uint160 public flags = uint160(Hooks.BEFORE_ADD_LIQUIDITY_FLAG);
 
     function setUp() public override {
         super.setUp();
@@ -81,19 +81,14 @@ contract TickRangeHookIntegrationTest is BaseTest {
         // We initialize the pool at tick -1
         initPool(tickRangeHook, TickMath.getSqrtPriceAtTick(-1));
 
-        (, int24 tick_, , ) = state.getSlot0(poolId);
+        (uint160 sqrtPriceX96_, int24 tick_, , ) = state.getSlot0(poolId);
+        assertEq(sqrtPriceX96_, TickMath.getSqrtPriceAtTick(-1));
         assertEq(tick_, -1);
 
         // Then deposit tokenZero single sided liquidity at tick 0
         mintNewPosition(TickMath.getSqrtPriceAtTick(0), TICK_LOWER_BOUND, TICK_UPPER_BOUND, 1_000_000e6, 0);
 
-        tick_ = 2;
-
-        expectWrappedRevert(
-            address(tickRangeHook),
-            IHooks.afterSwap.selector,
-            abi.encodeWithSelector(IBaseTickRangeHook.InvalidTick.selector, tick_, TICK_LOWER_BOUND, TICK_UPPER_BOUND)
-        );
+        uint160 sqrtPriceLimitX96_ = TickMath.getSqrtPriceAtTick(2);
 
         // Then swap to move tick out of range
         swapRouter.swap(
@@ -101,10 +96,14 @@ contract TickRangeHookIntegrationTest is BaseTest {
             IPoolManager.SwapParams({
                 zeroForOne: false,
                 amountSpecified: 1_000_000e6,
-                sqrtPriceLimitX96: TickMath.getSqrtPriceAtTick(tick_)
+                sqrtPriceLimitX96: sqrtPriceLimitX96_
             }),
             PoolSwapTest.TestSettings({ takeClaims: false, settleUsingBurn: false }),
             ""
         );
+
+        (sqrtPriceX96_, tick_, , ) = state.getSlot0(poolId);
+        assertEq(sqrtPriceX96_, sqrtPriceLimitX96_);
+        assertEq(tick_, 2);
     }
 }

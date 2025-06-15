@@ -20,7 +20,7 @@ import { PoolSwapTest } from "../lib/v4-periphery/lib/v4-core/src/test/PoolSwapT
 import { IBaseTickRangeHook } from "../src/interfaces/IBaseTickRangeHook.sol";
 import { IERC721Like } from "../src/interfaces/IERC721Like.sol";
 
-import { TickRangeHookHarness } from "./harness/TickRangeHookHarness.sol";
+import { TickRangeHook } from "../src/TickRangeHook.sol";
 
 import { BaseTest } from "./utils/BaseTest.sol";
 import { LiquidityOperationsLib } from "./utils/helpers/LiquidityOperationsLib.sol";
@@ -28,20 +28,20 @@ import { LiquidityOperationsLib } from "./utils/helpers/LiquidityOperationsLib.s
 contract TickRangeHookTest is BaseTest {
     using SafeCast for int256;
 
-    TickRangeHookHarness public tickRangeHook;
+    TickRangeHook public tickRangeHook;
 
-    uint160 public flags = uint160(Hooks.BEFORE_ADD_LIQUIDITY_FLAG | Hooks.AFTER_SWAP_FLAG);
+    uint160 public flags = uint160(Hooks.BEFORE_ADD_LIQUIDITY_FLAG);
 
     function setUp() public override {
         super.setUp();
 
         deployCodeTo(
-            "TickRangeHookHarness.sol",
+            "TickRangeHook.sol",
             abi.encode(address(manager), TICK_LOWER_BOUND, TICK_UPPER_BOUND, admin, hookManager),
             address(flags)
         );
 
-        tickRangeHook = TickRangeHookHarness(address(flags));
+        tickRangeHook = TickRangeHook(address(flags));
 
         initPool(tickRangeHook);
 
@@ -56,7 +56,7 @@ contract TickRangeHookTest is BaseTest {
         );
 
         deployCodeTo(
-            "TickRangeHookHarness.sol",
+            "TickRangeHook.sol",
             abi.encode(address(manager), TICK_UPPER_BOUND, TICK_LOWER_BOUND, admin, hookManager),
             address(flags)
         );
@@ -68,7 +68,7 @@ contract TickRangeHookTest is BaseTest {
         );
 
         deployCodeTo(
-            "TickRangeHookHarness.sol",
+            "TickRangeHook.sol",
             abi.encode(address(manager), TICK_UPPER_BOUND, TICK_UPPER_BOUND, admin, hookManager),
             address(flags)
         );
@@ -78,7 +78,7 @@ contract TickRangeHookTest is BaseTest {
         vm.expectRevert(abi.encodeWithSelector(IBaseTickRangeHook.ZeroAdmin.selector));
 
         deployCodeTo(
-            "TickRangeHookHarness.sol",
+            "TickRangeHook.sol",
             abi.encode(address(manager), TICK_LOWER_BOUND, TICK_UPPER_BOUND, address(0), hookManager),
             address(flags)
         );
@@ -88,7 +88,7 @@ contract TickRangeHookTest is BaseTest {
         vm.expectRevert(abi.encodeWithSelector(IBaseTickRangeHook.ZeroManager.selector));
 
         deployCodeTo(
-            "TickRangeHookHarness.sol",
+            "TickRangeHook.sol",
             abi.encode(address(manager), TICK_LOWER_BOUND, TICK_UPPER_BOUND, admin, address(0)),
             address(flags)
         );
@@ -147,7 +147,7 @@ contract TickRangeHookTest is BaseTest {
 
     /* ============ afterSwap ============ */
 
-    function test_afterSwap_invalidTick_outsideLowerBound() public {
+    function test_afterSwap_tick_outsideLowerBound() public {
         (uint128 positionLiquidity_, uint256 tokenId_) = mintNewPosition(
             SQRT_PRICE_0_0,
             TICK_LOWER_BOUND,
@@ -158,27 +158,29 @@ contract TickRangeHookTest is BaseTest {
 
         assertEq(lpm.getPositionLiquidity(tokenId_), positionLiquidity_);
 
-        int24 tick_ = -1;
+        (uint160 sqrtPriceX96_, int24 tick_, , ) = state.getSlot0(poolId);
+        assertEq(sqrtPriceX96_, SQRT_PRICE_0_0);
+        assertEq(tick_, 0);
 
-        expectWrappedRevert(
-            address(tickRangeHook),
-            IHooks.afterSwap.selector,
-            abi.encodeWithSelector(IBaseTickRangeHook.InvalidTick.selector, tick_, TICK_LOWER_BOUND, TICK_UPPER_BOUND)
-        );
+        uint160 sqrtPriceLimitX96_ = TickMath.getSqrtPriceAtTick(-100);
 
         swapRouter.swap(
             key,
             IPoolManager.SwapParams({
                 zeroForOne: true,
                 amountSpecified: -1e6, // Exact output for input
-                sqrtPriceLimitX96: TickMath.getSqrtPriceAtTick(tick_)
+                sqrtPriceLimitX96: sqrtPriceLimitX96_
             }),
             PoolSwapTest.TestSettings({ takeClaims: false, settleUsingBurn: false }),
             ""
         );
+
+        (sqrtPriceX96_, tick_, , ) = state.getSlot0(poolId);
+        assertEq(tick_, -100);
+        assertEq(sqrtPriceX96_, sqrtPriceLimitX96_);
     }
 
-    function test_afterSwap_invalidTick_outsideUpperBound() public {
+    function test_afterSwap_tick_equalUpperBound() public {
         (uint128 positionLiquidity_, uint256 tokenId_) = mintNewPosition(
             SQRT_PRICE_0_0,
             TICK_LOWER_BOUND,
@@ -189,27 +191,29 @@ contract TickRangeHookTest is BaseTest {
 
         assertEq(lpm.getPositionLiquidity(tokenId_), positionLiquidity_);
 
-        int24 tick_ = 2;
+        (uint160 sqrtPriceX96_, int24 tick_, , ) = state.getSlot0(poolId);
+        assertEq(sqrtPriceX96_, SQRT_PRICE_0_0);
+        assertEq(tick_, 0);
 
-        expectWrappedRevert(
-            address(tickRangeHook),
-            IHooks.afterSwap.selector,
-            abi.encodeWithSelector(IBaseTickRangeHook.InvalidTick.selector, tick_, TICK_LOWER_BOUND, TICK_UPPER_BOUND)
-        );
+        uint160 sqrtPriceLimitX96_ = TickMath.getSqrtPriceAtTick(1);
 
         swapRouter.swap(
             key,
             IPoolManager.SwapParams({
                 zeroForOne: false,
                 amountSpecified: 10_000_000e6, // Exact input for output
-                sqrtPriceLimitX96: TickMath.getSqrtPriceAtTick(tick_)
+                sqrtPriceLimitX96: sqrtPriceLimitX96_
             }),
             PoolSwapTest.TestSettings({ takeClaims: false, settleUsingBurn: false }),
             ""
         );
+
+        (sqrtPriceX96_, tick_, , ) = state.getSlot0(poolId);
+        assertEq(tick_, 1);
+        assertEq(sqrtPriceX96_, sqrtPriceLimitX96_);
     }
 
-    function test_afterSwap_invalidTick_equalUpperBound() public {
+    function test_afterSwap_tick_outsideUpperBound() public {
         (uint128 positionLiquidity_, uint256 tokenId_) = mintNewPosition(
             SQRT_PRICE_0_0,
             TICK_LOWER_BOUND,
@@ -220,24 +224,26 @@ contract TickRangeHookTest is BaseTest {
 
         assertEq(lpm.getPositionLiquidity(tokenId_), positionLiquidity_);
 
-        int24 tick_ = 1;
+        (uint160 sqrtPriceX96_, int24 tick_, , ) = state.getSlot0(poolId);
+        assertEq(sqrtPriceX96_, SQRT_PRICE_0_0);
+        assertEq(tick_, 0);
 
-        expectWrappedRevert(
-            address(tickRangeHook),
-            IHooks.afterSwap.selector,
-            abi.encodeWithSelector(IBaseTickRangeHook.InvalidTick.selector, tick_, TICK_LOWER_BOUND, TICK_UPPER_BOUND)
-        );
+        uint160 sqrtPriceLimitX96_ = TickMath.getSqrtPriceAtTick(100);
 
         swapRouter.swap(
             key,
             IPoolManager.SwapParams({
                 zeroForOne: false,
                 amountSpecified: 10_000_000e6, // Exact input for output
-                sqrtPriceLimitX96: TickMath.getSqrtPriceAtTick(tick_)
+                sqrtPriceLimitX96: sqrtPriceLimitX96_
             }),
             PoolSwapTest.TestSettings({ takeClaims: false, settleUsingBurn: false }),
             ""
         );
+
+        (sqrtPriceX96_, tick_, , ) = state.getSlot0(poolId);
+        assertEq(tick_, 100);
+        assertEq(sqrtPriceX96_, sqrtPriceLimitX96_);
     }
 
     function test_afterSwap() public {
@@ -266,21 +272,6 @@ contract TickRangeHookTest is BaseTest {
 
         assertEq(sqrtPriceX96_, SQRT_PRICE_0_0 + 1);
         assertEq(tick_, 0);
-    }
-
-    function testFuzz_checkTick(int24 tick_) public {
-        if (tick_ < TICK_LOWER_BOUND || tick_ >= TICK_UPPER_BOUND) {
-            vm.expectRevert(
-                abi.encodeWithSelector(
-                    IBaseTickRangeHook.InvalidTick.selector,
-                    tick_,
-                    TICK_LOWER_BOUND,
-                    TICK_UPPER_BOUND
-                )
-            );
-        }
-
-        tickRangeHook.checkTick(tick_);
     }
 
     /* ============ beforeAddLiquidity ============ */
