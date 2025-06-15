@@ -55,6 +55,8 @@ contract BaseTest is Deployers, PosmTestSetup, Fuzzers, OperatorTestPrep, Servic
 
     // Initial Sqrt(P) value = 0
     uint160 public SQRT_PRICE_0_0;
+    uint160 public constant SQRT_PRICE_0_5 = 79230143144055126352967237632;
+    uint160 public SQRT_PRICE_5_0;
 
     int24 public constant TICK_LOWER_BOUND = 0;
     int24 public constant TICK_UPPER_BOUND = 1;
@@ -81,6 +83,7 @@ contract BaseTest is Deployers, PosmTestSetup, Fuzzers, OperatorTestPrep, Servic
         super.setUp();
 
         SQRT_PRICE_0_0 = TickMath.getSqrtPriceAtTick(0);
+        SQRT_PRICE_5_0 = TickMath.getSqrtPriceAtTick(5);
 
         deployFreshManagerAndRouters();
         (tokenZero, tokenOne) = deployMintAndApprove2Currencies();
