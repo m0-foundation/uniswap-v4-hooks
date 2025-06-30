@@ -108,7 +108,7 @@ contract AllowlistHook is IAllowlistHook, BaseTickRangeHook, PredicateClient {
                 afterRemoveLiquidity: false,
                 beforeSwap: true,
                 afterSwap: true,
-                beforeDonate: false,
+                beforeDonate: true,
                 afterDonate: false,
                 beforeSwapReturnDelta: false,
                 afterSwapReturnDelta: false,
@@ -218,6 +218,17 @@ contract AllowlistHook is IAllowlistHook, BaseTickRangeHook, PredicateClient {
 
         super._beforeAddLiquidity(params_);
         return this.beforeAddLiquidity.selector;
+    }
+
+    /// @dev Hook that is called before donating.
+    function _beforeDonate(
+        address /* sender */,
+        PoolKey calldata /* key */,
+        uint256 /* amount0 */,
+        uint256 /* amount1 */,
+        bytes calldata /* hookData */
+    ) internal pure override returns (bytes4) {
+        revert DonationNotAllowed();
     }
 
     /* ============ External Interactive functions ============ */
