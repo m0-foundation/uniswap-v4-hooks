@@ -28,6 +28,10 @@ contract Config {
     int24 public constant TICK_UPPER_BOUND = 1;
     int24 public constant TICK_SPACING = 1;
 
+    // Sqrt Price value at tick 0.5 and -0.5
+    uint160 public constant SQRT_PRICE_0_5 = 79230143144055126352967237632;
+    uint160 public constant SQRT_PRICE_NEG_0_5 = 79228162514264337593543950336;
+
     // Mainnet chain IDs
     uint256 public constant ETHEREUM_CHAIN_ID = 1;
     uint256 public constant ARBITRUM_CHAIN_ID = 42161;
