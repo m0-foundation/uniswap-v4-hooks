@@ -85,7 +85,11 @@ contract DeployTest is Deploy, Test {
         assertEq(poolKey_.tickSpacing, config.tickSpacing);
         assertEq(address(poolKey_.hooks), address(allowlistHook_));
 
-        (, int24 tickCurrent_, , ) = IBaseHook(allowlistHook_).poolManager().getSlot0(poolKey_.toId());
+        (uint160 currentSqrtPriceX96_, int24 tickCurrent_, , ) = IBaseHook(allowlistHook_).poolManager().getSlot0(
+            poolKey_.toId()
+        );
+
+        assertEq(currentSqrtPriceX96_, SQRT_PRICE_0_5);
         assertEq(tickCurrent_, 0);
     }
 
@@ -128,13 +132,17 @@ contract DeployTest is Deploy, Test {
 
         PoolKey memory poolKey_ = _deployPool(config, IHooks(allowlistHook_));
 
-        assertEq(Currency.unwrap(poolKey_.currency0), WRAPPED_M);
-        assertEq(Currency.unwrap(poolKey_.currency1), USDC_ETHEREUM);
+        assertEq(Currency.unwrap(poolKey_.currency0), USDC_OPTIMISM);
+        assertEq(Currency.unwrap(poolKey_.currency1), WRAPPED_M);
         assertEq(poolKey_.fee, config.fee);
         assertEq(poolKey_.tickSpacing, config.tickSpacing);
         assertEq(address(poolKey_.hooks), address(allowlistHook_));
 
-        (, int24 tickCurrent_, , ) = IBaseHook(allowlistHook_).poolManager().getSlot0(poolKey_.toId());
+        (uint160 currentSqrtPriceX96_, int24 tickCurrent_, , ) = IBaseHook(allowlistHook_).poolManager().getSlot0(
+            poolKey_.toId()
+        );
+
+        assertEq(currentSqrtPriceX96_, SQRT_PRICE_NEG_0_5);
         assertEq(tickCurrent_, 0);
     }
 
@@ -171,7 +179,11 @@ contract DeployTest is Deploy, Test {
         assertEq(poolKey_.tickSpacing, config.tickSpacing);
         assertEq(address(poolKey_.hooks), tickRangeHook_);
 
-        (, int24 tickCurrent_, , ) = IBaseHook(tickRangeHook_).poolManager().getSlot0(poolKey_.toId());
+        (uint160 currentSqrtPriceX96_, int24 tickCurrent_, , ) = IBaseHook(tickRangeHook_).poolManager().getSlot0(
+            poolKey_.toId()
+        );
+
+        assertEq(currentSqrtPriceX96_, SQRT_PRICE_0_5);
         assertEq(tickCurrent_, 0);
     }
 
@@ -211,7 +223,11 @@ contract DeployTest is Deploy, Test {
         assertEq(poolKey_.tickSpacing, config.tickSpacing);
         assertEq(address(poolKey_.hooks), tickRangeHook_);
 
-        (, int24 tickCurrent_, , ) = IBaseHook(tickRangeHook_).poolManager().getSlot0(poolKey_.toId());
+        (uint160 currentSqrtPriceX96_, int24 tickCurrent_, , ) = IBaseHook(tickRangeHook_).poolManager().getSlot0(
+            poolKey_.toId()
+        );
+
+        assertEq(currentSqrtPriceX96_, SQRT_PRICE_NEG_0_5);
         assertEq(tickCurrent_, 0);
     }
 
