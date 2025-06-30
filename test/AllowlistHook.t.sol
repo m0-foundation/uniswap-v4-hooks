@@ -35,7 +35,7 @@ contract AllowlistHookTest is BaseTest, PredicateHelpers {
 
     AllowlistHook public allowlistHook;
 
-    uint160 public flags = uint160(Hooks.BEFORE_ADD_LIQUIDITY_FLAG | Hooks.BEFORE_SWAP_FLAG);
+    uint160 public flags = uint160(Hooks.BEFORE_ADD_LIQUIDITY_FLAG | Hooks.BEFORE_DONATE_FLAG | Hooks.BEFORE_SWAP_FLAG);
 
     function setUp() public override {
         super.setUp();
@@ -519,6 +519,19 @@ contract AllowlistHookTest is BaseTest, PredicateHelpers {
 
         // But should not be able to add liquidity anymore via this Position Manager.
         lpm.mint(positionConfig_, positionLiquidity_, address(this), "");
+    }
+
+    /* ============ beforeDonate ============ */
+
+    function test_beforeDonate_donationNotAllowed() public {
+        expectWrappedRevert(
+            address(allowlistHook),
+            IHooks.beforeDonate.selector,
+            abi.encodeWithSelector(IAllowlistHook.DonationNotAllowed.selector)
+        );
+
+        vm.prank(alice);
+        donateRouter.donate(key, 100, 200, abi.encode(address(this)));
     }
 
     /* ============ setPredicateCheck ============ */
