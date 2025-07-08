@@ -72,6 +72,9 @@ interface IAllowlistHook {
     /// @notice Emitted when the lengths of input arrays do not match.
     error ArrayLengthMismatch();
 
+    /// @notice Emitted when donating to the pool, which is not allowed in this hook.
+    error DonationNotAllowed();
+
     /**
      * @notice Error emitted in beforeAddLiquidity if the caller is not allowed to provide liquidity.
      * @param  liquidityProvider The address of the liquidity provider that is not allowed.
