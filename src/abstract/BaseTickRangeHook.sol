@@ -11,14 +11,12 @@ import { IPoolManager } from "../../lib/v4-periphery/lib/v4-core/src/interfaces/
 import { Hooks } from "../../lib/v4-periphery/lib/v4-core/src/libraries/Hooks.sol";
 import { StateLibrary } from "../../lib/v4-periphery/lib/v4-core/src/libraries/StateLibrary.sol";
 
-import { PoolKey } from "../../lib/v4-periphery/lib/v4-core/src/types/PoolKey.sol";
-
 import { IBaseTickRangeHook } from "../interfaces/IBaseTickRangeHook.sol";
 
 /**
  * @title  Base Tick Range Hook
  * @author M0 Labs
- * @notice Hook restricting liquidity provision and token swaps to a specific tick range.
+ * @notice Hook restricting liquidity provision to a specific tick range.
  */
 abstract contract BaseTickRangeHook is IBaseTickRangeHook, BaseHook, AccessControl {
     using StateLibrary for IPoolManager;
@@ -76,7 +74,7 @@ abstract contract BaseTickRangeHook is IBaseTickRangeHook, BaseHook, AccessContr
                 afterAddLiquidity: false,
                 afterRemoveLiquidity: false,
                 beforeSwap: false,
-                afterSwap: true,
+                afterSwap: false,
                 beforeDonate: false,
                 afterDonate: false,
                 beforeSwapReturnDelta: false,
@@ -84,15 +82,6 @@ abstract contract BaseTickRangeHook is IBaseTickRangeHook, BaseHook, AccessContr
                 afterAddLiquidityReturnDelta: false,
                 afterRemoveLiquidityReturnDelta: false
             });
-    }
-
-    /**
-     * @dev    Hook that is called after a swap is executed.
-     * @param  key_ The key of the pool.
-     */
-    function _afterSwap(PoolKey calldata key_) internal view {
-        (, int24 tickCurrent_, , ) = poolManager.getSlot0(key_.toId());
-        _checkTick(tickCurrent_);
     }
 
     /**
@@ -125,16 +114,5 @@ abstract contract BaseTickRangeHook is IBaseTickRangeHook, BaseHook, AccessContr
         tickUpperBound = tickUpperBound_;
 
         emit TickRangeSet(tickLowerBound_, tickUpperBound_);
-    }
-
-    /* ============ Internal View functions ============ */
-
-    /**
-     * @notice Checks if the tick is within the defined tick range.
-     * @param  tick_ The tick to check.
-     */
-    function _checkTick(int24 tick_) internal view {
-        if (tick_ < tickLowerBound || tick_ >= tickUpperBound)
-            revert InvalidTick(tick_, tickLowerBound, tickUpperBound);
     }
 }

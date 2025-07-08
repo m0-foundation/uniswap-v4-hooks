@@ -9,7 +9,6 @@ import { IPoolManager } from "../lib/v4-periphery/lib/v4-core/src/interfaces/IPo
 import { Hooks } from "../lib/v4-periphery/lib/v4-core/src/libraries/Hooks.sol";
 
 import { BeforeSwapDelta, BeforeSwapDeltaLibrary } from "../lib/v4-periphery/lib/v4-core/src/types/BeforeSwapDelta.sol";
-import { BalanceDelta } from "../lib/v4-periphery/lib/v4-core/src/types/BalanceDelta.sol";
 import { Currency, CurrencyLibrary } from "../lib/v4-periphery/lib/v4-core/src/types/Currency.sol";
 import { PoolKey } from "../lib/v4-periphery/lib/v4-core/src/types/PoolKey.sol";
 
@@ -21,7 +20,7 @@ import { IBaseActionsRouterLike } from "./interfaces/IBaseActionsRouterLike.sol"
 /**
  * @title  Allowlist Hook
  * @author M0 Labs
- * @notice Hook restricting liquidity provision and token swaps to a specific tick range and allowlisted addresses.
+ * @notice Hook restricting liquidity provision to a specific tick range and allowlisted addresses.
  */
 contract AllowlistHook is IAllowlistHook, BaseTickRangeHook, PredicateClient {
     using CurrencyLibrary for Currency;
@@ -107,7 +106,7 @@ contract AllowlistHook is IAllowlistHook, BaseTickRangeHook, PredicateClient {
                 afterAddLiquidity: false,
                 afterRemoveLiquidity: false,
                 beforeSwap: true,
-                afterSwap: true,
+                afterSwap: false,
                 beforeDonate: false,
                 afterDonate: false,
                 beforeSwapReturnDelta: false,
@@ -171,22 +170,6 @@ contract AllowlistHook is IAllowlistHook, BaseTickRangeHook, PredicateClient {
         }
 
         return (this.beforeSwap.selector, BeforeSwapDeltaLibrary.ZERO_DELTA, 0);
-    }
-
-    /**
-     * @dev    Hook that is called after a swap is executed.
-     * @param  key_ The key of the pool.
-     * @return A tuple containing the selector of this function and the hook's delta in unspecified currency.
-     */
-    function _afterSwap(
-        address /* sender */,
-        PoolKey calldata key_,
-        IPoolManager.SwapParams calldata /* params */,
-        BalanceDelta /* delta */,
-        bytes calldata /* hookData */
-    ) internal view override returns (bytes4, int128) {
-        super._afterSwap(key_);
-        return (this.afterSwap.selector, int128(0));
     }
 
     /**
