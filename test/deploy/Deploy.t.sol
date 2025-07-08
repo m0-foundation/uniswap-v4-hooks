@@ -63,9 +63,9 @@ contract DeployTest is Deploy, Test {
         int24 tickLowerBound_ = IBaseTickRangeHook(allowlistHook_).tickLowerBound();
         int24 tickUpperBound_ = IBaseTickRangeHook(allowlistHook_).tickUpperBound();
 
-        assertEq(tickLowerBound_, 0);
+        assertEq(tickLowerBound_, -1);
         assertEq(tickUpperBound_, 1);
-        assertEq(getPriceAtTick(tickLowerBound_), 1e18);
+        assertEq(getPriceAtTick(tickLowerBound_), 999900009999000099);
         assertEq(getPriceAtTick(tickUpperBound_), 1000100000000000000);
     }
 
@@ -110,9 +110,9 @@ contract DeployTest is Deploy, Test {
         int24 tickUpperBound_ = IBaseTickRangeHook(allowlistHook_).tickUpperBound();
 
         assertEq(tickLowerBound_, -1);
-        assertEq(tickUpperBound_, 0);
+        assertEq(tickUpperBound_, 1);
         assertEq(getPriceAtTick(tickLowerBound_), 999900009999000099);
-        assertEq(getPriceAtTick(tickUpperBound_), 1e18);
+        assertEq(getPriceAtTick(tickUpperBound_), 1000100000000000000);
     }
 
     function testFork_deployAllowlistHookAndPool_optimism() public {
@@ -190,9 +190,9 @@ contract DeployTest is Deploy, Test {
         int24 tickUpperBound_ = IBaseTickRangeHook(tickRangeHook_).tickUpperBound();
 
         assertEq(tickLowerBound_, -1);
-        assertEq(tickUpperBound_, 0);
+        assertEq(tickUpperBound_, 1);
         assertEq(getPriceAtTick(tickLowerBound_), 999900009999000099);
-        assertEq(getPriceAtTick(tickUpperBound_), 1e18);
+        assertEq(getPriceAtTick(tickUpperBound_), 1000100000000000000);
     }
 
     function testFork_deployTickRangeHookAndPool_optimism() public {

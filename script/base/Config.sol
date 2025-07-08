@@ -22,9 +22,9 @@ contract Config {
     error UnsupportedChain(uint256 chainId);
 
     // Swap Fee in bps
-    uint24 public constant SWAP_FEE = 100;
+    uint24 public constant SWAP_FEE = 0;
 
-    int24 public constant TICK_LOWER_BOUND = 0;
+    int24 public constant TICK_LOWER_BOUND = -1;
     int24 public constant TICK_UPPER_BOUND = 1;
     int24 public constant TICK_SPACING = 1;
 

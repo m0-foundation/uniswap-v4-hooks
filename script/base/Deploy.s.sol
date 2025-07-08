@@ -113,7 +113,7 @@ contract Deploy is Config, Script {
             hooks: hook_
         });
 
-        IPoolManager(config_.poolManager).initialize(pool_, 79230143144055126352967237632); // Sqrt Price at tick 0.5
+        IPoolManager(config_.poolManager).initialize(pool_, TickMath.getSqrtPriceAtTick(0));
     }
 
     function _logPoolDeployment(Vm.Log[] memory logs_) internal pure {
