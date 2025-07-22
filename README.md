@@ -1,6 +1,6 @@
 # Uniswap V4 Hooks
 
-This repository contains the Uniswap V4 hook contracts built by M^0 Labs for the M^0 project.
+This repository contains the Uniswap V4 hook contracts built by M0 Labs for the M0 project.
 
 ## Hooks
 
@@ -22,7 +22,7 @@ It inherits from OpenZeppelin’s AccessControl and allows an admin to manage on
 
 The deployer sets the tick range during deployment, and the hook manager can modify it at any time.
 
-Since the tick range is enforced, any swap that would move the tick outside this range will revert. Additionally, changes to the tick range may cause in-progress swaps to revert.
+Liquidity providers can only add liquidity between the lower and upper tick values.
 
 Liquidity providers may be unable to add liquidity to their positions if the tick range has been updated since they first created their position. They are able to remove their liquidity at any time, even if not inside the current tick range.
 
@@ -32,7 +32,7 @@ Liquidity providers may be unable to add liquidity to their positions if the tic
 
 The contract maintains two separate allowlists—one for swappers and one for liquidity providers—to restrict which addresses can interact with the pool.
 
-It also inherits from the Tick Range hook contract to restrict liquidity provision and token swaps within a specific tick range.
+It also inherits from the Tick Range hook contract to restrict liquidity provision within a specific tick range.
 
 [Predicate](https://docs.predicate.io/essentials/introduction) is used to perform ongoing compliance checks for addresses on the swappers allowlist.
 
@@ -40,7 +40,7 @@ It also inherits from the Tick Range hook contract to restrict liquidity provisi
 
 Inherits from the _BaseTickRangeHook_ abstract contract and its functionalities.
 
-Inherits from the _PredicateClient_ to perform Predicate checks when swapping and adding liquidity.
+Inherits from the _PredicateClient_ to perform Predicate checks when swapping.
 
 Both allowlists and the Predicate check are enabled by default upon deployment and can be disabled later by the hook manager.
 
@@ -186,19 +186,46 @@ npm run build
 Open a new terminal window and run [anvil](https://book.getfoundry.sh/reference/anvil/) to start a local chain:
 
 ```bash
-anvil
+anvil --fork-url <MAINNET_RPC_URL> --chain-id 31337
 ```
 
-Deploy the contracts by running:
+Use one of the following commands to deploy the different hooks and pools to the local chain:
 
 ```bash
-npm run deploy-local
+npm run deploy-allowlist-hook-local
+npm run deploy-allowlist-hook-and-pool-local
+npm run deploy-tick-range-hook-local
+npm run deploy-tick-range-hook-and-pool-local
 ```
 
-#### Sepolia
+#### Ethereum
 
-To deploy to the Sepolia testnet, run:
+To deploy the Allowlist Hook and Pool to Ethereum Mainnet, run:
 
 ```bash
-npm run deploy-sepolia
+npm run deploy-allowlist-hook-and-pool-ethereum
 ```
+
+### Manage Uniswap Pool
+
+#### Local
+
+Run the following command to add liquidity:
+
+```bash
+npm run add-liquidity-local
+```
+
+#### Ethereum
+
+Run the following command to add liquidity:
+
+```bash
+npm run add-liquidity-ethereum
+```
+
+## Deployments
+
+| Network          | Hook Address                                                                                                          | Pool                                                                                                                                  |
+| ---------------- | --------------------------------------------------------------------------------------------------------------------- | ------------------------------------------------------------------------------------------------------------------------------------- |
+| Ethereum Mainnet | [0xAf53Cb78035A8E0acCe38441793E2648B15B88a0](https://etherscan.io/address/0xAf53Cb78035A8E0acCe38441793E2648B15B88a0) | [wM/USDC - 0% fee](https://app.uniswap.org/explore/pools/ethereum/0x4de849063d9559a699e26463a433c6d29e7570de49209f95295529afee20eb05) |

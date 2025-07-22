@@ -12,10 +12,15 @@ deploy-allowlist-hook-and-pool-local :; FOUNDRY_PROFILE=production forge script 
 deploy-tick-range-hook-local :; FOUNDRY_PROFILE=production forge script script/deploy/DeployTickRangeHook.s.sol:DeployTickRangeHook --rpc-url localhost --broadcast -v
 deploy-tick-range-hook-and-pool-local :; FOUNDRY_PROFILE=production forge script script/deploy/DeployTickRangeHookAndPool.s.sol:DeployTickRangeHookAndPool --rpc-url localhost --broadcast -v
 
-## Sepolia
-deploy-sepolia :; FOUNDRY_PROFILE=production forge script script/Deploy.s.sol --rpc-url sepolia --broadcast -vvv
+## Ethereum Mainnet
+deploy-allowlist-hook-and-pool-ethereum :; FOUNDRY_PROFILE=production forge script script/deploy/DeployAllowlistHookAndPool.s.sol:DeployAllowlistHookAndPool --rpc-url mainnet --broadcast --verify -v
 
-# Local testing
+# Uniswap Pool Management helpers
+
+## Ethereum Mainnet
+add-liquidity-ethereum :; forge script script/dev/AddLiquidity.s.sol:AddLiquidity --rpc-url mainnet --broadcast -vvv
+
+## Local 
 add-liquidity-local :; forge script script/dev/AddLiquidity.s.sol:AddLiquidity --rpc-url localhost --broadcast -vvv
 swap-local :; forge script script/dev/Swap.s.sol:Swap --rpc-url localhost --broadcast -vvv
 
