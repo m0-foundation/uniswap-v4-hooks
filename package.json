@@ -28,6 +28,7 @@
     "----------UNISWAP-POOL-MANAGEMENT-SCRIPTS----------": "",
     "----------Ethereum Pool Management Scripts----------": "",
     "add-liquidity-ethereum": "make -B add-liquidity-ethereum",
+    "swap-ethereum": "make -B swap-ethereum",
     "----------Local Pool Management Scripts----------": "",
     "add-liquidity-local": "make -B add-liquidity-local",
     "swap-local": "make -B swap-local",

@@ -19,6 +19,7 @@ deploy-allowlist-hook-and-pool-ethereum :; FOUNDRY_PROFILE=production forge scri
 
 ## Ethereum Mainnet
 add-liquidity-ethereum :; forge script script/dev/AddLiquidity.s.sol:AddLiquidity --rpc-url mainnet --broadcast -vvv
+swap-ethereum :; forge script script/dev/Swap.s.sol:Swap --rpc-url mainnet --broadcast -vvv
 
 ## Local 
 add-liquidity-local :; forge script script/dev/AddLiquidity.s.sol:AddLiquidity --rpc-url localhost --broadcast -vvv

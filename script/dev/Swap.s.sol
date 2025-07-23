@@ -3,6 +3,8 @@ pragma solidity 0.8.26;
 
 import { IERC20 } from "../../lib/forge-std/src/interfaces/IERC20.sol";
 
+import { PredicateMessage } from "../../lib/predicate-contracts/src/interfaces/IPredicateClient.sol";
+
 import { IAllowanceTransfer } from "../../lib/v4-periphery/lib/permit2/src/interfaces/IAllowanceTransfer.sol";
 import { IHooks } from "../../lib/v4-periphery/lib/v4-core/src/interfaces/IHooks.sol";
 
@@ -26,6 +28,19 @@ contract Swap is Deploy {
         address caller = vm.rememberKey(vm.envUint("PRIVATE_KEY"));
         address hook = vm.envAddress("UNISWAP_HOOK");
 
+        address[] memory signerAddresses = new address[](1);
+        signerAddresses[0] = vm.envAddress("PREDICATE_SIGNER_ADDRESSES");
+
+        bytes[] memory signatures = new bytes[](1);
+        signatures[0] = abi.encodePacked(vm.envBytes("PREDICATE_SIGNATURES"));
+
+        PredicateMessage memory predicateMessage = PredicateMessage({
+            taskId: vm.envString("PREDICATE_TASK_ID"),
+            expireByTime: vm.envUint("PREDICATE_EXPIRE_BY_TIME"),
+            signerAddresses: signerAddresses,
+            signatures: signatures
+        });
+
         DeployConfig memory config = _getDeployConfig(block.chainid);
 
         PoolKey memory poolKey = PoolKey({
@@ -40,8 +55,15 @@ contract Swap is Deploy {
 
         vm.startBroadcast(caller);
 
-        IERC20(USDC_ETHEREUM).approve(address(PERMIT2), type(uint256).max);
-        PERMIT2.approve(USDC_ETHEREUM, address(swapRouter), type(uint160).max, type(uint48).max);
+        if (IERC20(USDC_ETHEREUM).allowance(caller, address(PERMIT2)) == 0) {
+            IERC20(USDC_ETHEREUM).approve(address(PERMIT2), type(uint256).max);
+        }
+
+        (uint160 usdcPermit2Allowance, , ) = PERMIT2.allowance(caller, USDC_ETHEREUM, address(swapRouter));
+
+        if (usdcPermit2Allowance == 0) {
+            PERMIT2.approve(USDC_ETHEREUM, address(swapRouter), type(uint160).max, type(uint48).max);
+        }
 
         bytes memory commands = abi.encodePacked(uint8(0x10)); // V4 Swap command
         bytes[] memory inputs = new bytes[](1);
@@ -51,7 +73,7 @@ contract Swap is Deploy {
             uint8(Actions.SETTLE_ALL)
         );
 
-        uint128 swapAmountOut = 1_000_000e6;
+        uint128 swapAmountOut = 1e6;
         uint128 swapAmountIn = type(uint128).max;
 
         bytes[] memory params = new bytes[](3);
@@ -61,7 +83,7 @@ contract Swap is Deploy {
                 zeroForOne: false,
                 amountOut: swapAmountOut,
                 amountInMaximum: swapAmountIn,
-                hookData: "0x"
+                hookData: abi.encode(predicateMessage)
             })
         );
 
