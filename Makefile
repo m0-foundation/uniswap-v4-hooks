@@ -18,11 +18,13 @@ deploy-allowlist-hook-and-pool-ethereum :; FOUNDRY_PROFILE=production forge scri
 # Uniswap Pool Management helpers
 
 ## Ethereum Mainnet
-add-liquidity-ethereum :; forge script script/dev/AddLiquidity.s.sol:AddLiquidity --rpc-url mainnet --broadcast -vvv
+create-liquidity-position-ethereum :; forge script script/dev/AddLiquidity.s.sol:AddLiquidity --rpc-url mainnet --broadcast -vvv
+flashswap-ethereum :; forge script script/dev/FlashSwap.s.sol:FlashSwap --rpc-url mainnet --broadcast -vvv
 swap-ethereum :; forge script script/dev/Swap.s.sol:Swap --rpc-url mainnet --broadcast -vvv
 
 ## Local 
-add-liquidity-local :; forge script script/dev/AddLiquidity.s.sol:AddLiquidity --rpc-url localhost --broadcast -vvv
+create-liquidity-position-local :; forge script script/dev/AddLiquidity.s.sol:AddLiquidity --rpc-url localhost --broadcast -vvv
+flashswap-local :; forge script script/dev/FlashSwap.s.sol:FlashSwap --rpc-url localhost --broadcast -vvv
 swap-local :; forge script script/dev/Swap.s.sol:Swap --rpc-url localhost --broadcast -vvv
 
 # Run slither

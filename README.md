@@ -210,18 +210,18 @@ npm run deploy-allowlist-hook-and-pool-ethereum
 
 #### Local
 
-Run the following command to add liquidity:
+Run the following command to create a liquidity position:
 
 ```bash
-npm run add-liquidity-local
+npm run create-liquidity-position-local
 ```
 
 #### Ethereum
 
-Run the following command to add liquidity:
+Run the following command to create a liquidity position:
 
 ```bash
-npm run add-liquidity-ethereum
+npm run create-liquidity-position-ethereum
 ```
 
 ## Deployments

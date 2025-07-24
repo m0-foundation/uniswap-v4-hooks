@@ -22,7 +22,7 @@ import { Deploy } from "../base/Deploy.s.sol";
 
 import { LiquidityOperationsLib } from "../../test/utils/helpers/LiquidityOperationsLib.sol";
 
-contract AddLiquidity is Deploy {
+contract CreateLiquidityPosition is Deploy {
     using CurrencyLibrary for Currency;
     using LiquidityOperationsLib for IPositionManager;
     using StateLibrary for IPoolManager;
