@@ -18,29 +18,31 @@ import { BalanceDelta } from "../../lib/v4-periphery/lib/v4-core/src/types/Balan
 import { IUniversalRouterLike } from "../../test/utils/interfaces/IUniversalRouterLike.sol";
 
 import { Config } from "../base/Config.sol";
-import { Deploy } from "../base/Deploy.s.sol";
+
+import { PredicateHelpers } from "./helpers/PredicateHelpers.sol";
 
 interface IUsualM {
     function wrap(address recipient, uint256 amount) external returns (uint256);
 }
 
-contract FlashSwap is Deploy {
+contract FlashSwap is Config, PredicateHelpers {
+    using CurrencyLibrary for Currency;
+
     function run() public {
         address caller = vm.rememberKey(vm.envUint("PRIVATE_KEY"));
         address hook = vm.envAddress("UNISWAP_HOOK");
 
-        address[] memory signerAddresses = new address[](1);
-        signerAddresses[0] = vm.envAddress("PREDICATE_SIGNER_ADDRESSES");
+        DeployConfig memory config = _getDeployConfig(block.chainid);
 
-        bytes[] memory signatures = new bytes[](1);
-        signatures[0] = abi.encodePacked(vm.envBytes("PREDICATE_SIGNATURES"));
-
-        PredicateMessage memory predicateMessage = PredicateMessage({
-            taskId: vm.envString("PREDICATE_TASK_ID"),
-            expireByTime: vm.envUint("PREDICATE_EXPIRE_BY_TIME"),
-            signerAddresses: signerAddresses,
-            signatures: signatures
+        PoolKey memory poolKey = PoolKey({
+            currency0: Currency.wrap(WRAPPED_M),
+            currency1: Currency.wrap(USDC_ETHEREUM),
+            fee: config.fee,
+            tickSpacing: config.tickSpacing,
+            hooks: IHooks(hook)
         });
+
+        PredicateMessage memory predicateMessage = _getPredicateMessage(caller, poolKey, hook, false, 1e6);
 
         vm.startBroadcast(caller);
 

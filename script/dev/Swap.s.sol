@@ -17,9 +17,9 @@ import { IV4Router } from "../../lib/v4-periphery/src/interfaces/IV4Router.sol";
 
 import { IUniversalRouterLike } from "../../test/utils/interfaces/IUniversalRouterLike.sol";
 
-import { Deploy } from "../base/Deploy.s.sol";
+import { PredicateHelpers } from "./helpers/PredicateHelpers.sol";
 
-contract Swap is Deploy {
+contract Swap is PredicateHelpers {
     using CurrencyLibrary for Currency;
 
     IAllowanceTransfer public constant PERMIT2 = IAllowanceTransfer(0x000000000022D473030F116dDEE9F6B43aC78BA3);
@@ -27,19 +27,6 @@ contract Swap is Deploy {
     function run() public {
         address caller = vm.rememberKey(vm.envUint("PRIVATE_KEY"));
         address hook = vm.envAddress("UNISWAP_HOOK");
-
-        address[] memory signerAddresses = new address[](1);
-        signerAddresses[0] = vm.envAddress("PREDICATE_SIGNER_ADDRESSES");
-
-        bytes[] memory signatures = new bytes[](1);
-        signatures[0] = abi.encodePacked(vm.envBytes("PREDICATE_SIGNATURES"));
-
-        PredicateMessage memory predicateMessage = PredicateMessage({
-            taskId: vm.envString("PREDICATE_TASK_ID"),
-            expireByTime: vm.envUint("PREDICATE_EXPIRE_BY_TIME"),
-            signerAddresses: signerAddresses,
-            signatures: signatures
-        });
 
         DeployConfig memory config = _getDeployConfig(block.chainid);
 
@@ -51,13 +38,17 @@ contract Swap is Deploy {
             hooks: IHooks(hook)
         });
 
-        IUniversalRouterLike swapRouter = IUniversalRouterLike(config.swapRouter);
+        bool zeroForOne = false;
+
+        PredicateMessage memory predicateMessage = _getPredicateMessage(caller, poolKey, hook, zeroForOne, 1e6);
 
         vm.startBroadcast(caller);
 
         if (IERC20(USDC_ETHEREUM).allowance(caller, address(PERMIT2)) == 0) {
             IERC20(USDC_ETHEREUM).approve(address(PERMIT2), type(uint256).max);
         }
+
+        IUniversalRouterLike swapRouter = IUniversalRouterLike(config.swapRouter);
 
         (uint160 usdcPermit2Allowance, , ) = PERMIT2.allowance(caller, USDC_ETHEREUM, address(swapRouter));
 
@@ -76,21 +67,21 @@ contract Swap is Deploy {
         uint128 swapAmountOut = 1e6;
         uint128 swapAmountIn = type(uint128).max;
 
-        bytes[] memory params = new bytes[](3);
-        params[0] = abi.encode(
+        bytes[] memory swapParams = new bytes[](3);
+        swapParams[0] = abi.encode(
             IV4Router.ExactOutputSingleParams({
                 poolKey: poolKey,
-                zeroForOne: false,
+                zeroForOne: zeroForOne,
                 amountOut: swapAmountOut,
                 amountInMaximum: swapAmountIn,
                 hookData: abi.encode(predicateMessage)
             })
         );
 
-        params[1] = abi.encode(poolKey.currency0, swapAmountOut);
-        params[2] = abi.encode(poolKey.currency1, swapAmountIn);
+        swapParams[1] = abi.encode(poolKey.currency0, swapAmountOut);
+        swapParams[2] = abi.encode(poolKey.currency1, swapAmountIn);
 
-        inputs[0] = abi.encode(actions, params);
+        inputs[0] = abi.encode(actions, swapParams);
 
         swapRouter.execute(commands, inputs, block.timestamp + 1000);
 

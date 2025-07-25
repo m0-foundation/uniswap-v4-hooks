@@ -9,7 +9,8 @@ verbosity = 3
 always_use_create_2_factory = true
 bytecode_hash = "none"
 cbor_metadata = false
-# libs = ["node_modules", "lib"]
+# Use to run Surl in scripts
+ffi = true
 
 [profile.production]
 optimizer = true
