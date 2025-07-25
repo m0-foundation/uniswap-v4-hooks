@@ -35,6 +35,7 @@ contract Config {
     uint256 public constant UNICHAIN_CHAIN_ID = 130;
 
     // Testnet chain IDs
+    uint256 public constant LOCAL_CHAIN_ID = 31337;
     uint256 public constant SEPOLIA_CHAIN_ID = 11155111;
     uint256 public constant ARBITRUM_SEPOLIA_CHAIN_ID = 421614;
     uint256 public constant OPTIMISM_SEPOLIA_CHAIN_ID = 11155420;
@@ -61,10 +62,11 @@ contract Config {
     address public constant SWAP_ROUTER_UNICHAIN = address(0xEf740bf23aCaE26f6492B10de645D6B98dC8Eaf3);
 
     address public constant SERVICE_MANAGER_ETHEREUM = address(0xf6f4A30EeF7cf51Ed4Ee1415fB3bFDAf3694B0d2);
-    string public constant POLICY_ID_ETHEREUM = "x-test-prod"; // TODO: Replace by the actual policy ID
+    string public constant POLICY_ID_ETHEREUM = "x-test-prod";
+
+    address public constant SERVICE_MANAGER_ARBITRUM = address(0xA144a921f81ee2737cBFd69Dc7b08c19e9Be66d5);
 
     // TODO: replace with actual addresses once deployed on these chains
-    address public constant SERVICE_MANAGER_ARBITRUM = address(0xf6f4A30EeF7cf51Ed4Ee1415fB3bFDAf3694B0d2);
     address public constant SERVICE_MANAGER_OPTIMISM = address(0xf6f4A30EeF7cf51Ed4Ee1415fB3bFDAf3694B0d2);
     address public constant SERVICE_MANAGER_UNICHAIN = address(0xf6f4A30EeF7cf51Ed4Ee1415fB3bFDAf3694B0d2);
 
@@ -189,6 +191,26 @@ contract Config {
         }
 
         // Testnet configs
+        if (chainId_ == LOCAL_CHAIN_ID) {
+            (Currency currency0_, Currency currency1_) = _sortCurrencies(USDC_ETHEREUM, WRAPPED_M);
+            (int24 tickLowerBound_, int24 tickUpperBound_) = _sortTicks(currency0_, TICK_LOWER_BOUND, TICK_UPPER_BOUND);
+
+            return
+                DeployConfig({
+                    poolManager: POOL_MANAGER_ETHEREUM,
+                    posm: POSM_ETHEREUM,
+                    swapRouter: SWAP_ROUTER_ETHEREUM,
+                    serviceManager: SERVICE_MANAGER_ETHEREUM,
+                    policyID: POLICY_ID_ETHEREUM,
+                    currency0: currency0_,
+                    currency1: currency1_,
+                    fee: SWAP_FEE,
+                    tickLowerBound: tickLowerBound_,
+                    tickUpperBound: tickUpperBound_,
+                    tickSpacing: TICK_SPACING
+                });
+        }
+
         if (chainId_ == SEPOLIA_CHAIN_ID) {
             (Currency currency0_, Currency currency1_) = _sortCurrencies(USDC_SEPOLIA, WRAPPED_M);
             (int24 tickLowerBound_, int24 tickUpperBound_) = _sortTicks(currency0_, TICK_LOWER_BOUND, TICK_UPPER_BOUND);

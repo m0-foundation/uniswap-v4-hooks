@@ -21,7 +21,7 @@ library LiquidityOperationsLib {
         bytes memory hookData_
     ) internal {
         bytes memory calls_ = getMintEncoded(config_, liquidity_, recipient_, hookData_);
-        lpm_.modifyLiquidities(calls_, block.timestamp + 1);
+        lpm_.modifyLiquidities(calls_, block.timestamp + 1000);
     }
 
     function increaseLiquidity(
@@ -32,7 +32,7 @@ library LiquidityOperationsLib {
         bytes memory hookData_
     ) internal {
         bytes memory calls_ = getIncreaseEncoded(tokenId_, config_, liquidityToAdd_, hookData_);
-        lpm_.modifyLiquidities(calls_, block.timestamp + 1);
+        lpm_.modifyLiquidities(calls_, block.timestamp + 1000);
     }
 
     // do not make external call before unlockAndExecute, allows us to test reverts
@@ -44,7 +44,7 @@ library LiquidityOperationsLib {
         bytes memory hookData_
     ) internal {
         bytes memory calls_ = getDecreaseEncoded(tokenId_, config_, liquidityToRemove_, hookData_);
-        lpm_.modifyLiquidities(calls_, block.timestamp + 1);
+        lpm_.modifyLiquidities(calls_, block.timestamp + 1000);
     }
 
     // Helper functions for getting encoded calldata for .modifyLiquidities() or .modifyLiquiditiesWithoutUnlock()
