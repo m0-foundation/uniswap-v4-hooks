@@ -10,9 +10,14 @@ import { Deploy } from "../base/Deploy.s.sol";
 contract DeployTickRangeHookAndPool is Deploy {
     function run() public {
         address deployer = vm.rememberKey(vm.envUint("PRIVATE_KEY"));
+
         address admin = vm.envAddress("ADMIN");
         address manager = vm.envAddress("MANAGER");
-        DeployConfig memory config = _getDeployConfig(block.chainid);
+
+        address tokenA = vm.envAddress("TOKEN_A");
+        address tokenB = vm.envAddress("TOKEN_B");
+
+        DeployConfig memory config = _getDeployConfig(block.chainid, tokenA, tokenB);
 
         vm.startBroadcast(deployer);
 

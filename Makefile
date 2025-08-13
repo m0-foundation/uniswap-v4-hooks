@@ -6,14 +6,61 @@
 update:; forge update
 
 # Deployment helpers
+deploy-allowlist-hook: 
+	FOUNDRY_PROFILE=production PRIVATE_KEY=$(PRIVATE_KEY) TOKEN_A=$(TOKEN_A) TOKEN_B=$(TOKEN_B) \
+	forge script script/deploy/DeployAllowlistHook.s.sol:DeployAllowlistHook --rpc-url $(RPC_URL) \
+	--skip test --broadcast --slow --non-interactive -v \
+	--verify
+
+deploy-allowlist-hook-and-pool: 
+	FOUNDRY_PROFILE=production PRIVATE_KEY=$(PRIVATE_KEY) TOKEN_A=$(TOKEN_A) TOKEN_B=$(TOKEN_B) \
+	forge script script/deploy/DeployAllowlistHookAndPool.s.sol:DeployAllowlistHookAndPool --rpc-url $(RPC_URL) \
+	--skip test --broadcast --slow --non-interactive -v \
+	--verify
+
+deploy-tick-range-hook:
+	FOUNDRY_PROFILE=production PRIVATE_KEY=$(PRIVATE_KEY) TOKEN_A=$(TOKEN_A) TOKEN_B=$(TOKEN_B) \
+	forge script script/deploy/DeployTickRangeHook.s.sol:DeployTickRangeHook --rpc-url $(RPC_URL) \
+	--skip test --broadcast --slow --non-interactive -v \
+	--verify
+
+deploy-tick-range-hook-and-pool:
+	FOUNDRY_PROFILE=production PRIVATE_KEY=$(PRIVATE_KEY) TOKEN_A=$(TOKEN_A) TOKEN_B=$(TOKEN_B) \
+	forge script script/deploy/DeployTickRangeHookAndPool.s.sol:DeployTickRangeHookAndPool --rpc-url $(RPC_URL) \
+	--skip test --broadcast --slow --non-interactive -v \
+	--verify
+
 ## Local
-deploy-allowlist-hook-local :; FOUNDRY_PROFILE=production forge script script/deploy/DeployAllowlistHook.s.sol:DeployAllowlistHook --rpc-url localhost --broadcast -v
-deploy-allowlist-hook-and-pool-local :; FOUNDRY_PROFILE=production forge script script/deploy/DeployAllowlistHookAndPool.s.sol:DeployAllowlistHookAndPool --rpc-url localhost --broadcast -v
-deploy-tick-range-hook-local :; FOUNDRY_PROFILE=production forge script script/deploy/DeployTickRangeHook.s.sol:DeployTickRangeHook --rpc-url localhost --broadcast -v
-deploy-tick-range-hook-and-pool-local :; FOUNDRY_PROFILE=production forge script script/deploy/DeployTickRangeHookAndPool.s.sol:DeployTickRangeHookAndPool --rpc-url localhost --broadcast -v
+deploy-wm-usdc-allowlist-hook-local: RPC_URL=$(LOCALHOST_RPC_URL)
+deploy-wm-usdc-allowlist-hook-local: TOKEN_A="0x437cc33344a0B27A429f795ff6B469C72698B291" # Wrapped M
+deploy-wm-usdc-allowlist-hook-local: TOKEN_B="0xA0b86991c6218b36c1d19D4a2e9Eb0cE3606eB48" # USDC
+deploy-wm-usdc-allowlist-hook-local: deploy-allowlist-hook
+
+deploy-wm-usdc-allowlist-hook-and-pool-local: RPC_URL=$(LOCALHOST_RPC_URL)
+deploy-wm-usdc-allowlist-hook-and-pool-local: TOKEN_A="0x437cc33344a0B27A429f795ff6B469C72698B291" # Wrapped M
+deploy-wm-usdc-allowlist-hook-and-pool-local: TOKEN_B="0xA0b86991c6218b36c1d19D4a2e9Eb0cE3606eB48" # USDC
+deploy-wm-usdc-allowlist-hook-and-pool-local: deploy-allowlist-hook-and-pool
+
+deploy-usdc-musd-tick-range-hook-local: RPC_URL=$(LOCALHOST_RPC_URL)
+deploy-usdc-musd-tick-range-hook-local: TOKEN_A="0xA0b86991c6218b36c1d19D4a2e9Eb0cE3606eB48" # USDC
+deploy-usdc-musd-tick-range-hook-local: TOKEN_B="0xacA92E438df0B2401fF60dA7E4337B687a2435DA" # MUSD
+deploy-usdc-musd-tick-range-hook-local: deploy-tick-range-hook
+
+deploy-usdc-musd-tick-range-hook-and-pool-local: RPC_URL=$(LOCALHOST_RPC_URL)
+deploy-usdc-musd-tick-range-hook-and-pool-local: TOKEN_A="0xA0b86991c6218b36c1d19D4a2e9Eb0cE3606eB48" # USDC
+deploy-usdc-musd-tick-range-hook-and-pool-local: TOKEN_B="0xacA92E438df0B2401fF60dA7E4337B687a2435DA" # MUSD
+deploy-usdc-musd-tick-range-hook-and-pool-local: deploy-tick-range-hook-and-pool
 
 ## Ethereum Mainnet
-deploy-allowlist-hook-and-pool-ethereum :; FOUNDRY_PROFILE=production forge script script/deploy/DeployAllowlistHookAndPool.s.sol:DeployAllowlistHookAndPool --rpc-url mainnet --broadcast --verify -v
+deploy-wm-usdc-allowlist-hook-and-pool-ethereum: RPC_URL=$(ETHEREUM_RPC_URL)
+deploy-wm-usdc-allowlist-hook-and-pool-ethereum: TOKEN_A="0x437cc33344a0B27A429f795ff6B469C72698B291" # Wrapped M
+deploy-wm-usdc-allowlist-hook-and-pool-ethereum: TOKEN_B="0xA0b86991c6218b36c1d19D4a2e9Eb0cE3606eB48" # USDC
+deploy-wm-usdc-allowlist-hook-and-pool-ethereum: deploy-allowlist-hook-and-pool
+
+deploy-usdc-musd-tick-range-hook-and-pool-ethereum: RPC_URL=$(ETHEREUM_RPC_URL)
+deploy-usdc-musd-tick-range-hook-and-pool-ethereum: TOKEN_A="0xA0b86991c6218b36c1d19D4a2e9Eb0cE3606eB48" # USDC
+deploy-usdc-musd-tick-range-hook-and-pool-ethereum: TOKEN_B="0xacA92E438df0B2401fF60dA7E4337B687a2435DA" # MUSD
+deploy-usdc-musd-tick-range-hook-and-pool-ethereum: deploy-tick-range-hook-and-pool
 
 # Uniswap Pool Management helpers
 

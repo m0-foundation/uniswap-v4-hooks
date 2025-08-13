@@ -28,7 +28,10 @@ contract Swap is PredicateHelpers {
         address caller = vm.rememberKey(vm.envUint("PRIVATE_KEY"));
         address hook = vm.envAddress("UNISWAP_HOOK");
 
-        DeployConfig memory config = _getDeployConfig(block.chainid);
+        address tokenA = vm.envAddress("TOKEN_A");
+        address tokenB = vm.envAddress("TOKEN_B");
+
+        DeployConfig memory config = _getDeployConfig(block.chainid, tokenA, tokenB);
 
         PoolKey memory poolKey = PoolKey({
             currency0: Currency.wrap(WRAPPED_M),

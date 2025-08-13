@@ -11,8 +11,6 @@ import { IPoolManager } from "../../lib/v4-periphery/lib/v4-core/src/interfaces/
 import { Hooks } from "../../lib/v4-periphery/lib/v4-core/src/libraries/Hooks.sol";
 import { TickMath } from "../../lib/v4-periphery/lib/v4-core/src/libraries/TickMath.sol";
 
-import { Currency } from "../../lib/v4-periphery/lib/v4-core/src/types/Currency.sol";
-import { PoolId } from "../../lib/v4-periphery/lib/v4-core/src/types/PoolId.sol";
 import { PoolKey } from "../../lib/v4-periphery/lib/v4-core/src/types/PoolKey.sol";
 
 import { HookMiner } from "../../lib/v4-periphery/src/utils/HookMiner.sol";
