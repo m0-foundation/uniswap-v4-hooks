@@ -32,14 +32,11 @@ contract FlashSwap is Config, PredicateHelpers {
         address caller = vm.rememberKey(vm.envUint("PRIVATE_KEY"));
         address hook = vm.envAddress("UNISWAP_HOOK");
 
-        address tokenA = vm.envAddress("TOKEN_A");
-        address tokenB = vm.envAddress("TOKEN_B");
-
-        DeployConfig memory config = _getDeployConfig(block.chainid, tokenA, tokenB);
+        DeployConfig memory config = _getDeployConfig(block.chainid, WRAPPED_M, USDC_ETHEREUM);
 
         PoolKey memory poolKey = PoolKey({
-            currency0: Currency.wrap(WRAPPED_M),
-            currency1: Currency.wrap(USDC_ETHEREUM),
+            currency0: config.currency0,
+            currency1: config.currency1,
             fee: config.fee,
             tickSpacing: config.tickSpacing,
             hooks: IHooks(hook)

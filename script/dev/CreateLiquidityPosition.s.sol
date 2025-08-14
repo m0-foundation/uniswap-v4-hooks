@@ -1,6 +1,7 @@
 // SPDX-License-Identifier: UNLICENSED
 pragma solidity 0.8.26;
 
+import { console } from "../../lib/forge-std/src/console.sol";
 import { IERC20 } from "../../lib/forge-std/src/interfaces/IERC20.sol";
 
 import { IAllowanceTransfer } from "../../lib/v4-periphery/lib/permit2/src/interfaces/IAllowanceTransfer.sol";
@@ -34,13 +35,16 @@ contract CreateLiquidityPosition is Deploy {
         address hook = vm.envAddress("UNISWAP_HOOK");
 
         address tokenA = vm.envAddress("TOKEN_A");
+        uint256 liquidityAmountA = _liquidityAmountPrompt(tokenA, caller);
+
         address tokenB = vm.envAddress("TOKEN_B");
+        uint256 liquidityAmountB = _liquidityAmountPrompt(tokenB, caller);
 
         DeployConfig memory config = _getDeployConfig(block.chainid, tokenA, tokenB);
 
         PoolKey memory poolKey = PoolKey({
-            currency0: Currency.wrap(WRAPPED_M),
-            currency1: Currency.wrap(USDC_ETHEREUM),
+            currency0: config.currency0,
+            currency1: config.currency1,
             fee: config.fee,
             tickSpacing: config.tickSpacing,
             hooks: IHooks(hook)
@@ -56,34 +60,45 @@ contract CreateLiquidityPosition is Deploy {
             TickMath.getSqrtPriceAtTick(0),
             TickMath.getSqrtPriceAtTick(config.tickLowerBound),
             TickMath.getSqrtPriceAtTick(config.tickUpperBound),
-            10e6,
-            10e6
+            liquidityAmountA,
+            liquidityAmountB
         );
 
         vm.startBroadcast(caller);
 
-        if (IERC20(WRAPPED_M).allowance(caller, address(PERMIT2)) == 0) {
-            IERC20(WRAPPED_M).approve(address(PERMIT2), type(uint256).max);
+        if (IERC20(tokenA).allowance(caller, address(PERMIT2)) == 0) {
+            IERC20(tokenA).approve(address(PERMIT2), type(uint256).max);
         }
 
-        (uint160 wrappedMPermit2Allowance, , ) = PERMIT2.allowance(caller, WRAPPED_M, config.posm);
+        (uint160 tokenAPermit2Allowance, , ) = PERMIT2.allowance(caller, tokenA, config.posm);
 
-        if (wrappedMPermit2Allowance == 0) {
-            PERMIT2.approve(WRAPPED_M, config.posm, type(uint160).max, type(uint48).max);
+        if (tokenAPermit2Allowance == 0) {
+            PERMIT2.approve(tokenA, config.posm, type(uint160).max, type(uint48).max);
         }
 
-        if (IERC20(USDC_ETHEREUM).allowance(caller, address(PERMIT2)) == 0) {
-            IERC20(USDC_ETHEREUM).approve(address(PERMIT2), type(uint256).max);
+        if (IERC20(tokenB).allowance(caller, address(PERMIT2)) == 0) {
+            IERC20(tokenB).approve(address(PERMIT2), type(uint256).max);
         }
 
-        (uint160 usdcPermit2Allowance, , ) = PERMIT2.allowance(caller, USDC_ETHEREUM, config.posm);
+        (uint160 tokenBPermit2Allowance, , ) = PERMIT2.allowance(caller, tokenB, config.posm);
 
-        if (usdcPermit2Allowance == 0) {
-            PERMIT2.approve(USDC_ETHEREUM, config.posm, type(uint160).max, type(uint48).max);
+        if (tokenBPermit2Allowance == 0) {
+            PERMIT2.approve(tokenB, config.posm, type(uint160).max, type(uint48).max);
         }
 
         IPositionManager(POSM_ETHEREUM).mint(positionConfig, positionLiquidity, caller, "");
 
         vm.stopBroadcast();
+    }
+
+    function _liquidityAmountPrompt(address token, address account) internal returns (uint256 amount) {
+        uint256 balance = IERC20(token).balanceOf(account);
+        string memory symbol = IERC20(token).symbol();
+
+        amount = vm.parseUint(vm.prompt(string.concat("Enter amount of ", symbol, " to add")));
+
+        if (amount > balance) {
+            revert(string.concat("Insufficient ", symbol, " balance for account ", vm.toString(account)));
+        }
     }
 }
