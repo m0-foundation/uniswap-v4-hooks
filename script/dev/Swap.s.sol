@@ -1,6 +1,7 @@
 // SPDX-License-Identifier: UNLICENSED
 pragma solidity 0.8.26;
 
+import { console } from "../../lib/forge-std/src/console.sol";
 import { IERC20 } from "../../lib/forge-std/src/interfaces/IERC20.sol";
 
 import { PredicateMessage } from "../../lib/predicate-contracts/src/interfaces/IPredicateClient.sol";
@@ -29,13 +30,20 @@ contract Swap is PredicateHelpers {
         address hook = vm.envAddress("UNISWAP_HOOK");
 
         address tokenA = vm.envAddress("TOKEN_A");
+        string memory tokenASymbol = IERC20(tokenA).symbol();
+
         address tokenB = vm.envAddress("TOKEN_B");
+        string memory tokenBSymbol = IERC20(tokenB).symbol();
+
+        uint256 swapAmount = _swapAmountPrompt(tokenA, tokenASymbol, caller);
+
+        bool withPredicateMessage = vm.envBool("WITH_PREDICATE_MESSAGE");
 
         DeployConfig memory config = _getDeployConfig(block.chainid, tokenA, tokenB);
 
         PoolKey memory poolKey = PoolKey({
-            currency0: Currency.wrap(WRAPPED_M),
-            currency1: Currency.wrap(USDC_ETHEREUM),
+            currency0: config.currency0,
+            currency1: config.currency1,
             fee: config.fee,
             tickSpacing: config.tickSpacing,
             hooks: IHooks(hook)
@@ -43,20 +51,26 @@ contract Swap is PredicateHelpers {
 
         bool zeroForOne = false;
 
-        PredicateMessage memory predicateMessage = _getPredicateMessage(caller, poolKey, hook, zeroForOne, 1e6);
+        PredicateMessage memory predicateMessage;
+
+        if (withPredicateMessage) {
+            predicateMessage = _getPredicateMessage(caller, poolKey, hook, zeroForOne, int256(swapAmount));
+        }
+
+        console.log("Swapping %s %s for %s...", vm.toString(swapAmount), tokenASymbol, tokenBSymbol);
 
         vm.startBroadcast(caller);
 
-        if (IERC20(USDC_ETHEREUM).allowance(caller, address(PERMIT2)) == 0) {
-            IERC20(USDC_ETHEREUM).approve(address(PERMIT2), type(uint256).max);
+        if (IERC20(tokenA).allowance(caller, address(PERMIT2)) == 0) {
+            IERC20(tokenA).approve(address(PERMIT2), type(uint256).max);
         }
 
         IUniversalRouterLike swapRouter = IUniversalRouterLike(config.swapRouter);
 
-        (uint160 usdcPermit2Allowance, , ) = PERMIT2.allowance(caller, USDC_ETHEREUM, address(swapRouter));
+        (uint160 tokenBPermit2Allowance, , ) = PERMIT2.allowance(caller, tokenA, address(swapRouter));
 
-        if (usdcPermit2Allowance == 0) {
-            PERMIT2.approve(USDC_ETHEREUM, address(swapRouter), type(uint160).max, type(uint48).max);
+        if (tokenBPermit2Allowance == 0) {
+            PERMIT2.approve(tokenA, address(swapRouter), type(uint160).max, type(uint48).max);
         }
 
         bytes memory commands = abi.encodePacked(uint8(0x10)); // V4 Swap command
@@ -67,7 +81,7 @@ contract Swap is PredicateHelpers {
             uint8(Actions.SETTLE_ALL)
         );
 
-        uint128 swapAmountOut = 1e6;
+        uint128 swapAmountOut = uint128(swapAmount);
         uint128 swapAmountIn = type(uint128).max;
 
         bytes[] memory swapParams = new bytes[](3);
@@ -77,7 +91,7 @@ contract Swap is PredicateHelpers {
                 zeroForOne: zeroForOne,
                 amountOut: swapAmountOut,
                 amountInMaximum: swapAmountIn,
-                hookData: abi.encode(predicateMessage)
+                hookData: withPredicateMessage ? abi.encode(predicateMessage) : abi.encode("")
             })
         );
 
@@ -89,5 +103,15 @@ contract Swap is PredicateHelpers {
         swapRouter.execute(commands, inputs, block.timestamp + 1000);
 
         vm.stopBroadcast();
+    }
+
+    function _swapAmountPrompt(address token, string memory symbol, address account) internal returns (uint256 amount) {
+        uint256 balance = IERC20(token).balanceOf(account);
+
+        amount = vm.parseUint(vm.prompt(string.concat("Enter amount of ", symbol, " to swap")));
+
+        if (amount > balance) {
+            revert(string.concat("Insufficient ", symbol, " balance for account ", vm.toString(account)));
+        }
     }
 }

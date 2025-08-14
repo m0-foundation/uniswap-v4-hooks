@@ -273,10 +273,10 @@ contract Config {
         int24 tickLowerBound_,
         int24 tickUpperBound_
     ) internal pure returns (int24, int24) {
-        if (Currency.unwrap(currency0_) != WRAPPED_M || Currency.unwrap(currency0_) != MUSD) {
-            return (-tickUpperBound_, -tickLowerBound_);
+        if (Currency.unwrap(currency0_) == WRAPPED_M || Currency.unwrap(currency0_) == MUSD) {
+            return (tickLowerBound_, tickUpperBound_);
         }
 
-        return (tickLowerBound_, tickUpperBound_);
+        return (-tickUpperBound_, -tickLowerBound_);
     }
 }
