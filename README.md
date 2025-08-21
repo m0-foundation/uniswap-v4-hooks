@@ -226,6 +226,7 @@ npm run create-liquidity-position-ethereum
 
 ## Deployments
 
-| Network          | Hook Address                                                                                                          | Pool                                                                                                                                  |
-| ---------------- | --------------------------------------------------------------------------------------------------------------------- | ------------------------------------------------------------------------------------------------------------------------------------- |
-| Ethereum Mainnet | [0xAf53Cb78035A8E0acCe38441793E2648B15B88a0](https://etherscan.io/address/0xAf53Cb78035A8E0acCe38441793E2648B15B88a0) | [wM/USDC - 0% fee](https://app.uniswap.org/explore/pools/ethereum/0x4de849063d9559a699e26463a433c6d29e7570de49209f95295529afee20eb05) |
+| Network          | Hook Name      | Hook Address                                                                                                          | Pool                                                                                                                                    |
+| ---------------- | -------------- | --------------------------------------------------------------------------------------------------------------------- | --------------------------------------------------------------------------------------------------------------------------------------- |
+| Ethereum Mainnet | Allowlist Hook | [0xAf53Cb78035A8E0acCe38441793E2648B15B88a0](https://etherscan.io/address/0xAf53Cb78035A8E0acCe38441793E2648B15B88a0) | [wM/USDC - 0% fee](https://app.uniswap.org/explore/pools/ethereum/0x4de849063d9559a699e26463a433c6d29e7570de49209f95295529afee20eb05)   |
+| Ethereum Mainnet | TickRange Hook | [0xDe400595199E6Dae55a1bcb742B3Eb249AF00800](https://etherscan.io/address/0xDe400595199E6Dae55a1bcb742B3Eb249AF00800) | [USDC/mUSD - 0% fee](https://app.uniswap.org/explore/pools/ethereum/0x6b3403809baa251f186c546908d6ebdbd5dc52527b2b3f8bc7d4f5a437091b0f) |

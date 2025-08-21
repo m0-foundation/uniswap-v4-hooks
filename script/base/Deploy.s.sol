@@ -25,6 +25,9 @@ contract Deploy is Config, Script {
         address manager_,
         DeployConfig memory config_
     ) internal returns (address) {
+        console.log("Admin: %s", admin_);
+        console.log("Manager: %s", manager_);
+
         // Mine a salt that will produce a hook address with the correct flags
         (address hookAddress_, bytes32 salt_) = HookMiner.find(
             CREATE2_DEPLOYER,
@@ -58,6 +61,9 @@ contract Deploy is Config, Script {
         address manager_,
         DeployConfig memory config_
     ) internal returns (address) {
+        console.log("Admin: %s", admin_);
+        console.log("Manager: %s", manager_);
+
         bytes memory constructorArgs = abi.encode(
             address(config_.posm),
             config_.swapRouter,

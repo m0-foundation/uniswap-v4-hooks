@@ -95,7 +95,7 @@ create-wm-usdc-liquidity-position-local: TICK_UPPER_BOUND=1
 create-wm-usdc-liquidity-position-local: create-liquidity-position
 
 create-usdc-musd-liquidity-position-local: RPC_URL=$(LOCALHOST_RPC_URL)
-create-usdc-musd-liquidity-position-local: UNISWAP_HOOK="0xB16B423BaFb487A3CdF1b493B55eb00066910800" # Tick Range Hook
+create-usdc-musd-liquidity-position-local: UNISWAP_HOOK="0xDe400595199E6Dae55a1bcb742B3Eb249AF00800" # Tick Range Hook
 create-usdc-musd-liquidity-position-local: TOKEN_A="0xA0b86991c6218b36c1d19D4a2e9Eb0cE3606eB48" # USDC
 create-usdc-musd-liquidity-position-local: TOKEN_B="0xacA92E438df0B2401fF60dA7E4337B687a2435DA" # MUSD
 create-usdc-musd-liquidity-position-local: TICK_LOWER_BOUND=0
@@ -112,7 +112,7 @@ create-wm-usdc-liquidity-position-ethereum: TICK_UPPER_BOUND=1
 create-wm-usdc-liquidity-position-ethereum: create-liquidity-position
 
 create-usdc-musd-liquidity-position-ethereum: RPC_URL=$(MAINNET_RPC_URL)
-create-usdc-musd-liquidity-position-ethereum: UNISWAP_HOOK= # TODO
+create-usdc-musd-liquidity-position-ethereum: UNISWAP_HOOK="0xDe400595199E6Dae55a1bcb742B3Eb249AF00800" # Tick Range Hook
 create-usdc-musd-liquidity-position-ethereum: TOKEN_A="0xA0b86991c6218b36c1d19D4a2e9Eb0cE3606eB48" # USDC
 create-usdc-musd-liquidity-position-ethereum: TOKEN_B="0xacA92E438df0B2401fF60dA7E4337B687a2435DA" # MUSD
 create-usdc-musd-liquidity-position-ethereum: TICK_LOWER_BOUND=0
