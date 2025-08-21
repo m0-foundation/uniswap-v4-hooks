@@ -29,17 +29,15 @@ contract Swap is PredicateHelpers {
         address caller = vm.rememberKey(vm.envUint("PRIVATE_KEY"));
         address hook = vm.envAddress("UNISWAP_HOOK");
 
-        address tokenA = vm.envAddress("TOKEN_A");
-        string memory tokenASymbol = IERC20(tokenA).symbol();
-
-        address tokenB = vm.envAddress("TOKEN_B");
-        string memory tokenBSymbol = IERC20(tokenB).symbol();
-
-        uint256 swapAmount = _swapAmountPrompt(tokenA, tokenASymbol, caller);
-
         bool withPredicateMessage = vm.envBool("WITH_PREDICATE_MESSAGE");
 
-        DeployConfig memory config = _getDeployConfig(block.chainid, tokenA, tokenB);
+        DeployConfig memory config = _getDeployConfig(
+            block.chainid,
+            vm.envAddress("TOKEN_A"),
+            vm.envAddress("TOKEN_B"),
+            int24(vm.envInt("TICK_LOWER_BOUND")),
+            int24(vm.envInt("TICK_UPPER_BOUND"))
+        );
 
         PoolKey memory poolKey = PoolKey({
             currency0: config.currency0,
@@ -49,31 +47,61 @@ contract Swap is PredicateHelpers {
             hooks: IHooks(hook)
         });
 
+        address token0 = Currency.unwrap(poolKey.currency0);
+        string memory token0Symbol = IERC20(token0).symbol();
+
+        address token1 = Currency.unwrap(poolKey.currency1);
+        string memory token1Symbol = IERC20(token1).symbol();
+
         bool zeroForOne = false;
 
-        PredicateMessage memory predicateMessage;
+        uint256 swapAmount = zeroForOne
+            ? _swapAmountPrompt(token0, token0Symbol, caller)
+            : _swapAmountPrompt(token1, token1Symbol, caller);
 
-        if (withPredicateMessage) {
-            predicateMessage = _getPredicateMessage(caller, poolKey, hook, zeroForOne, int256(swapAmount));
-        }
-
-        console.log("Swapping %s %s for %s...", vm.toString(swapAmount), tokenASymbol, tokenBSymbol);
+        zeroForOne
+            ? console.log("Swapping %s %s for %s...", vm.toString(swapAmount), token0Symbol, token1Symbol)
+            : console.log("Swapping %s %s for %s...", vm.toString(swapAmount), token1Symbol, token0Symbol);
 
         vm.startBroadcast(caller);
 
-        if (IERC20(tokenA).allowance(caller, address(PERMIT2)) == 0) {
-            IERC20(tokenA).approve(address(PERMIT2), type(uint256).max);
+        _approvePermit2(caller, zeroForOne ? token0 : token1, config.swapRouter);
+        _swap(config, hook, poolKey, caller, swapAmount, zeroForOne, withPredicateMessage);
+
+        vm.stopBroadcast();
+    }
+
+    function _approvePermit2(address caller, address token, address swapRouter) internal {
+        if (IERC20(token).allowance(caller, address(PERMIT2)) == 0) {
+            IERC20(token).approve(address(PERMIT2), type(uint256).max);
         }
 
-        IUniversalRouterLike swapRouter = IUniversalRouterLike(config.swapRouter);
+        (uint160 tokenPermit2Allowance, , ) = PERMIT2.allowance(caller, token, swapRouter);
 
-        (uint160 tokenBPermit2Allowance, , ) = PERMIT2.allowance(caller, tokenA, address(swapRouter));
-
-        if (tokenBPermit2Allowance == 0) {
-            PERMIT2.approve(tokenA, address(swapRouter), type(uint160).max, type(uint48).max);
+        if (tokenPermit2Allowance == 0) {
+            PERMIT2.approve(token, swapRouter, type(uint160).max, type(uint48).max);
         }
+    }
 
-        bytes memory commands = abi.encodePacked(uint8(0x10)); // V4 Swap command
+    function _swapAmountPrompt(address token, string memory symbol, address account) internal returns (uint256 amount) {
+        uint256 balance = IERC20(token).balanceOf(account);
+
+        amount = vm.parseUint(vm.prompt(string.concat("Enter amount of ", symbol, " to swap")));
+
+        if (amount > balance) {
+            revert(string.concat("Insufficient ", symbol, " balance for account ", vm.toString(account)));
+        }
+    }
+
+    function _swap(
+        DeployConfig memory config,
+        address hook,
+        PoolKey memory poolKey,
+        address caller,
+        uint256 swapAmount,
+        bool zeroForOne,
+        bool withPredicateMessage
+    ) internal {
         bytes[] memory inputs = new bytes[](1);
         bytes memory actions = abi.encodePacked(
             uint8(Actions.SWAP_EXACT_OUT_SINGLE),
@@ -91,7 +119,9 @@ contract Swap is PredicateHelpers {
                 zeroForOne: zeroForOne,
                 amountOut: swapAmountOut,
                 amountInMaximum: swapAmountIn,
-                hookData: withPredicateMessage ? abi.encode(predicateMessage) : abi.encode("")
+                hookData: withPredicateMessage
+                    ? abi.encode(_getPredicateMessage(caller, poolKey, hook, zeroForOne, int256(swapAmount)))
+                    : abi.encode("")
             })
         );
 
@@ -100,18 +130,7 @@ contract Swap is PredicateHelpers {
 
         inputs[0] = abi.encode(actions, swapParams);
 
-        swapRouter.execute(commands, inputs, block.timestamp + 1000);
-
-        vm.stopBroadcast();
-    }
-
-    function _swapAmountPrompt(address token, string memory symbol, address account) internal returns (uint256 amount) {
-        uint256 balance = IERC20(token).balanceOf(account);
-
-        amount = vm.parseUint(vm.prompt(string.concat("Enter amount of ", symbol, " to swap")));
-
-        if (amount > balance) {
-            revert(string.concat("Insufficient ", symbol, " balance for account ", vm.toString(account)));
-        }
+        // V4 Swap command
+        IUniversalRouterLike(config.swapRouter).execute(abi.encodePacked(uint8(0x10)), inputs, block.timestamp + 1000);
     }
 }

@@ -24,8 +24,6 @@ contract Config {
     // Swap Fee in bps
     uint24 public constant SWAP_FEE = 0;
 
-    int24 public constant TICK_LOWER_BOUND = -1;
-    int24 public constant TICK_UPPER_BOUND = 1;
     int24 public constant TICK_SPACING = 1;
 
     // Mainnet chain IDs
@@ -112,10 +110,12 @@ contract Config {
     function _getDeployConfig(
         uint256 chainId_,
         address tokenA_,
-        address tokenB_
+        address tokenB_,
+        int24 tickLowerBound_,
+        int24 tickUpperBound_
     ) internal pure returns (DeployConfig memory) {
         (Currency currency0_, Currency currency1_) = _sortCurrencies(tokenA_, tokenB_);
-        (int24 tickLowerBound_, int24 tickUpperBound_) = _sortTicks(currency0_, TICK_LOWER_BOUND, TICK_UPPER_BOUND);
+        (tickLowerBound_, tickUpperBound_) = _sortTicks(currency0_, tickLowerBound_, tickUpperBound_);
 
         // Mainnet configs
         if (chainId_ == ETHEREUM_CHAIN_ID) {

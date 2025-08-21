@@ -32,7 +32,16 @@ contract FlashSwap is Config, PredicateHelpers {
         address caller = vm.rememberKey(vm.envUint("PRIVATE_KEY"));
         address hook = vm.envAddress("UNISWAP_HOOK");
 
-        DeployConfig memory config = _getDeployConfig(block.chainid, WRAPPED_M, USDC_ETHEREUM);
+        int24 tickLowerBound = int24(vm.envInt("TICK_LOWER_BOUND"));
+        int24 tickUpperBound = int24(vm.envInt("TICK_UPPER_BOUND"));
+
+        DeployConfig memory config = _getDeployConfig(
+            block.chainid,
+            WRAPPED_M,
+            USDC_ETHEREUM,
+            tickLowerBound,
+            tickUpperBound
+        );
 
         PoolKey memory poolKey = PoolKey({
             currency0: config.currency0,
@@ -80,7 +89,7 @@ contract FlashSwapExecutor is Config {
     IUniversalRouterLike public immutable swapRouter;
 
     constructor(address hook) {
-        DeployConfig memory config = _getDeployConfig(block.chainid, WRAPPED_M, USDC_ETHEREUM);
+        DeployConfig memory config = _getDeployConfig(block.chainid, WRAPPED_M, USDC_ETHEREUM, -1, 1);
 
         msgSender = msg.sender;
         poolKey = PoolKey({

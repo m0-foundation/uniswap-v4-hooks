@@ -14,10 +14,13 @@ contract DeployTickRangeHookAndPool is Deploy {
         address admin = vm.envAddress("ADMIN");
         address manager = vm.envAddress("MANAGER");
 
-        address tokenA = vm.envAddress("TOKEN_A");
-        address tokenB = vm.envAddress("TOKEN_B");
-
-        DeployConfig memory config = _getDeployConfig(block.chainid, tokenA, tokenB);
+        DeployConfig memory config = _getDeployConfig(
+            block.chainid,
+            vm.envAddress("TOKEN_A"),
+            vm.envAddress("TOKEN_B"),
+            int24(vm.envInt("TICK_LOWER_BOUND")),
+            int24(vm.envInt("TICK_UPPER_BOUND"))
+        );
 
         vm.startBroadcast(deployer);
 

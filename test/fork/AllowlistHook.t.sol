@@ -65,7 +65,7 @@ contract AllowlistHookForkTest is Deploy, Test, PredicateHelpers {
 
         (operator, operatorPrivateKey) = makeAddrAndKey("operator");
 
-        config = _getDeployConfig(block.chainid, WRAPPED_M, USDC_ETHEREUM);
+        config = _getDeployConfig(block.chainid, WRAPPED_M, USDC_ETHEREUM, -1, 1);
 
         vm.prank(DEPLOYER);
         address allowlistHook_ = _deployAllowlistHook(ADMIN, MANAGER, config);

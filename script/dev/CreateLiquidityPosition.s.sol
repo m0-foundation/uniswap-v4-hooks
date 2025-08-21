@@ -35,12 +35,15 @@ contract CreateLiquidityPosition is Deploy {
         address hook = vm.envAddress("UNISWAP_HOOK");
 
         address tokenA = vm.envAddress("TOKEN_A");
-        uint256 liquidityAmountA = _liquidityAmountPrompt(tokenA, caller);
-
         address tokenB = vm.envAddress("TOKEN_B");
-        uint256 liquidityAmountB = _liquidityAmountPrompt(tokenB, caller);
 
-        DeployConfig memory config = _getDeployConfig(block.chainid, tokenA, tokenB);
+        DeployConfig memory config = _getDeployConfig(
+            block.chainid,
+            tokenA,
+            tokenB,
+            int24(vm.envInt("TICK_LOWER_BOUND")),
+            int24(vm.envInt("TICK_UPPER_BOUND"))
+        );
 
         PoolKey memory poolKey = PoolKey({
             currency0: config.currency0,
@@ -50,45 +53,37 @@ contract CreateLiquidityPosition is Deploy {
             hooks: IHooks(hook)
         });
 
-        PositionConfig memory positionConfig = PositionConfig({
-            poolKey: poolKey,
-            tickLower: config.tickLowerBound,
-            tickUpper: config.tickUpperBound
-        });
-
-        uint128 positionLiquidity = LiquidityAmounts.getLiquidityForAmounts(
-            TickMath.getSqrtPriceAtTick(0),
-            TickMath.getSqrtPriceAtTick(config.tickLowerBound),
-            TickMath.getSqrtPriceAtTick(config.tickUpperBound),
-            liquidityAmountA,
-            liquidityAmountB
-        );
-
         vm.startBroadcast(caller);
 
-        if (IERC20(tokenA).allowance(caller, address(PERMIT2)) == 0) {
-            IERC20(tokenA).approve(address(PERMIT2), type(uint256).max);
-        }
+        _approvePermit2(caller, tokenA, config.posm);
+        _approvePermit2(caller, tokenB, config.posm);
 
-        (uint160 tokenAPermit2Allowance, , ) = PERMIT2.allowance(caller, tokenA, config.posm);
-
-        if (tokenAPermit2Allowance == 0) {
-            PERMIT2.approve(tokenA, config.posm, type(uint160).max, type(uint48).max);
-        }
-
-        if (IERC20(tokenB).allowance(caller, address(PERMIT2)) == 0) {
-            IERC20(tokenB).approve(address(PERMIT2), type(uint256).max);
-        }
-
-        (uint160 tokenBPermit2Allowance, , ) = PERMIT2.allowance(caller, tokenB, config.posm);
-
-        if (tokenBPermit2Allowance == 0) {
-            PERMIT2.approve(tokenB, config.posm, type(uint160).max, type(uint48).max);
-        }
-
-        IPositionManager(POSM_ETHEREUM).mint(positionConfig, positionLiquidity, caller, "");
+        IPositionManager(POSM_ETHEREUM).mint(
+            PositionConfig({ poolKey: poolKey, tickLower: config.tickLowerBound, tickUpper: config.tickUpperBound }),
+            LiquidityAmounts.getLiquidityForAmounts(
+                TickMath.getSqrtPriceAtTick(0),
+                TickMath.getSqrtPriceAtTick(config.tickLowerBound),
+                TickMath.getSqrtPriceAtTick(config.tickUpperBound),
+                _liquidityAmountPrompt(tokenA, caller),
+                _liquidityAmountPrompt(tokenB, caller)
+            ),
+            caller,
+            ""
+        );
 
         vm.stopBroadcast();
+    }
+
+    function _approvePermit2(address caller, address token, address posm) internal {
+        if (IERC20(token).allowance(caller, address(PERMIT2)) == 0) {
+            IERC20(token).approve(address(PERMIT2), type(uint256).max);
+        }
+
+        (uint160 tokenPermit2Allowance, , ) = PERMIT2.allowance(caller, token, posm);
+
+        if (tokenPermit2Allowance == 0) {
+            PERMIT2.approve(token, posm, type(uint160).max, type(uint48).max);
+        }
     }
 
     function _liquidityAmountPrompt(address token, address account) internal returns (uint256 amount) {

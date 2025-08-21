@@ -41,7 +41,7 @@ contract DeployTest is Deploy, Test {
     /// forge-config: default.allow_internal_expect_revert = true
     function testFork_getConfig_unsupportedChain() public {
         vm.expectRevert(abi.encodeWithSelector(Config.UnsupportedChain.selector, 0));
-        _getDeployConfig(0, WRAPPED_M, USDC_ETHEREUM);
+        _getDeployConfig(0, WRAPPED_M, USDC_ETHEREUM, 0, 1);
     }
 
     /* ============ deployAllowlistHook ============ */
@@ -49,7 +49,7 @@ contract DeployTest is Deploy, Test {
     function testFork_deployWM_USDC_allowlistHook() public {
         vm.selectFork(mainnetFork);
 
-        DeployConfig memory config = _getDeployConfig(block.chainid, WRAPPED_M, USDC_ETHEREUM);
+        DeployConfig memory config = _getDeployConfig(block.chainid, WRAPPED_M, USDC_ETHEREUM, -1, 1);
 
         vm.prank(CREATE2_DEPLOYER);
         address allowlistHook_ = _deployAllowlistHook(ADMIN, MANAGER, config);
@@ -72,7 +72,7 @@ contract DeployTest is Deploy, Test {
     function testFork_deployWM_USDC_allowlistHookAndPool() public {
         vm.selectFork(mainnetFork);
 
-        DeployConfig memory config = _getDeployConfig(block.chainid, WRAPPED_M, USDC_ETHEREUM);
+        DeployConfig memory config = _getDeployConfig(block.chainid, WRAPPED_M, USDC_ETHEREUM, -1, 1);
 
         vm.prank(CREATE2_DEPLOYER);
         address allowlistHook_ = _deployAllowlistHook(ADMIN, MANAGER, config);
@@ -95,7 +95,7 @@ contract DeployTest is Deploy, Test {
         vm.skip(true);
         vm.selectFork(optimismFork);
 
-        DeployConfig memory config = _getDeployConfig(block.chainid, WRAPPED_M, USDC_OPTIMISM);
+        DeployConfig memory config = _getDeployConfig(block.chainid, WRAPPED_M, USDC_OPTIMISM, -1, 1);
 
         vm.prank(CREATE2_DEPLOYER);
         address allowlistHook_ = _deployAllowlistHook(ADMIN, MANAGER, config);
@@ -121,7 +121,7 @@ contract DeployTest is Deploy, Test {
         vm.skip(true);
         vm.selectFork(optimismFork);
 
-        DeployConfig memory config = _getDeployConfig(block.chainid, WRAPPED_M, USDC_OPTIMISM);
+        DeployConfig memory config = _getDeployConfig(block.chainid, WRAPPED_M, USDC_OPTIMISM, -1, 1);
 
         vm.prank(CREATE2_DEPLOYER);
         address allowlistHook_ = _deployAllowlistHook(ADMIN, MANAGER, config);
@@ -145,7 +145,7 @@ contract DeployTest is Deploy, Test {
     function testFork_deployWM_USDC_tickRangeHook() public {
         vm.selectFork(mainnetFork);
 
-        DeployConfig memory config = _getDeployConfig(block.chainid, WRAPPED_M, USDC_ETHEREUM);
+        DeployConfig memory config = _getDeployConfig(block.chainid, WRAPPED_M, USDC_ETHEREUM, -1, 1);
 
         vm.prank(CREATE2_DEPLOYER);
         address tickRangeHook_ = _deployTickRangeHook(ADMIN, MANAGER, config);
@@ -165,7 +165,7 @@ contract DeployTest is Deploy, Test {
     function testFork_deployWM_USDC_tickRangeHookAndPool() public {
         vm.selectFork(mainnetFork);
 
-        DeployConfig memory config = _getDeployConfig(block.chainid, WRAPPED_M, USDC_ETHEREUM);
+        DeployConfig memory config = _getDeployConfig(block.chainid, WRAPPED_M, USDC_ETHEREUM, -1, 1);
 
         vm.prank(CREATE2_DEPLOYER);
         address tickRangeHook_ = _deployTickRangeHook(ADMIN, MANAGER, config);
@@ -185,7 +185,7 @@ contract DeployTest is Deploy, Test {
     function testFork_deployUSDC_MUSD_tickRangeHook() public {
         vm.selectFork(mainnetFork);
 
-        DeployConfig memory config = _getDeployConfig(block.chainid, MUSD, USDC_ETHEREUM);
+        DeployConfig memory config = _getDeployConfig(block.chainid, MUSD, USDC_ETHEREUM, 0, 1);
 
         vm.prank(CREATE2_DEPLOYER);
         address tickRangeHook_ = _deployTickRangeHook(ADMIN, MANAGER, config);
@@ -197,15 +197,15 @@ contract DeployTest is Deploy, Test {
         int24 tickUpperBound_ = IBaseTickRangeHook(tickRangeHook_).tickUpperBound();
 
         assertEq(tickLowerBound_, -1);
-        assertEq(tickUpperBound_, 1);
+        assertEq(tickUpperBound_, 0);
         assertEq(getPriceAtTick(tickLowerBound_), 999900009999000099);
-        assertEq(getPriceAtTick(tickUpperBound_), 1000100000000000000);
+        assertEq(getPriceAtTick(tickUpperBound_), 1000000000000000000);
     }
 
     function testFork_deployUSDC_MUSD_tickRangeHookAndPool() public {
         vm.selectFork(mainnetFork);
 
-        DeployConfig memory config = _getDeployConfig(block.chainid, MUSD, USDC_ETHEREUM);
+        DeployConfig memory config = _getDeployConfig(block.chainid, MUSD, USDC_ETHEREUM, 0, 1);
 
         vm.prank(CREATE2_DEPLOYER);
         address tickRangeHook_ = _deployTickRangeHook(ADMIN, MANAGER, config);
@@ -227,7 +227,7 @@ contract DeployTest is Deploy, Test {
     function testFork_deployUSDC_WM_tickRangeHook_optimism() public {
         vm.selectFork(optimismFork);
 
-        DeployConfig memory config = _getDeployConfig(block.chainid, WRAPPED_M, USDC_OPTIMISM);
+        DeployConfig memory config = _getDeployConfig(block.chainid, WRAPPED_M, USDC_OPTIMISM, -1, 1);
 
         vm.prank(CREATE2_DEPLOYER);
         address tickRangeHook_ = _deployTickRangeHook(ADMIN, MANAGER, config);
@@ -247,7 +247,7 @@ contract DeployTest is Deploy, Test {
     function testFork_deployUSDC_WM_tickRangeHookAndPool_optimism() public {
         vm.selectFork(optimismFork);
 
-        DeployConfig memory config = _getDeployConfig(block.chainid, WRAPPED_M, USDC_OPTIMISM);
+        DeployConfig memory config = _getDeployConfig(block.chainid, WRAPPED_M, USDC_OPTIMISM, -1, 1);
 
         vm.prank(CREATE2_DEPLOYER);
         address tickRangeHook_ = _deployTickRangeHook(ADMIN, MANAGER, config);

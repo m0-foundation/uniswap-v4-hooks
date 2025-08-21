@@ -53,7 +53,7 @@ contract TickRangeHookForkTest is Deploy, Test {
     function setUp() public {
         mainnetFork = vm.createSelectFork(vm.envString("MAINNET_RPC_URL"), 23_128_190); // Block number after which MUSD holder has MUSD
 
-        config = _getDeployConfig(block.chainid, MUSD, USDC_ETHEREUM);
+        config = _getDeployConfig(block.chainid, MUSD, USDC_ETHEREUM, 0, 1);
 
         vm.prank(DEPLOYER);
         address tickRangeHook_ = _deployTickRangeHook(ADMIN, MANAGER, config);
