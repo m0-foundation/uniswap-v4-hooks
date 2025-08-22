@@ -4,9 +4,6 @@ pragma solidity 0.8.26;
 import { Test } from "../../lib/forge-std/src/Test.sol";
 import { IERC20 } from "../../lib/forge-std/src/interfaces/IERC20.sol";
 
-import { PredicateMessage } from "../../lib/predicate-contracts/src/interfaces/IPredicateClient.sol";
-import { IPredicateManager, Task } from "../../lib/predicate-contracts/src/interfaces/IPredicateManager.sol";
-
 import { IAllowanceTransfer } from "../../lib/v4-periphery/lib/permit2/src/interfaces/IAllowanceTransfer.sol";
 import { IHooks } from "../../lib/v4-periphery/lib/v4-core/src/interfaces/IHooks.sol";
 import { IPoolManager } from "../../lib/v4-periphery/lib/v4-core/src/interfaces/IPoolManager.sol";
@@ -23,21 +20,20 @@ import { Actions } from "../../lib/v4-periphery/src/libraries/Actions.sol";
 
 import { PositionConfig } from "../../lib/v4-periphery/test/shared/PositionConfig.sol";
 
-import { AllowlistHook } from "../../src/AllowlistHook.sol";
+import { TickRangeHook } from "../../src/TickRangeHook.sol";
 
 import { Deploy } from "../../script/base/Deploy.s.sol";
 
 import { LiquidityOperationsLib } from "../utils/helpers/LiquidityOperationsLib.sol";
-import { PredicateHelpers } from "../utils/helpers/PredicateHelpers.sol";
 import { IUniversalRouterLike } from "../utils/interfaces/IUniversalRouterLike.sol";
 
-contract AllowlistHookForkTest is Deploy, Test, PredicateHelpers {
+contract TickRangeHookForkTest is Deploy, Test {
     using LiquidityOperationsLib for IPositionManager;
     using StateLibrary for IPoolManager;
 
     DeployConfig public config;
 
-    AllowlistHook public allowlistHook;
+    TickRangeHook public tickRangeHook;
     PoolKey public poolKey;
     IUniversalRouterLike public swapRouter;
 
@@ -47,13 +43,7 @@ contract AllowlistHookForkTest is Deploy, Test, PredicateHelpers {
     address public constant ADMIN = 0x7F7489582b64ABe46c074A45d758d701c2CA5446; // MXON
     address public constant MANAGER = 0x431169728D75bd02f4053435b87D15c8d1FB2C72; // M0 Labs
 
-    // Predicate addresses
-    address public constant SERVICE_MANAGER = 0xf6f4A30EeF7cf51Ed4Ee1415fB3bFDAf3694B0d2;
-
-    address public operator;
-    uint256 public operatorPrivateKey;
-
-    address public constant WRAPPED_M_HOLDER = 0xfF95c5f35F4ffB9d5f596F898ac1ae38D62749c2;
+    address public constant MUSD_HOLDER = 0x98F2b37A1F5e6dB22c4eBa7DE0398fB9be2AF03F;
 
     address public alice = makeAddr("alice");
     address public bob = makeAddr("bob");
@@ -61,47 +51,39 @@ contract AllowlistHookForkTest is Deploy, Test, PredicateHelpers {
     uint256 public mainnetFork;
 
     function setUp() public {
-        mainnetFork = vm.createSelectFork(vm.envString("MAINNET_RPC_URL"), 22_591_440);
+        mainnetFork = vm.createSelectFork(vm.envString("MAINNET_RPC_URL"), 23_128_190); // Block number after which MUSD holder has MUSD
 
-        (operator, operatorPrivateKey) = makeAddrAndKey("operator");
-
-        config = _getDeployConfig(block.chainid, WRAPPED_M, USDC_ETHEREUM, -1, 1);
+        config = _getDeployConfig(block.chainid, MUSD, USDC_ETHEREUM, 0, 1);
 
         vm.prank(DEPLOYER);
-        address allowlistHook_ = _deployAllowlistHook(ADMIN, MANAGER, config);
+        address tickRangeHook_ = _deployTickRangeHook(ADMIN, MANAGER, config);
 
-        poolKey = _deployPool(config, IHooks(allowlistHook_));
-        allowlistHook = AllowlistHook(allowlistHook_);
+        poolKey = _deployPool(config, IHooks(tickRangeHook_));
+        tickRangeHook = TickRangeHook(tickRangeHook_);
 
         swapRouter = IUniversalRouterLike(config.swapRouter);
     }
 
     /* ============ swap ============ */
 
-    function testFork_swapUSDC_for_WM_viaUniswapRouter() public {
+    function testFork_swapUSDC_for_MUSD_viaUniswapRouter() public {
         vm.selectFork(mainnetFork);
 
-        vm.prank(MANAGER);
-        allowlistHook.setLiquidityProvider(alice, true);
-
-        vm.prank(MANAGER);
-        allowlistHook.setSwapper(bob, true);
-
-        uint128 amount0 = 10_000_000e6;
-        uint128 amount1 = 10_000_000e6;
-        uint128 swapAmountOut = 1_000_000e6;
+        uint128 amount0 = 50e6;
+        uint128 amount1 = 50e6;
+        uint128 swapAmountOut = 10e6;
         uint128 swapAmountIn = type(uint128).max;
 
-        vm.prank(WRAPPED_M_HOLDER);
-        IERC20(WRAPPED_M).transfer(alice, amount0);
+        vm.prank(MUSD_HOLDER);
+        IERC20(MUSD).transfer(alice, amount0);
 
         deal(USDC_ETHEREUM, alice, amount1);
         deal(USDC_ETHEREUM, bob, swapAmountIn);
 
         vm.startPrank(alice);
 
-        IERC20(WRAPPED_M).approve(address(PERMIT2), type(uint256).max);
-        PERMIT2.approve(WRAPPED_M, config.posm, type(uint160).max, type(uint48).max);
+        IERC20(MUSD).approve(address(PERMIT2), type(uint256).max);
+        PERMIT2.approve(MUSD, config.posm, type(uint160).max, type(uint48).max);
 
         IERC20(USDC_ETHEREUM).approve(address(PERMIT2), type(uint256).max);
         PERMIT2.approve(USDC_ETHEREUM, config.posm, type(uint160).max, type(uint48).max);
@@ -132,66 +114,37 @@ contract AllowlistHookForkTest is Deploy, Test, PredicateHelpers {
 
         vm.stopPrank();
 
-        int256 amountSpecified = int256(uint256(swapAmountOut));
-        string memory taskId = "unique-identifier";
-
-        PredicateMessage memory message = _getPredicateMessage(
-            poolKey,
-            taskId,
-            config.policyID,
-            operator,
-            operatorPrivateKey,
-            SERVICE_MANAGER,
-            address(bob),
-            address(allowlistHook),
-            false,
-            amountSpecified
-        );
-
-        Task memory task = _getTask(
-            poolKey,
-            taskId,
-            config.policyID,
-            address(bob),
-            address(allowlistHook),
-            false,
-            amountSpecified
-        );
-
-        address[] memory signerAddresses = _getSignerAddresses(operator);
-        bytes[] memory signatures = _getSignatures(task, operatorPrivateKey, SERVICE_MANAGER);
-
-        vm.mockCall(
-            SERVICE_MANAGER,
-            abi.encodeWithSelector(IPredicateManager.validateSignatures.selector, task, signerAddresses, signatures),
-            abi.encode(true)
-        );
-
         bytes memory commands = abi.encodePacked(uint8(0x10)); // V4 Swap command
         bytes[] memory inputs = new bytes[](1);
         bytes memory actions = abi.encodePacked(
             uint8(Actions.SWAP_EXACT_OUT_SINGLE),
-            uint8(Actions.TAKE_ALL),
-            uint8(Actions.SETTLE_ALL)
+            uint8(Actions.SETTLE_ALL),
+            uint8(Actions.TAKE_ALL)
         );
 
         bytes[] memory params = new bytes[](3);
         params[0] = abi.encode(
             IV4Router.ExactOutputSingleParams({
                 poolKey: poolKey,
-                zeroForOne: false,
+                zeroForOne: true, // USDC is currency 0
                 amountOut: swapAmountOut,
                 amountInMaximum: swapAmountIn,
-                hookData: abi.encode(message)
+                hookData: ""
             })
         );
 
-        params[1] = abi.encode(poolKey.currency0, swapAmountOut);
-        params[2] = abi.encode(poolKey.currency1, swapAmountIn);
+        params[1] = abi.encode(poolKey.currency0, swapAmountIn);
+        params[2] = abi.encode(poolKey.currency1, swapAmountOut);
 
         inputs[0] = abi.encode(actions, params);
 
+        uint256 bobUSDCBalanceBefore = IERC20(USDC_ETHEREUM).balanceOf(bob);
+        uint256 bobMUSDBalanceBefore = IERC20(MUSD).balanceOf(bob);
+
         vm.prank(bob);
         swapRouter.execute(commands, inputs, block.timestamp + 1);
+
+        assertEq(IERC20(USDC_ETHEREUM).balanceOf(bob), bobUSDCBalanceBefore - 10_000100);
+        assertEq(IERC20(MUSD).balanceOf(bob), bobMUSDBalanceBefore + swapAmountOut);
     }
 }

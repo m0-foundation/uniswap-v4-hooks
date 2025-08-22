@@ -1,6 +1,7 @@
 // SPDX-License-Identifier: UNLICENSED
 pragma solidity 0.8.26;
 
+import { console } from "../../lib/forge-std/src/console.sol";
 import { IERC20 } from "../../lib/forge-std/src/interfaces/IERC20.sol";
 
 import { IAllowanceTransfer } from "../../lib/v4-periphery/lib/permit2/src/interfaces/IAllowanceTransfer.sol";
@@ -31,56 +32,63 @@ contract CreateLiquidityPosition is Deploy {
 
     function run() public {
         address caller = vm.rememberKey(vm.envUint("PRIVATE_KEY"));
-        address hook = vm.envAddress("UNISWAP_HOOK");
 
-        DeployConfig memory config = _getDeployConfig(block.chainid);
+        address tokenA = vm.envAddress("TOKEN_A");
+        address tokenB = vm.envAddress("TOKEN_B");
+        int24 tickLowerBound = int24(vm.envInt("TICK_LOWER_BOUND"));
+        int24 tickUpperBound = int24(vm.envInt("TICK_UPPER_BOUND"));
+
+        DeployConfig memory config = _getDeployConfig(block.chainid, tokenA, tokenB, tickLowerBound, tickUpperBound);
 
         PoolKey memory poolKey = PoolKey({
-            currency0: Currency.wrap(WRAPPED_M),
-            currency1: Currency.wrap(USDC_ETHEREUM),
+            currency0: config.currency0,
+            currency1: config.currency1,
             fee: config.fee,
             tickSpacing: config.tickSpacing,
-            hooks: IHooks(hook)
+            hooks: IHooks(vm.envAddress("UNISWAP_HOOK"))
         });
-
-        PositionConfig memory positionConfig = PositionConfig({
-            poolKey: poolKey,
-            tickLower: config.tickLowerBound,
-            tickUpper: config.tickUpperBound
-        });
-
-        uint128 positionLiquidity = LiquidityAmounts.getLiquidityForAmounts(
-            TickMath.getSqrtPriceAtTick(0),
-            TickMath.getSqrtPriceAtTick(config.tickLowerBound),
-            TickMath.getSqrtPriceAtTick(config.tickUpperBound),
-            10e6,
-            10e6
-        );
 
         vm.startBroadcast(caller);
 
-        if (IERC20(WRAPPED_M).allowance(caller, address(PERMIT2)) == 0) {
-            IERC20(WRAPPED_M).approve(address(PERMIT2), type(uint256).max);
-        }
+        _approvePermit2(caller, tokenA, config.posm);
+        _approvePermit2(caller, tokenB, config.posm);
 
-        (uint160 wrappedMPermit2Allowance, , ) = PERMIT2.allowance(caller, WRAPPED_M, config.posm);
-
-        if (wrappedMPermit2Allowance == 0) {
-            PERMIT2.approve(WRAPPED_M, config.posm, type(uint160).max, type(uint48).max);
-        }
-
-        if (IERC20(USDC_ETHEREUM).allowance(caller, address(PERMIT2)) == 0) {
-            IERC20(USDC_ETHEREUM).approve(address(PERMIT2), type(uint256).max);
-        }
-
-        (uint160 usdcPermit2Allowance, , ) = PERMIT2.allowance(caller, USDC_ETHEREUM, config.posm);
-
-        if (usdcPermit2Allowance == 0) {
-            PERMIT2.approve(USDC_ETHEREUM, config.posm, type(uint160).max, type(uint48).max);
-        }
-
-        IPositionManager(POSM_ETHEREUM).mint(positionConfig, positionLiquidity, caller, "");
+        IPositionManager(POSM_ETHEREUM).mint(
+            PositionConfig({ poolKey: poolKey, tickLower: tickLowerBound, tickUpper: tickUpperBound }),
+            LiquidityAmounts.getLiquidityForAmounts(
+                TickMath.getSqrtPriceAtTick(0),
+                TickMath.getSqrtPriceAtTick(tickLowerBound),
+                TickMath.getSqrtPriceAtTick(tickUpperBound),
+                _liquidityAmountPrompt(tokenA, caller),
+                _liquidityAmountPrompt(tokenB, caller)
+            ),
+            caller,
+            ""
+        );
 
         vm.stopBroadcast();
+    }
+
+    function _approvePermit2(address caller, address token, address posm) internal {
+        if (IERC20(token).allowance(caller, address(PERMIT2)) == 0) {
+            IERC20(token).approve(address(PERMIT2), type(uint256).max);
+        }
+
+        (uint160 tokenPermit2Allowance, , ) = PERMIT2.allowance(caller, token, posm);
+
+        if (tokenPermit2Allowance == 0) {
+            PERMIT2.approve(token, posm, type(uint160).max, type(uint48).max);
+        }
+    }
+
+    function _liquidityAmountPrompt(address token, address account) internal returns (uint256 amount) {
+        uint256 balance = IERC20(token).balanceOf(account);
+        string memory symbol = IERC20(token).symbol();
+
+        amount = vm.parseUint(vm.prompt(string.concat("Enter amount of ", symbol, " to add")));
+
+        if (amount > balance) {
+            revert(string.concat("Insufficient ", symbol, " balance for account ", vm.toString(account)));
+        }
     }
 }

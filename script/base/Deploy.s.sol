@@ -11,8 +11,6 @@ import { IPoolManager } from "../../lib/v4-periphery/lib/v4-core/src/interfaces/
 import { Hooks } from "../../lib/v4-periphery/lib/v4-core/src/libraries/Hooks.sol";
 import { TickMath } from "../../lib/v4-periphery/lib/v4-core/src/libraries/TickMath.sol";
 
-import { Currency } from "../../lib/v4-periphery/lib/v4-core/src/types/Currency.sol";
-import { PoolId } from "../../lib/v4-periphery/lib/v4-core/src/types/PoolId.sol";
 import { PoolKey } from "../../lib/v4-periphery/lib/v4-core/src/types/PoolKey.sol";
 
 import { HookMiner } from "../../lib/v4-periphery/src/utils/HookMiner.sol";
@@ -27,6 +25,9 @@ contract Deploy is Config, Script {
         address manager_,
         DeployConfig memory config_
     ) internal returns (address) {
+        console.log("Admin: %s", admin_);
+        console.log("Manager: %s", manager_);
+
         // Mine a salt that will produce a hook address with the correct flags
         (address hookAddress_, bytes32 salt_) = HookMiner.find(
             CREATE2_DEPLOYER,
@@ -60,6 +61,9 @@ contract Deploy is Config, Script {
         address manager_,
         DeployConfig memory config_
     ) internal returns (address) {
+        console.log("Admin: %s", admin_);
+        console.log("Manager: %s", manager_);
+
         bytes memory constructorArgs = abi.encode(
             address(config_.posm),
             config_.swapRouter,
