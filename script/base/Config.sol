@@ -24,8 +24,6 @@ contract Config {
     // Swap Fee in bps
     uint24 public constant SWAP_FEE = 0;
 
-    int24 public constant TICK_LOWER_BOUND = -1;
-    int24 public constant TICK_UPPER_BOUND = 1;
     int24 public constant TICK_SPACING = 1;
 
     // Mainnet chain IDs
@@ -35,6 +33,7 @@ contract Config {
     uint256 public constant UNICHAIN_CHAIN_ID = 130;
 
     // Testnet chain IDs
+    uint256 public constant LOCAL_CHAIN_ID = 31337;
     uint256 public constant SEPOLIA_CHAIN_ID = 11155111;
     uint256 public constant ARBITRUM_SEPOLIA_CHAIN_ID = 421614;
     uint256 public constant OPTIMISM_SEPOLIA_CHAIN_ID = 11155420;
@@ -42,6 +41,7 @@ contract Config {
 
     // Same addresses across all chains
     address public constant CREATE2_DEPLOYER = address(0x4e59b44847b379578588920cA78FbF26c0B4956C);
+    address public constant MUSD = address(0xacA92E438df0B2401fF60dA7E4337B687a2435DA);
     address public constant WRAPPED_M = address(0x437cc33344a0B27A429f795ff6B469C72698B291);
 
     // Mainnet contract addresses
@@ -61,10 +61,11 @@ contract Config {
     address public constant SWAP_ROUTER_UNICHAIN = address(0xEf740bf23aCaE26f6492B10de645D6B98dC8Eaf3);
 
     address public constant SERVICE_MANAGER_ETHEREUM = address(0xf6f4A30EeF7cf51Ed4Ee1415fB3bFDAf3694B0d2);
-    string public constant POLICY_ID_ETHEREUM = "x-test-prod"; // TODO: Replace by the actual policy ID
+    string public constant POLICY_ID_ETHEREUM = "x-test-prod";
+
+    address public constant SERVICE_MANAGER_ARBITRUM = address(0xA144a921f81ee2737cBFd69Dc7b08c19e9Be66d5);
 
     // TODO: replace with actual addresses once deployed on these chains
-    address public constant SERVICE_MANAGER_ARBITRUM = address(0xf6f4A30EeF7cf51Ed4Ee1415fB3bFDAf3694B0d2);
     address public constant SERVICE_MANAGER_OPTIMISM = address(0xf6f4A30EeF7cf51Ed4Ee1415fB3bFDAf3694B0d2);
     address public constant SERVICE_MANAGER_UNICHAIN = address(0xf6f4A30EeF7cf51Ed4Ee1415fB3bFDAf3694B0d2);
 
@@ -106,12 +107,18 @@ contract Config {
     address public constant USDC_ARBITRUM_SEPOLIA = address(0x75faf114eafb1BDbe2F0316DF893fd58CE46AA4d);
     address public constant USDC_UNICHAIN_SEPOLIA = address(0x31d0220469e10c4E71834a79b1f276d740d3768F);
 
-    function _getDeployConfig(uint256 chainId_) internal pure returns (DeployConfig memory) {
+    function _getDeployConfig(
+        uint256 chainId_,
+        address tokenA_,
+        address tokenB_,
+        int24 tickLowerBound_,
+        int24 tickUpperBound_
+    ) internal pure returns (DeployConfig memory) {
+        (Currency currency0_, Currency currency1_) = _sortCurrencies(tokenA_, tokenB_);
+        (tickLowerBound_, tickUpperBound_) = _sortTicks(currency0_, tickLowerBound_, tickUpperBound_);
+
         // Mainnet configs
         if (chainId_ == ETHEREUM_CHAIN_ID) {
-            (Currency currency0_, Currency currency1_) = _sortCurrencies(USDC_ETHEREUM, WRAPPED_M);
-            (int24 tickLowerBound_, int24 tickUpperBound_) = _sortTicks(currency0_, TICK_LOWER_BOUND, TICK_UPPER_BOUND);
-
             return
                 DeployConfig({
                     poolManager: POOL_MANAGER_ETHEREUM,
@@ -129,9 +136,6 @@ contract Config {
         }
 
         if (chainId_ == ARBITRUM_CHAIN_ID) {
-            (Currency currency0_, Currency currency1_) = _sortCurrencies(USDC_ARBITRUM, WRAPPED_M);
-            (int24 tickLowerBound_, int24 tickUpperBound_) = _sortTicks(currency0_, TICK_LOWER_BOUND, TICK_UPPER_BOUND);
-
             return
                 DeployConfig({
                     poolManager: POOL_MANAGER_ARBITRUM,
@@ -149,9 +153,6 @@ contract Config {
         }
 
         if (chainId_ == OPTIMISM_CHAIN_ID) {
-            (Currency currency0_, Currency currency1_) = _sortCurrencies(USDC_OPTIMISM, WRAPPED_M);
-            (int24 tickLowerBound_, int24 tickUpperBound_) = _sortTicks(currency0_, TICK_LOWER_BOUND, TICK_UPPER_BOUND);
-
             return
                 DeployConfig({
                     poolManager: POOL_MANAGER_OPTIMISM,
@@ -169,9 +170,6 @@ contract Config {
         }
 
         if (chainId_ == UNICHAIN_CHAIN_ID) {
-            (Currency currency0_, Currency currency1_) = _sortCurrencies(USDC_UNICHAIN, WRAPPED_M);
-            (int24 tickLowerBound_, int24 tickUpperBound_) = _sortTicks(currency0_, TICK_LOWER_BOUND, TICK_UPPER_BOUND);
-
             return
                 DeployConfig({
                     poolManager: POOL_MANAGER_UNICHAIN,
@@ -189,10 +187,24 @@ contract Config {
         }
 
         // Testnet configs
-        if (chainId_ == SEPOLIA_CHAIN_ID) {
-            (Currency currency0_, Currency currency1_) = _sortCurrencies(USDC_SEPOLIA, WRAPPED_M);
-            (int24 tickLowerBound_, int24 tickUpperBound_) = _sortTicks(currency0_, TICK_LOWER_BOUND, TICK_UPPER_BOUND);
+        if (chainId_ == LOCAL_CHAIN_ID) {
+            return
+                DeployConfig({
+                    poolManager: POOL_MANAGER_ETHEREUM,
+                    posm: POSM_ETHEREUM,
+                    swapRouter: SWAP_ROUTER_ETHEREUM,
+                    serviceManager: SERVICE_MANAGER_ETHEREUM,
+                    policyID: POLICY_ID_ETHEREUM,
+                    currency0: currency0_,
+                    currency1: currency1_,
+                    fee: SWAP_FEE,
+                    tickLowerBound: tickLowerBound_,
+                    tickUpperBound: tickUpperBound_,
+                    tickSpacing: TICK_SPACING
+                });
+        }
 
+        if (chainId_ == SEPOLIA_CHAIN_ID) {
             return
                 DeployConfig({
                     poolManager: POOL_MANAGER_SEPOLIA,
@@ -210,9 +222,6 @@ contract Config {
         }
 
         if (chainId_ == ARBITRUM_SEPOLIA_CHAIN_ID) {
-            (Currency currency0_, Currency currency1_) = _sortCurrencies(USDC_ARBITRUM_SEPOLIA, WRAPPED_M);
-            (int24 tickLowerBound_, int24 tickUpperBound_) = _sortTicks(currency0_, TICK_LOWER_BOUND, TICK_UPPER_BOUND);
-
             return
                 DeployConfig({
                     poolManager: POOL_MANAGER_ARBITRUM_SEPOLIA,
@@ -230,9 +239,6 @@ contract Config {
         }
 
         if (chainId_ == UNICHAIN_SEPOLIA_CHAIN_ID) {
-            (Currency currency0_, Currency currency1_) = _sortCurrencies(USDC_UNICHAIN_SEPOLIA, WRAPPED_M);
-            (int24 tickLowerBound_, int24 tickUpperBound_) = _sortTicks(currency0_, TICK_LOWER_BOUND, TICK_UPPER_BOUND);
-
             return
                 DeployConfig({
                     poolManager: POOL_MANAGER_UNICHAIN_SEPOLIA,
@@ -261,16 +267,16 @@ contract Config {
             : (Currency.wrap(tokenB_), Currency.wrap(tokenA_));
     }
 
-    /// @dev Flips and negates tickLowerBound and tickUpperBound if currency0 != Wrapped M
+    /// @dev Flips and negates tickLowerBound and tickUpperBound if currency0 != Wrapped M or MUSD
     function _sortTicks(
         Currency currency0_,
         int24 tickLowerBound_,
         int24 tickUpperBound_
     ) internal pure returns (int24, int24) {
-        if (Currency.unwrap(currency0_) != WRAPPED_M) {
-            return (-tickUpperBound_, -tickLowerBound_);
+        if (Currency.unwrap(currency0_) == WRAPPED_M || Currency.unwrap(currency0_) == MUSD) {
+            return (tickLowerBound_, tickUpperBound_);
         }
 
-        return (tickLowerBound_, tickUpperBound_);
+        return (-tickUpperBound_, -tickLowerBound_);
     }
 }

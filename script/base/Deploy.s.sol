@@ -11,8 +11,6 @@ import { IPoolManager } from "../../lib/v4-periphery/lib/v4-core/src/interfaces/
 import { Hooks } from "../../lib/v4-periphery/lib/v4-core/src/libraries/Hooks.sol";
 import { TickMath } from "../../lib/v4-periphery/lib/v4-core/src/libraries/TickMath.sol";
 
-import { Currency } from "../../lib/v4-periphery/lib/v4-core/src/types/Currency.sol";
-import { PoolId } from "../../lib/v4-periphery/lib/v4-core/src/types/PoolId.sol";
 import { PoolKey } from "../../lib/v4-periphery/lib/v4-core/src/types/PoolKey.sol";
 
 import { HookMiner } from "../../lib/v4-periphery/src/utils/HookMiner.sol";
@@ -27,6 +25,9 @@ contract Deploy is Config, Script {
         address manager_,
         DeployConfig memory config_
     ) internal returns (address) {
+        console.log("Admin: %s", admin_);
+        console.log("Manager: %s", manager_);
+
         // Mine a salt that will produce a hook address with the correct flags
         (address hookAddress_, bytes32 salt_) = HookMiner.find(
             CREATE2_DEPLOYER,
@@ -60,6 +61,9 @@ contract Deploy is Config, Script {
         address manager_,
         DeployConfig memory config_
     ) internal returns (address) {
+        console.log("Admin: %s", admin_);
+        console.log("Manager: %s", manager_);
+
         bytes memory constructorArgs = abi.encode(
             address(config_.posm),
             config_.swapRouter,
@@ -119,16 +123,17 @@ contract Deploy is Config, Script {
     function _logPoolDeployment(Vm.Log[] memory logs_) internal pure {
         for (uint256 i_; i_ < logs_.length; ++i_) {
             if (logs_[i_].topics[0] == IPoolManager.Initialize.selector) {
-                (PoolId eventId_, , , , , IHooks eventHooks_, , int24 eventTick_) = abi.decode(
+                (, , IHooks eventHooks_, uint160 eventSqrtPriceX96_, int24 eventTick_) = abi.decode(
                     logs_[i_].data,
-                    (PoolId, Currency, Currency, uint24, int24, IHooks, uint160, int24)
+                    (uint24, int24, IHooks, uint160, int24)
                 );
 
                 console.log("Uniswap V4 Pool deployed!");
                 console.log("Pool ID:");
-                console.logBytes32(PoolId.unwrap(eventId_));
+                console.logBytes32(logs_[i_].topics[1]);
                 console.log("Pool initial tick:", eventTick_);
-                console.log("Pool hooks:", address(eventHooks_));
+                console.log("Pool initial sqrtPrice:", eventSqrtPriceX96_);
+                console.log("Pool hook:", address(eventHooks_));
             }
         }
     }

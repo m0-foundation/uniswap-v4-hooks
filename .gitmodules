@@ -16,3 +16,6 @@
 [submodule "lib/predicate-contracts"]
 	path = lib/predicate-contracts
 	url = https://github.com/PredicateLabs/predicate-contracts
+[submodule "lib/surl"]
+	path = lib/surl
+	url = https://github.com/memester-xyz/surl
