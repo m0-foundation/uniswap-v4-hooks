@@ -32,25 +32,20 @@ contract CreateLiquidityPosition is Deploy {
 
     function run() public {
         address caller = vm.rememberKey(vm.envUint("PRIVATE_KEY"));
-        address hook = vm.envAddress("UNISWAP_HOOK");
 
         address tokenA = vm.envAddress("TOKEN_A");
         address tokenB = vm.envAddress("TOKEN_B");
+        int24 tickLowerBound = int24(vm.envInt("TICK_LOWER_BOUND"));
+        int24 tickUpperBound = int24(vm.envInt("TICK_UPPER_BOUND"));
 
-        DeployConfig memory config = _getDeployConfig(
-            block.chainid,
-            tokenA,
-            tokenB,
-            int24(vm.envInt("TICK_LOWER_BOUND")),
-            int24(vm.envInt("TICK_UPPER_BOUND"))
-        );
+        DeployConfig memory config = _getDeployConfig(block.chainid, tokenA, tokenB, tickLowerBound, tickUpperBound);
 
         PoolKey memory poolKey = PoolKey({
             currency0: config.currency0,
             currency1: config.currency1,
             fee: config.fee,
             tickSpacing: config.tickSpacing,
-            hooks: IHooks(hook)
+            hooks: IHooks(vm.envAddress("UNISWAP_HOOK"))
         });
 
         vm.startBroadcast(caller);
@@ -59,11 +54,11 @@ contract CreateLiquidityPosition is Deploy {
         _approvePermit2(caller, tokenB, config.posm);
 
         IPositionManager(POSM_ETHEREUM).mint(
-            PositionConfig({ poolKey: poolKey, tickLower: config.tickLowerBound, tickUpper: config.tickUpperBound }),
+            PositionConfig({ poolKey: poolKey, tickLower: tickLowerBound, tickUpper: tickUpperBound }),
             LiquidityAmounts.getLiquidityForAmounts(
                 TickMath.getSqrtPriceAtTick(0),
-                TickMath.getSqrtPriceAtTick(config.tickLowerBound),
-                TickMath.getSqrtPriceAtTick(config.tickUpperBound),
+                TickMath.getSqrtPriceAtTick(tickLowerBound),
+                TickMath.getSqrtPriceAtTick(tickUpperBound),
                 _liquidityAmountPrompt(tokenA, caller),
                 _liquidityAmountPrompt(tokenB, caller)
             ),
