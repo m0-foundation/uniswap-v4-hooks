@@ -95,7 +95,7 @@ create-wm-usdc-liquidity-position-local: TICK_UPPER_BOUND=1
 create-wm-usdc-liquidity-position-local: create-liquidity-position
 
 create-usdc-musd-liquidity-position-local: RPC_URL=$(LOCALHOST_RPC_URL)
-create-usdc-musd-liquidity-position-local: UNISWAP_HOOK="0xDe400595199E6Dae55a1bcb742B3Eb249AF00800" # Tick Range Hook
+create-usdc-musd-liquidity-position-local: UNISWAP_HOOK="0x0000000000000000000000000000000000000000" # Pool without hook
 create-usdc-musd-liquidity-position-local: TOKEN_A="0xA0b86991c6218b36c1d19D4a2e9Eb0cE3606eB48" # USDC
 create-usdc-musd-liquidity-position-local: TOKEN_B="0xacA92E438df0B2401fF60dA7E4337B687a2435DA" # MUSD
 create-usdc-musd-liquidity-position-local: TICK_LOWER_BOUND=0
@@ -104,7 +104,7 @@ create-usdc-musd-liquidity-position-local: create-liquidity-position
 
 ## Ethereum Mainnet
 create-wm-usdc-liquidity-position-ethereum: RPC_URL=$(MAINNET_RPC_URL)
-create-wm-usdc-liquidity-position-ethereum: UNISWAP_HOOK="0xAf53Cb78035A8E0acCe38441793E2648B15B88a0"
+create-wm-usdc-liquidity-position-ethereum: UNISWAP_HOOK="0xAf53Cb78035A8E0acCe38441793E2648B15B88a0" # Allowlist Hook
 create-wm-usdc-liquidity-position-ethereum: TOKEN_A="0x437cc33344a0B27A429f795ff6B469C72698B291" # Wrapped M
 create-wm-usdc-liquidity-position-ethereum: TOKEN_B="0xA0b86991c6218b36c1d19D4a2e9Eb0cE3606eB48" # USDC
 create-wm-usdc-liquidity-position-ethereum: TICK_LOWER_BOUND=-1
@@ -112,12 +112,40 @@ create-wm-usdc-liquidity-position-ethereum: TICK_UPPER_BOUND=1
 create-wm-usdc-liquidity-position-ethereum: create-liquidity-position
 
 create-usdc-musd-liquidity-position-ethereum: RPC_URL=$(MAINNET_RPC_URL)
-create-usdc-musd-liquidity-position-ethereum: UNISWAP_HOOK="0xDe400595199E6Dae55a1bcb742B3Eb249AF00800" # Tick Range Hook
+create-usdc-musd-liquidity-position-ethereum: UNISWAP_HOOK="0x0000000000000000000000000000000000000000" # Pool without hook
 create-usdc-musd-liquidity-position-ethereum: TOKEN_A="0xA0b86991c6218b36c1d19D4a2e9Eb0cE3606eB48" # USDC
 create-usdc-musd-liquidity-position-ethereum: TOKEN_B="0xacA92E438df0B2401fF60dA7E4337B687a2435DA" # MUSD
 create-usdc-musd-liquidity-position-ethereum: TICK_LOWER_BOUND=0
 create-usdc-musd-liquidity-position-ethereum: TICK_UPPER_BOUND=1
 create-usdc-musd-liquidity-position-ethereum: create-liquidity-position
+
+modify-liquidity-position:
+	FOUNDRY_PROFILE=production PRIVATE_KEY=$(PRIVATE_KEY) \
+	UNISWAP_HOOK=$(UNISWAP_HOOK) NFT_ID=$(NFT_ID) DECREASE_LIQUIDITY=$(DECREASE_LIQUIDITY) \
+	TOKEN_A=$(TOKEN_A) TOKEN_B=$(TOKEN_B) TICK_LOWER_BOUND=$(TICK_LOWER_BOUND) TICK_UPPER_BOUND=$(TICK_UPPER_BOUND) \
+	forge script script/dev/ModifyLiquidityPosition.s.sol:ModifyLiquidityPosition --rpc-url $(RPC_URL) \
+	--skip test --broadcast --slow --non-interactive -v
+
+## Local
+increase-usdc-musd-liquidity-position-local: RPC_URL=$(LOCALHOST_RPC_URL)
+increase-usdc-musd-liquidity-position-local: NFT_ID=$(LP_POSITION_ID) # LP Position NFT ID
+increase-usdc-musd-liquidity-position-local: DECREASE_LIQUIDITY=false
+increase-usdc-musd-liquidity-position-local: UNISWAP_HOOK="0x0000000000000000000000000000000000000000" # Pool without hook
+increase-usdc-musd-liquidity-position-local: TOKEN_A="0xA0b86991c6218b36c1d19D4a2e9Eb0cE3606eB48" # USDC
+increase-usdc-musd-liquidity-position-local: TOKEN_B="0xacA92E438df0B2401fF60dA7E4337B687a2435DA" # MUSD
+increase-usdc-musd-liquidity-position-local: TICK_LOWER_BOUND=-1
+increase-usdc-musd-liquidity-position-local: TICK_UPPER_BOUND=0
+increase-usdc-musd-liquidity-position-local: modify-liquidity-position
+
+decrease-usdc-musd-liquidity-position-local: RPC_URL=$(LOCALHOST_RPC_URL)
+decrease-usdc-musd-liquidity-position-local: NFT_ID=$(LP_POSITION_ID) # LP Position NFT ID
+decrease-usdc-musd-liquidity-position-local: DECREASE_LIQUIDITY=true
+decrease-usdc-musd-liquidity-position-local: UNISWAP_HOOK="0x0000000000000000000000000000000000000000" # Pool without hook
+decrease-usdc-musd-liquidity-position-local: TOKEN_A="0xA0b86991c6218b36c1d19D4a2e9Eb0cE3606eB48" # USDC
+decrease-usdc-musd-liquidity-position-local: TOKEN_B="0xacA92E438df0B2401fF60dA7E4337B687a2435DA" # MUSD
+decrease-usdc-musd-liquidity-position-local: TICK_LOWER_BOUND=-1
+decrease-usdc-musd-liquidity-position-local: TICK_UPPER_BOUND=0
+decrease-usdc-musd-liquidity-position-local: modify-liquidity-position
 
 swap:
 	FOUNDRY_PROFILE=production PRIVATE_KEY=$(PRIVATE_KEY) \
@@ -136,7 +164,7 @@ swap-usdc-to-wm-local: WITH_PREDICATE_MESSAGE=true
 swap-usdc-to-wm-local: swap
 
 swap-usdc-to-musd-local: RPC_URL=$(LOCALHOST_RPC_URL)
-swap-usdc-to-musd-local: UNISWAP_HOOK="0xB16B423BaFb487A3CdF1b493B55eb00066910800" # Tick Range Hook
+swap-usdc-to-musd-local: UNISWAP_HOOK="0x0000000000000000000000000000000000000000" # Pool without hook
 swap-usdc-to-musd-local: TOKEN_A="0xA0b86991c6218b36c1d19D4a2e9Eb0cE3606eB48" # USDC
 swap-usdc-to-musd-local: TOKEN_B="0xacA92E438df0B2401fF60dA7E4337B687a2435DA" # MUSD
 swap-usdc-to-musd-local: TICK_LOWER_BOUND=0
@@ -155,7 +183,7 @@ swap-usdc-to-wm-ethereum: WITH_PREDICATE_MESSAGE=true
 swap-usdc-to-wm-ethereum: swap
 
 swap-usdc-to-musd-ethereum: RPC_URL=$(MAINNET_RPC_URL)
-swap-usdc-to-musd-ethereum: UNISWAP_HOOK= # TODO
+swap-usdc-to-musd-ethereum: UNISWAP_HOOK="0x0000000000000000000000000000000000000000" # Pool without hook
 swap-usdc-to-musd-ethereum: TOKEN_A="0xA0b86991c6218b36c1d19D4a2e9Eb0cE3606eB48" # USDC
 swap-usdc-to-musd-ethereum: TOKEN_B="0xacA92E438df0B2401fF60dA7E4337B687a2435DA" # MUSD
 swap-usdc-to-musd-ethereum: TICK_LOWER_BOUND=0

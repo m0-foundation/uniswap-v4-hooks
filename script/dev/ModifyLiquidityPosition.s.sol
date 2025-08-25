@@ -13,12 +13,13 @@ import { LiquidityOperationsLib } from "../../test/utils/helpers/LiquidityOperat
 
 import { UniswapV4Helpers } from "./helpers/UniswapV4Helpers.sol";
 
-contract CreateLiquidityPosition is UniswapV4Helpers {
+contract ModifyLiquidityPosition is UniswapV4Helpers {
     using LiquidityOperationsLib for IPositionManager;
 
     function run() public {
         address caller = vm.rememberKey(vm.envUint("PRIVATE_KEY"));
 
+        uint256 nftId = vm.envUint("NFT_ID");
         address tokenA = vm.envAddress("TOKEN_A");
         address tokenB = vm.envAddress("TOKEN_B");
         int24 tickLowerBound = int24(vm.envInt("TICK_LOWER_BOUND"));
@@ -34,22 +35,35 @@ contract CreateLiquidityPosition is UniswapV4Helpers {
             hooks: IHooks(vm.envAddress("UNISWAP_HOOK"))
         });
 
+        PositionConfig memory positionConfig = PositionConfig({
+            poolKey: poolKey,
+            tickLower: tickLowerBound,
+            tickUpper: tickUpperBound
+        });
+
         uint128 liquidity = _getLiquidityForAmounts(poolKey, tokenA, tokenB, tickLowerBound, tickUpperBound, caller);
 
         if (liquidity == 0) revert("Zero liquidity amount.");
 
         vm.startBroadcast(caller);
 
-        _approvePermit2(caller, tokenA, config.posm);
-        _approvePermit2(caller, tokenB, config.posm);
+        if (vm.envBool("DECREASE_LIQUIDITY")) {
+            _decreaseLiquidity(nftId, positionConfig, liquidity);
+        } else {
+            _approvePermit2(caller, tokenA, config.posm);
+            _approvePermit2(caller, tokenB, config.posm);
 
-        IPositionManager(POSM_ETHEREUM).mint(
-            PositionConfig({ poolKey: poolKey, tickLower: tickLowerBound, tickUpper: tickUpperBound }),
-            liquidity,
-            caller,
-            ""
-        );
+            _increaseLiquidity(nftId, positionConfig, liquidity);
+        }
 
         vm.stopBroadcast();
+    }
+
+    function _decreaseLiquidity(uint256 nftId, PositionConfig memory config, uint128 liquidity) internal {
+        IPositionManager(POSM_ETHEREUM).decreaseLiquidity(nftId, config, liquidity, "");
+    }
+
+    function _increaseLiquidity(uint256 nftId, PositionConfig memory config, uint128 liquidity) internal {
+        IPositionManager(POSM_ETHEREUM).increaseLiquidity(nftId, config, liquidity, "");
     }
 }
