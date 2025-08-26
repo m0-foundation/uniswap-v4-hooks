@@ -1,11 +1,15 @@
 // SPDX-License-Identifier: UNLICENSED
 pragma solidity 0.8.26;
 
+import { console } from "../../lib/forge-std/src/console.sol";
+
 import { IHooks } from "../../lib/v4-periphery/lib/v4-core/src/interfaces/IHooks.sol";
 
 import { PoolKey } from "../../lib/v4-periphery/lib/v4-core/src/types/PoolKey.sol";
 
 import { IPositionManager } from "../../lib/v4-periphery/src/interfaces/IPositionManager.sol";
+
+import { PositionInfo, PositionInfoLibrary } from "../../lib/v4-periphery/src/libraries/PositionInfoLibrary.sol";
 
 import { PositionConfig } from "../../lib/v4-periphery/test/shared/PositionConfig.sol";
 
@@ -18,52 +22,53 @@ contract ModifyLiquidityPosition is UniswapV4Helpers {
 
     function run() public {
         address caller = vm.rememberKey(vm.envUint("PRIVATE_KEY"));
+        uint256 tokenId = vm.envUint("TOKEN_ID");
 
-        uint256 nftId = vm.envUint("NFT_ID");
-        address tokenA = vm.envAddress("TOKEN_A");
-        address tokenB = vm.envAddress("TOKEN_B");
-        int24 tickLowerBound = int24(vm.envInt("TICK_LOWER_BOUND"));
-        int24 tickUpperBound = int24(vm.envInt("TICK_UPPER_BOUND"));
+        console.log("Pool and position state before LP modification.");
 
-        DeployConfig memory config = _getDeployConfig(block.chainid, tokenA, tokenB, tickLowerBound, tickUpperBound);
+        (
+            PoolKey memory poolKey,
+            ,
+            address tokenA,
+            address tokenB,
+            int24 currentTick,
+            int24 tickLower,
+            int24 tickUpper,
 
-        PoolKey memory poolKey = PoolKey({
-            currency0: config.currency0,
-            currency1: config.currency1,
-            fee: config.fee,
-            tickSpacing: config.tickSpacing,
-            hooks: IHooks(vm.envAddress("UNISWAP_HOOK"))
-        });
+        ) = _getPoolAndPositionState(tokenId);
 
         PositionConfig memory positionConfig = PositionConfig({
             poolKey: poolKey,
-            tickLower: tickLowerBound,
-            tickUpper: tickUpperBound
+            tickLower: tickLower,
+            tickUpper: tickUpper
         });
 
-        uint128 liquidity = _getLiquidityForAmounts(poolKey, tokenA, tokenB, tickLowerBound, tickUpperBound, caller);
+        uint128 liquidity = _getLiquidityForAmounts(tokenA, tokenB, currentTick, tickLower, tickUpper, caller);
 
         if (liquidity == 0) revert("Zero liquidity amount.");
 
         vm.startBroadcast(caller);
 
         if (vm.envBool("DECREASE_LIQUIDITY")) {
-            _decreaseLiquidity(nftId, positionConfig, liquidity);
+            _decreaseLiquidity(tokenId, positionConfig, liquidity);
         } else {
-            _approvePermit2(caller, tokenA, config.posm);
-            _approvePermit2(caller, tokenB, config.posm);
+            _approvePermit2(caller, tokenA, _getDeployConfig(block.chainid, tokenA, tokenB, tickLower, tickUpper).posm);
+            _approvePermit2(caller, tokenB, _getDeployConfig(block.chainid, tokenA, tokenB, tickLower, tickUpper).posm);
 
-            _increaseLiquidity(nftId, positionConfig, liquidity);
+            _increaseLiquidity(tokenId, positionConfig, liquidity);
         }
 
         vm.stopBroadcast();
+
+        console.log("Pool and position state after LP modification.");
+        _getPoolAndPositionState(tokenId);
     }
 
-    function _decreaseLiquidity(uint256 nftId, PositionConfig memory config, uint128 liquidity) internal {
-        IPositionManager(POSM_ETHEREUM).decreaseLiquidity(nftId, config, liquidity, "");
+    function _decreaseLiquidity(uint256 tokenId, PositionConfig memory positionConfig, uint128 liquidity) internal {
+        IPositionManager(POSM_ETHEREUM).decreaseLiquidity(tokenId, positionConfig, liquidity, "");
     }
 
-    function _increaseLiquidity(uint256 nftId, PositionConfig memory config, uint128 liquidity) internal {
-        IPositionManager(POSM_ETHEREUM).increaseLiquidity(nftId, config, liquidity, "");
+    function _increaseLiquidity(uint256 tokenId, PositionConfig memory positionConfig, uint128 liquidity) internal {
+        IPositionManager(POSM_ETHEREUM).increaseLiquidity(tokenId, positionConfig, liquidity, "");
     }
 }

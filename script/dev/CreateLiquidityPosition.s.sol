@@ -34,7 +34,16 @@ contract CreateLiquidityPosition is UniswapV4Helpers {
             hooks: IHooks(vm.envAddress("UNISWAP_HOOK"))
         });
 
-        uint128 liquidity = _getLiquidityForAmounts(poolKey, tokenA, tokenB, tickLowerBound, tickUpperBound, caller);
+        (, int24 currentTick, , ) = _getPoolState(poolKey);
+
+        uint128 liquidity = _getLiquidityForAmounts(
+            tokenA,
+            tokenB,
+            currentTick,
+            tickLowerBound,
+            tickUpperBound,
+            caller
+        );
 
         if (liquidity == 0) revert("Zero liquidity amount.");
 

@@ -12,6 +12,9 @@ cbor_metadata = false
 # Use to run Surl in scripts
 ffi = true
 
+[lint]
+lint_on_build = false
+
 [profile.production]
 optimizer = true
 optimizer_runs = 44444444

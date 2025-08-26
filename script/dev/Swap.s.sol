@@ -19,12 +19,9 @@ import { IV4Router } from "../../lib/v4-periphery/src/interfaces/IV4Router.sol";
 import { IUniversalRouterLike } from "../../test/utils/interfaces/IUniversalRouterLike.sol";
 
 import { PredicateHelpers } from "./helpers/PredicateHelpers.sol";
+import { UniswapV4Helpers } from "./helpers/UniswapV4Helpers.sol";
 
-contract Swap is PredicateHelpers {
-    using CurrencyLibrary for Currency;
-
-    IAllowanceTransfer public constant PERMIT2 = IAllowanceTransfer(0x000000000022D473030F116dDEE9F6B43aC78BA3);
-
+contract Swap is PredicateHelpers, UniswapV4Helpers {
     function run() public {
         address caller = vm.rememberKey(vm.envUint("PRIVATE_KEY"));
         address hook = vm.envAddress("UNISWAP_HOOK");
@@ -47,39 +44,41 @@ contract Swap is PredicateHelpers {
             hooks: IHooks(hook)
         });
 
-        address token0 = Currency.unwrap(poolKey.currency0);
-        string memory token0Symbol = IERC20(token0).symbol();
+        address tokenA = Currency.unwrap(poolKey.currency0);
+        address tokenB = Currency.unwrap(poolKey.currency1);
 
-        address token1 = Currency.unwrap(poolKey.currency1);
-        string memory token1Symbol = IERC20(token1).symbol();
+        bool zeroForOne = vm.envBool("ZERO_FOR_ONE");
+        uint256 swapAmount = _swapAmount(zeroForOne, tokenA, tokenB, caller);
 
-        bool zeroForOne = false;
-
-        uint256 swapAmount = zeroForOne
-            ? _swapAmountPrompt(token0, token0Symbol, caller)
-            : _swapAmountPrompt(token1, token1Symbol, caller);
-
-        zeroForOne
-            ? console.log("Swapping %s %s for %s...", vm.toString(swapAmount), token0Symbol, token1Symbol)
-            : console.log("Swapping %s %s for %s...", vm.toString(swapAmount), token1Symbol, token0Symbol);
+        console.log("Pool state and liquidity before swap.");
+        _printPoolState(poolKey, tokenA, tokenB, config.tickLowerBound, config.tickUpperBound);
 
         vm.startBroadcast(caller);
 
-        _approvePermit2(caller, zeroForOne ? token0 : token1, config.swapRouter);
+        _approvePermit2(caller, zeroForOne ? tokenA : tokenB, config.swapRouter);
         _swap(config, hook, poolKey, caller, swapAmount, zeroForOne, withPredicateMessage);
 
         vm.stopBroadcast();
+
+        console.log("Pool state and liquidity after swap.");
+        _printPoolState(poolKey, tokenA, tokenB, config.tickLowerBound, config.tickUpperBound);
     }
 
-    function _approvePermit2(address caller, address token, address swapRouter) internal {
-        if (IERC20(token).allowance(caller, address(PERMIT2)) == 0) {
-            IERC20(token).approve(address(PERMIT2), type(uint256).max);
-        }
+    function _swapAmount(
+        bool zeroForOne,
+        address tokenA,
+        address tokenB,
+        address account
+    ) internal returns (uint256 amount) {
+        string memory tokenASymbol = IERC20(tokenA).symbol();
+        string memory tokenBSymbol = IERC20(tokenB).symbol();
 
-        (uint160 tokenPermit2Allowance, , ) = PERMIT2.allowance(caller, token, swapRouter);
-
-        if (tokenPermit2Allowance == 0) {
-            PERMIT2.approve(token, swapRouter, type(uint160).max, type(uint48).max);
+        if (zeroForOne) {
+            amount = _swapAmountPrompt(tokenA, tokenASymbol, account);
+            console.log("Swapping %s %s for %s...", vm.toString(amount), tokenASymbol, tokenBSymbol);
+        } else {
+            amount = _swapAmountPrompt(tokenB, tokenBSymbol, account);
+            console.log("Swapping %s %s for %s...", vm.toString(amount), tokenBSymbol, tokenASymbol);
         }
     }
 
@@ -102,31 +101,62 @@ contract Swap is PredicateHelpers {
         bool zeroForOne,
         bool withPredicateMessage
     ) internal {
+        bytes memory actions;
         bytes[] memory inputs = new bytes[](1);
-        bytes memory actions = abi.encodePacked(
-            uint8(Actions.SWAP_EXACT_OUT_SINGLE),
-            uint8(Actions.TAKE_ALL),
-            uint8(Actions.SETTLE_ALL)
-        );
-
-        uint128 swapAmountOut = uint128(swapAmount);
-        uint128 swapAmountIn = type(uint128).max;
-
         bytes[] memory swapParams = new bytes[](3);
-        swapParams[0] = abi.encode(
-            IV4Router.ExactOutputSingleParams({
-                poolKey: poolKey,
-                zeroForOne: zeroForOne,
-                amountOut: swapAmountOut,
-                amountInMaximum: swapAmountIn,
-                hookData: withPredicateMessage
-                    ? abi.encode(_getPredicateMessage(caller, poolKey, hook, zeroForOne, int256(swapAmount)))
-                    : abi.encode("")
-            })
-        );
 
-        swapParams[1] = abi.encode(poolKey.currency0, swapAmountOut);
-        swapParams[2] = abi.encode(poolKey.currency1, swapAmountIn);
+        uint128 swapAmountOut;
+        uint128 swapAmountIn;
+
+        if (zeroForOne) {
+            actions = abi.encodePacked(
+                uint8(Actions.SWAP_EXACT_IN_SINGLE),
+                uint8(Actions.SETTLE_ALL),
+                uint8(Actions.TAKE_ALL)
+            );
+
+            swapAmountOut = 0;
+            swapAmountIn = uint128(swapAmount);
+
+            swapParams[0] = abi.encode(
+                IV4Router.ExactInputSingleParams({
+                    poolKey: poolKey,
+                    zeroForOne: zeroForOne,
+                    amountIn: swapAmountIn,
+                    amountOutMinimum: swapAmountOut,
+                    hookData: withPredicateMessage
+                        ? abi.encode(_getPredicateMessage(caller, poolKey, hook, zeroForOne, int256(swapAmount)))
+                        : abi.encode("")
+                })
+            );
+
+            swapParams[1] = abi.encode(poolKey.currency0, swapAmountIn);
+            swapParams[2] = abi.encode(poolKey.currency1, swapAmountOut);
+        } else {
+            actions = abi.encodePacked(
+                uint8(Actions.SWAP_EXACT_OUT_SINGLE),
+                uint8(Actions.SETTLE_ALL),
+                uint8(Actions.TAKE_ALL)
+            );
+
+            swapAmountOut = uint128(swapAmount);
+            swapAmountIn = type(uint128).max;
+
+            swapParams[0] = abi.encode(
+                IV4Router.ExactOutputSingleParams({
+                    poolKey: poolKey,
+                    zeroForOne: zeroForOne,
+                    amountOut: swapAmountOut,
+                    amountInMaximum: swapAmountIn,
+                    hookData: withPredicateMessage
+                        ? abi.encode(_getPredicateMessage(caller, poolKey, hook, zeroForOne, int256(swapAmount)))
+                        : abi.encode("")
+                })
+            );
+
+            swapParams[1] = abi.encode(poolKey.currency1, swapAmountIn);
+            swapParams[2] = abi.encode(poolKey.currency0, swapAmountOut);
+        }
 
         inputs[0] = abi.encode(actions, swapParams);
 
