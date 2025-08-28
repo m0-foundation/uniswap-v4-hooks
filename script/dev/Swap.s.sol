@@ -74,18 +74,25 @@ contract Swap is PredicateHelpers, UniswapV4Helpers {
         string memory token1Symbol = IERC20(token1).symbol();
 
         if (zeroForOne) {
-            amount = _swapAmountPrompt(token0, token0Symbol, account);
+            amount = _swapAmountPrompt(token0, token0Symbol, zeroForOne, account);
             console.log("Swapping %s %s for %s...", vm.toString(amount), token0Symbol, token1Symbol);
         } else {
-            amount = _swapAmountPrompt(token1, token1Symbol, account);
+            amount = _swapAmountPrompt(token0, token0Symbol, zeroForOne, account);
             console.log("Swapping %s %s for %s...", vm.toString(amount), token1Symbol, token0Symbol);
         }
     }
 
-    function _swapAmountPrompt(address token, string memory symbol, address account) internal returns (uint256 amount) {
+    function _swapAmountPrompt(
+        address token,
+        string memory symbol,
+        bool zeroForOne,
+        address account
+    ) internal returns (uint256 amount) {
         uint256 balance = IERC20(token).balanceOf(account);
 
-        amount = vm.parseUint(vm.prompt(string.concat("Enter amount of ", symbol, " to swap")));
+        amount = vm.parseUint(
+            vm.prompt(string.concat("Enter amount of ", symbol, zeroForOne ? " to swap" : " to receive"))
+        );
 
         if (amount > balance) {
             revert(string.concat("Insufficient ", symbol, " balance for account ", vm.toString(account)));
@@ -115,7 +122,7 @@ contract Swap is PredicateHelpers, UniswapV4Helpers {
                 uint8(Actions.TAKE_ALL)
             );
 
-            swapAmountOut = 0;
+            swapAmountOut = uint128(_getAmountWithSlippage(swapAmount, uint16(vm.envUint("SLIPPAGE")), false));
             swapAmountIn = uint128(swapAmount);
 
             swapParams[0] = abi.encode(
@@ -140,7 +147,7 @@ contract Swap is PredicateHelpers, UniswapV4Helpers {
             );
 
             swapAmountOut = uint128(swapAmount);
-            swapAmountIn = type(uint128).max;
+            swapAmountIn = uint128(_getAmountWithSlippage(swapAmount, uint16(vm.envUint("SLIPPAGE")), true));
 
             swapParams[0] = abi.encode(
                 IV4Router.ExactOutputSingleParams({

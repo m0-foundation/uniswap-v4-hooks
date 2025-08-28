@@ -86,6 +86,23 @@ print-pool-state:
 	forge script script/dev/PrintPoolState.s.sol:PrintPoolState --rpc-url $(RPC_URL) \
 	--skip test -v
 
+## Local
+print-wm-usdc-pool-state-local: RPC_URL=$(LOCALHOST_RPC_URL)
+print-wm-usdc-pool-state-local: UNISWAP_HOOK="0xAf53Cb78035A8E0acCe38441793E2648B15B88a0" # Allowlist Hook
+print-wm-usdc-pool-state-local: TOKEN_0="0x437cc33344a0B27A429f795ff6B469C72698B291" # Wrapped M
+print-wm-usdc-pool-state-local: TOKEN_1="0xA0b86991c6218b36c1d19D4a2e9Eb0cE3606eB48" # USDC
+print-wm-usdc-pool-state-local: TICK_LOWER_BOUND=-1
+print-wm-usdc-pool-state-local: TICK_UPPER_BOUND=1
+print-wm-usdc-pool-state-local: print-pool-state
+
+print-usdc-musd-pool-state-local: RPC_URL=$(LOCALHOST_RPC_URL)
+print-usdc-musd-pool-state-local: UNISWAP_HOOK="0x0000000000000000000000000000000000000000" # Pool without hook
+print-usdc-musd-pool-state-local: TOKEN_0="0xA0b86991c6218b36c1d19D4a2e9Eb0cE3606eB48" # USDC
+print-usdc-musd-pool-state-local: TOKEN_1="0xacA92E438df0B2401fF60dA7E4337B687a2435DA" # MUSD
+print-usdc-musd-pool-state-local: TICK_LOWER_BOUND=0
+print-usdc-musd-pool-state-local: TICK_UPPER_BOUND=1
+print-usdc-musd-pool-state-local: print-pool-state
+
 ## Ethereum Mainnet
 print-wm-usdc-pool-state-ethereum: RPC_URL=$(MAINNET_RPC_URL)
 print-wm-usdc-pool-state-ethereum: UNISWAP_HOOK="0xAf53Cb78035A8E0acCe38441793E2648B15B88a0" # Allowlist Hook
@@ -107,6 +124,15 @@ print-position-state:
 	TOKEN_ID=$(TOKEN_ID) \
 	forge script script/dev/PrintPositionState.s.sol:PrintPositionState --rpc-url $(RPC_URL) \
 	--skip test -v
+
+## Local
+print-wm-usdc-position-state-local: RPC_URL=$(LOCALHOST_RPC_URL)
+print-wm-usdc-position-state-local: TOKEN_ID=$(LP_POSITION_ID) # LP Position NFT ID
+print-wm-usdc-position-state-local: print-position-state
+
+print-usdc-musd-position-state-local: RPC_URL=$(LOCALHOST_RPC_URL)
+print-usdc-musd-position-state-local: TOKEN_ID=$(LP_POSITION_ID) # LP Position NFT ID
+print-usdc-musd-position-state-local: print-position-state
 
 ## Ethereum Mainnet
 print-wm-usdc-position-state-ethereum: RPC_URL=$(MAINNET_RPC_URL)
@@ -175,9 +201,20 @@ decrease-usdc-musd-liquidity-position-local: TOKEN_ID=$(LP_POSITION_ID) # LP Pos
 decrease-usdc-musd-liquidity-position-local: DECREASE_LIQUIDITY=true
 decrease-usdc-musd-liquidity-position-local: modify-liquidity-position
 
+## Ethereum Mainnet
+increase-usdc-musd-liquidity-position-ethereum: RPC_URL=$(MAINNET_RPC_URL)
+increase-usdc-musd-liquidity-position-ethereum: TOKEN_ID=$(LP_POSITION_ID) # LP Position NFT ID
+increase-usdc-musd-liquidity-position-ethereum: DECREASE_LIQUIDITY=false
+increase-usdc-musd-liquidity-position-ethereum: modify-liquidity-position
+
+decrease-usdc-musd-liquidity-position-ethereum: RPC_URL=$(MAINNET_RPC_URL)
+decrease-usdc-musd-liquidity-position-ethereum: TOKEN_ID=$(LP_POSITION_ID) # LP Position NFT ID
+decrease-usdc-musd-liquidity-position-ethereum: DECREASE_LIQUIDITY=true
+decrease-usdc-musd-liquidity-position-ethereum: modify-liquidity-position
+
 swap:
 	FOUNDRY_PROFILE=production PRIVATE_KEY=$(PRIVATE_KEY) \
-	UNISWAP_HOOK=$(UNISWAP_HOOK) WITH_PREDICATE_MESSAGE=$(WITH_PREDICATE_MESSAGE) ZERO_FOR_ONE=$(ZERO_FOR_ONE) \
+	UNISWAP_HOOK=$(UNISWAP_HOOK) WITH_PREDICATE_MESSAGE=$(WITH_PREDICATE_MESSAGE) SLIPPAGE=$(SLIPPAGE) ZERO_FOR_ONE=$(ZERO_FOR_ONE) \
 	TOKEN_0=$(TOKEN_0) TOKEN_1=$(TOKEN_1) TICK_LOWER_BOUND=$(TICK_LOWER_BOUND) TICK_UPPER_BOUND=$(TICK_UPPER_BOUND) \
 	forge script script/dev/Swap.s.sol:Swap --rpc-url $(RPC_URL) \
 	--skip test --broadcast --slow --non-interactive -v
@@ -189,6 +226,7 @@ swap-usdc-to-wm-local: TOKEN_0="0xA0b86991c6218b36c1d19D4a2e9Eb0cE3606eB48" # US
 swap-usdc-to-wm-local: TOKEN_1="0x437cc33344a0B27A429f795ff6B469C72698B291" # Wrapped M
 swap-usdc-to-wm-local: TICK_LOWER_BOUND=-1
 swap-usdc-to-wm-local: TICK_UPPER_BOUND=1
+swap-usdc-to-wm-local: SLIPPAGE=1 # Slippage in BPS (0.01%)
 swap-usdc-to-wm-local: ZERO_FOR_ONE=false
 swap-usdc-to-wm-local: WITH_PREDICATE_MESSAGE=true
 swap-usdc-to-wm-local: swap
@@ -199,6 +237,7 @@ swap-usdc-to-musd-local: TOKEN_0="0xA0b86991c6218b36c1d19D4a2e9Eb0cE3606eB48" # 
 swap-usdc-to-musd-local: TOKEN_1="0xacA92E438df0B2401fF60dA7E4337B687a2435DA" # MUSD
 swap-usdc-to-musd-local: TICK_LOWER_BOUND=0
 swap-usdc-to-musd-local: TICK_UPPER_BOUND=1
+swap-usdc-to-musd-local: SLIPPAGE=1 # Slippage in BPS (0.01%)
 swap-usdc-to-musd-local: ZERO_FOR_ONE=true
 swap-usdc-to-musd-local: WITH_PREDICATE_MESSAGE=false
 swap-usdc-to-musd-local: swap
@@ -209,6 +248,7 @@ swap-musd-to-usdc-local: TOKEN_0="0xA0b86991c6218b36c1d19D4a2e9Eb0cE3606eB48" # 
 swap-musd-to-usdc-local: TOKEN_1="0xacA92E438df0B2401fF60dA7E4337B687a2435DA" # MUSD
 swap-musd-to-usdc-local: TICK_LOWER_BOUND=0
 swap-musd-to-usdc-local: TICK_UPPER_BOUND=1
+swap-musd-to-usdc-local: SLIPPAGE=1 # Slippage in BPS (0.01%)
 swap-musd-to-usdc-local: ZERO_FOR_ONE=false
 swap-musd-to-usdc-local: WITH_PREDICATE_MESSAGE=false
 swap-musd-to-usdc-local: swap
@@ -220,6 +260,7 @@ swap-usdc-to-wm-ethereum: TOKEN_0="0xA0b86991c6218b36c1d19D4a2e9Eb0cE3606eB48" #
 swap-usdc-to-wm-ethereum: TOKEN_1="0x437cc33344a0B27A429f795ff6B469C72698B291" # Wrapped M
 swap-usdc-to-wm-ethereum: TICK_LOWER_BOUND=-1
 swap-usdc-to-wm-ethereum: TICK_UPPER_BOUND=1
+swap-usdc-to-wm-ethereum: SLIPPAGE=1 # Slippage in BPS (0.01%)
 swap-usdc-to-wm-ethereum: ZERO_FOR_ONE=false
 swap-usdc-to-wm-ethereum: WITH_PREDICATE_MESSAGE=true
 swap-usdc-to-wm-ethereum: swap
@@ -230,6 +271,7 @@ swap-usdc-to-musd-ethereum: TOKEN_0="0xA0b86991c6218b36c1d19D4a2e9Eb0cE3606eB48"
 swap-usdc-to-musd-ethereum: TOKEN_1="0xacA92E438df0B2401fF60dA7E4337B687a2435DA" # MUSD
 swap-usdc-to-musd-ethereum: TICK_LOWER_BOUND=0
 swap-usdc-to-musd-ethereum: TICK_UPPER_BOUND=1
+swap-usdc-to-musd-ethereum: SLIPPAGE=1 # Slippage in BPS (0.01%)
 swap-usdc-to-musd-ethereum: ZERO_FOR_ONE=true
 swap-usdc-to-musd-ethereum: WITH_PREDICATE_MESSAGE=false
 swap-usdc-to-musd-ethereum: swap
@@ -240,6 +282,7 @@ swap-musd-to-usdc-ethereum: TOKEN_0="0xA0b86991c6218b36c1d19D4a2e9Eb0cE3606eB48"
 swap-musd-to-usdc-ethereum: TOKEN_1="0xacA92E438df0B2401fF60dA7E4337B687a2435DA" # MUSD
 swap-musd-to-usdc-ethereum: TICK_LOWER_BOUND=0
 swap-musd-to-usdc-ethereum: TICK_UPPER_BOUND=1
+swap-musd-to-usdc-ethereum: SLIPPAGE=1 # Slippage in BPS (0.01%)
 swap-musd-to-usdc-ethereum: ZERO_FOR_ONE=false
 swap-musd-to-usdc-ethereum: WITH_PREDICATE_MESSAGE=false
 swap-musd-to-usdc-ethereum: swap

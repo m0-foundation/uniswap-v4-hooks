@@ -32,6 +32,8 @@ contract UniswapV4Helpers is Deploy {
 
     IAllowanceTransfer public constant PERMIT2 = IAllowanceTransfer(0x000000000022D473030F116dDEE9F6B43aC78BA3);
 
+    /* ============ Interactive Functions ============ */
+
     function _approvePermit2(address caller, address token, address spender) internal {
         if (IERC20(token).allowance(caller, address(PERMIT2)) == 0) {
             IERC20(token).approve(address(PERMIT2), type(uint256).max);
@@ -44,6 +46,8 @@ contract UniswapV4Helpers is Deploy {
         }
     }
 
+    /* ============ Getter Functions ============ */
+
     function _liquidityAmountPrompt(address token, address account) internal returns (uint256 amount) {
         uint256 balance = IERC20(token).balanceOf(account);
         string memory symbol = IERC20(token).symbol();
@@ -53,6 +57,40 @@ contract UniswapV4Helpers is Deploy {
         if (amount > balance) {
             revert(string.concat("Insufficient ", symbol, " balance for account ", vm.toString(account)));
         }
+    }
+
+    /**
+     * @notice Adds slippage to the given amount.
+     * @dev    Slippage is specified in basis points (bps).
+     * @param  amount             The original amount.
+     * @param  slippage           The slippage in bps (1 bps = 0.01%).
+     * @param  isPositiveSlippage True to add slippage, false to subtract.
+     * @return The amount plus slippage.
+     */
+    function _getAmountWithSlippage(
+        uint256 amount,
+        uint256 slippage,
+        bool isPositiveSlippage
+    ) internal pure returns (uint256) {
+        if (isPositiveSlippage) {
+            return amount + (amount * slippage) / 10_000;
+        } else {
+            return amount - (amount * slippage) / 10_000;
+        }
+    }
+
+    function _getAmountsForLiquidity(
+        uint160 sqrtPriceX96,
+        int24 tickLower,
+        int24 tickUpper,
+        uint128 liquidity
+    ) internal pure returns (uint256 liquidityA, uint256 liquidityB) {
+        (liquidityA, liquidityB) = LiquidityAmounts.getAmountsForLiquidity(
+            sqrtPriceX96,
+            TickMath.getSqrtPriceAtTick(tickLower),
+            TickMath.getSqrtPriceAtTick(tickUpper),
+            liquidity
+        );
     }
 
     function _getLiquidityForAmounts(
@@ -71,20 +109,6 @@ contract UniswapV4Helpers is Deploy {
                 _liquidityAmountPrompt(token0, caller),
                 _liquidityAmountPrompt(token1, caller)
             );
-    }
-
-    function _getAmountsForLiquidity(
-        uint160 sqrtPriceX96,
-        int24 tickLower,
-        int24 tickUpper,
-        uint128 liquidity
-    ) internal view returns (uint256 liquidityA, uint256 liquidityB) {
-        (liquidityA, liquidityB) = LiquidityAmounts.getAmountsForLiquidity(
-            sqrtPriceX96,
-            TickMath.getSqrtPriceAtTick(tickLower),
-            TickMath.getSqrtPriceAtTick(tickUpper),
-            liquidity
-        );
     }
 
     function _getPoolState(
@@ -137,6 +161,8 @@ contract UniswapV4Helpers is Deploy {
     function _getPositionLiquidity(uint256 tokenId) internal view returns (uint128 liquidity) {
         return IPositionManager(POSM_ETHEREUM).getPositionLiquidity(tokenId);
     }
+
+    /* ============ Logging Functions ============ */
 
     function _printPoolState(
         PoolKey memory poolKey,
