@@ -56,8 +56,8 @@ contract UniswapV4Helpers is Deploy {
     }
 
     function _getLiquidityForAmounts(
-        address tokenA,
-        address tokenB,
+        address token0,
+        address token1,
         int24 currentTick,
         int24 tickLower,
         int24 tickUpper,
@@ -68,8 +68,8 @@ contract UniswapV4Helpers is Deploy {
                 TickMath.getSqrtPriceAtTick(currentTick),
                 TickMath.getSqrtPriceAtTick(tickLower),
                 TickMath.getSqrtPriceAtTick(tickUpper),
-                _liquidityAmountPrompt(tokenA, caller),
-                _liquidityAmountPrompt(tokenB, caller)
+                _liquidityAmountPrompt(token0, caller),
+                _liquidityAmountPrompt(token1, caller)
             );
     }
 
@@ -107,8 +107,8 @@ contract UniswapV4Helpers is Deploy {
         returns (
             PoolKey memory poolKey,
             PositionInfo positionInfo,
-            address tokenA,
-            address tokenB,
+            address token0,
+            address token1,
             int24 currentTick,
             int24 tickLower,
             int24 tickUpper,
@@ -118,8 +118,8 @@ contract UniswapV4Helpers is Deploy {
         (poolKey, positionInfo) = _getPoolAndPositionInfo(tokenId);
         (sqrtPriceX96, currentTick, , ) = _getPoolState(poolKey);
 
-        tokenA = Currency.unwrap(poolKey.currency0);
-        tokenB = Currency.unwrap(poolKey.currency1);
+        token0 = Currency.unwrap(poolKey.currency0);
+        token1 = Currency.unwrap(poolKey.currency1);
 
         tickLower = positionInfo.tickLower();
         tickUpper = positionInfo.tickUpper();
@@ -127,7 +127,7 @@ contract UniswapV4Helpers is Deploy {
         console.log("Pool current sqrtPrice: %s", sqrtPriceX96);
         console.log("Pool current tick: %s", currentTick);
 
-        _printPositionState(tokenId, tokenA, tokenB, sqrtPriceX96, tickLower, tickUpper);
+        _printPositionState(tokenId, token0, token1, sqrtPriceX96, tickLower, tickUpper);
     }
 
     function _getPoolLiquidity(PoolKey memory poolKey) internal view returns (uint128 liquidity) {
@@ -140,13 +140,13 @@ contract UniswapV4Helpers is Deploy {
 
     function _printPoolState(
         PoolKey memory poolKey,
-        address tokenA,
-        address tokenB,
+        address token0,
+        address token1,
         int24 tickLower,
         int24 tickUpper
     ) internal view {
-        string memory tokenASymbol = IERC20(tokenA).symbol();
-        string memory tokenBSymbol = IERC20(tokenB).symbol();
+        string memory token0Symbol = IERC20(token0).symbol();
+        string memory token1Symbol = IERC20(token1).symbol();
 
         uint128 liquidity = _getPoolLiquidity(poolKey);
         (uint160 sqrtPriceX96, int24 currentTick, , ) = _getPoolState(poolKey);
@@ -164,20 +164,20 @@ contract UniswapV4Helpers is Deploy {
         console.log("Liquidity between:");
         console.log("Lower tick: %s", tickLower);
         console.log("Upper tick: %s", tickUpper);
-        console.log("%s liquidity: %s", tokenASymbol, liquidityA);
-        console.log("%s liquidity: %s", tokenBSymbol, liquidityB);
+        console.log("%s liquidity: %s", token0Symbol, liquidityA);
+        console.log("%s liquidity: %s", token1Symbol, liquidityB);
     }
 
     function _printPositionState(
         uint256 tokenId,
-        address tokenA,
-        address tokenB,
+        address token0,
+        address token1,
         uint160 sqrtPriceX96,
         int24 tickLower,
         int24 tickUpper
     ) internal view {
-        string memory tokenASymbol = IERC20(tokenA).symbol();
-        string memory tokenBSymbol = IERC20(tokenB).symbol();
+        string memory token0Symbol = IERC20(token0).symbol();
+        string memory token1Symbol = IERC20(token1).symbol();
 
         uint128 liquidity = _getPositionLiquidity(tokenId);
         (uint256 liquidityA, uint256 liquidityB) = _getAmountsForLiquidity(
@@ -189,7 +189,7 @@ contract UniswapV4Helpers is Deploy {
 
         console.log("Position Tick Lower : %s", tickLower);
         console.log("Position Tick Upper : %s", tickUpper);
-        console.log("%s liquidity: %s", tokenASymbol, liquidityA);
-        console.log("%s liquidity: %s", tokenBSymbol, liquidityB);
+        console.log("%s liquidity: %s", token0Symbol, liquidityA);
+        console.log("%s liquidity: %s", token1Symbol, liquidityB);
     }
 }

@@ -29,8 +29,8 @@ contract ModifyLiquidityPosition is UniswapV4Helpers {
         (
             PoolKey memory poolKey,
             ,
-            address tokenA,
-            address tokenB,
+            address token0,
+            address token1,
             int24 currentTick,
             int24 tickLower,
             int24 tickUpper,
@@ -43,7 +43,7 @@ contract ModifyLiquidityPosition is UniswapV4Helpers {
             tickUpper: tickUpper
         });
 
-        uint128 liquidity = _getLiquidityForAmounts(tokenA, tokenB, currentTick, tickLower, tickUpper, caller);
+        uint128 liquidity = _getLiquidityForAmounts(token0, token1, currentTick, tickLower, tickUpper, caller);
 
         if (liquidity == 0) revert("Zero liquidity amount.");
 
@@ -52,8 +52,8 @@ contract ModifyLiquidityPosition is UniswapV4Helpers {
         if (vm.envBool("DECREASE_LIQUIDITY")) {
             _decreaseLiquidity(tokenId, positionConfig, liquidity);
         } else {
-            _approvePermit2(caller, tokenA, _getDeployConfig(block.chainid, tokenA, tokenB, tickLower, tickUpper).posm);
-            _approvePermit2(caller, tokenB, _getDeployConfig(block.chainid, tokenA, tokenB, tickLower, tickUpper).posm);
+            _approvePermit2(caller, token0, _getDeployConfig(block.chainid, token0, token1, tickLower, tickUpper).posm);
+            _approvePermit2(caller, token1, _getDeployConfig(block.chainid, token0, token1, tickLower, tickUpper).posm);
 
             _increaseLiquidity(tokenId, positionConfig, liquidity);
         }

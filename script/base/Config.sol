@@ -109,12 +109,12 @@ contract Config {
 
     function _getDeployConfig(
         uint256 chainId_,
-        address tokenA_,
-        address tokenB_,
+        address token0_,
+        address token1_,
         int24 tickLowerBound_,
         int24 tickUpperBound_
     ) internal pure returns (DeployConfig memory) {
-        (Currency currency0_, Currency currency1_) = _sortCurrencies(tokenA_, tokenB_);
+        (Currency currency0_, Currency currency1_) = _sortCurrencies(token0_, token1_);
         (tickLowerBound_, tickUpperBound_) = _sortTicks(currency0_, tickLowerBound_, tickUpperBound_);
 
         // Mainnet configs
@@ -259,12 +259,12 @@ contract Config {
     }
 
     function _sortCurrencies(
-        address tokenA_,
-        address tokenB_
+        address token0_,
+        address token1_
     ) internal pure returns (Currency currency0_, Currency currency1_) {
-        (currency0_, currency1_) = tokenA_ < tokenB_
-            ? (Currency.wrap(tokenA_), Currency.wrap(tokenB_))
-            : (Currency.wrap(tokenB_), Currency.wrap(tokenA_));
+        (currency0_, currency1_) = token0_ < token1_
+            ? (Currency.wrap(token0_), Currency.wrap(token1_))
+            : (Currency.wrap(token1_), Currency.wrap(token0_));
     }
 
     /// @dev Flips and negates tickLowerBound and tickUpperBound if currency0 != Wrapped M or MUSD

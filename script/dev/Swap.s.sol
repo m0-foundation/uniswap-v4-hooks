@@ -30,8 +30,8 @@ contract Swap is PredicateHelpers, UniswapV4Helpers {
 
         DeployConfig memory config = _getDeployConfig(
             block.chainid,
-            vm.envAddress("TOKEN_A"),
-            vm.envAddress("TOKEN_B"),
+            vm.envAddress("TOKEN_0"),
+            vm.envAddress("TOKEN_1"),
             int24(vm.envInt("TICK_LOWER_BOUND")),
             int24(vm.envInt("TICK_UPPER_BOUND"))
         );
@@ -44,41 +44,41 @@ contract Swap is PredicateHelpers, UniswapV4Helpers {
             hooks: IHooks(hook)
         });
 
-        address tokenA = Currency.unwrap(poolKey.currency0);
-        address tokenB = Currency.unwrap(poolKey.currency1);
+        address token0 = Currency.unwrap(poolKey.currency0);
+        address token1 = Currency.unwrap(poolKey.currency1);
 
         bool zeroForOne = vm.envBool("ZERO_FOR_ONE");
-        uint256 swapAmount = _swapAmount(zeroForOne, tokenA, tokenB, caller);
+        uint256 swapAmount = _swapAmount(zeroForOne, token0, token1, caller);
 
         console.log("Pool state and liquidity before swap.");
-        _printPoolState(poolKey, tokenA, tokenB, config.tickLowerBound, config.tickUpperBound);
+        _printPoolState(poolKey, token0, token1, config.tickLowerBound, config.tickUpperBound);
 
         vm.startBroadcast(caller);
 
-        _approvePermit2(caller, zeroForOne ? tokenA : tokenB, config.swapRouter);
+        _approvePermit2(caller, zeroForOne ? token0 : token1, config.swapRouter);
         _swap(config, hook, poolKey, caller, swapAmount, zeroForOne, withPredicateMessage);
 
         vm.stopBroadcast();
 
         console.log("Pool state and liquidity after swap.");
-        _printPoolState(poolKey, tokenA, tokenB, config.tickLowerBound, config.tickUpperBound);
+        _printPoolState(poolKey, token0, token1, config.tickLowerBound, config.tickUpperBound);
     }
 
     function _swapAmount(
         bool zeroForOne,
-        address tokenA,
-        address tokenB,
+        address token0,
+        address token1,
         address account
     ) internal returns (uint256 amount) {
-        string memory tokenASymbol = IERC20(tokenA).symbol();
-        string memory tokenBSymbol = IERC20(tokenB).symbol();
+        string memory token0Symbol = IERC20(token0).symbol();
+        string memory token1Symbol = IERC20(token1).symbol();
 
         if (zeroForOne) {
-            amount = _swapAmountPrompt(tokenA, tokenASymbol, account);
-            console.log("Swapping %s %s for %s...", vm.toString(amount), tokenASymbol, tokenBSymbol);
+            amount = _swapAmountPrompt(token0, token0Symbol, account);
+            console.log("Swapping %s %s for %s...", vm.toString(amount), token0Symbol, token1Symbol);
         } else {
-            amount = _swapAmountPrompt(tokenB, tokenBSymbol, account);
-            console.log("Swapping %s %s for %s...", vm.toString(amount), tokenBSymbol, tokenASymbol);
+            amount = _swapAmountPrompt(token1, token1Symbol, account);
+            console.log("Swapping %s %s for %s...", vm.toString(amount), token1Symbol, token0Symbol);
         }
     }
 

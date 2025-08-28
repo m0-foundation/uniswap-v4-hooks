@@ -19,12 +19,12 @@ contract CreateLiquidityPosition is UniswapV4Helpers {
     function run() public {
         address caller = vm.rememberKey(vm.envUint("PRIVATE_KEY"));
 
-        address tokenA = vm.envAddress("TOKEN_A");
-        address tokenB = vm.envAddress("TOKEN_B");
+        address token0 = vm.envAddress("TOKEN_0");
+        address token1 = vm.envAddress("TOKEN_1");
         int24 tickLowerBound = int24(vm.envInt("TICK_LOWER_BOUND"));
         int24 tickUpperBound = int24(vm.envInt("TICK_UPPER_BOUND"));
 
-        DeployConfig memory config = _getDeployConfig(block.chainid, tokenA, tokenB, tickLowerBound, tickUpperBound);
+        DeployConfig memory config = _getDeployConfig(block.chainid, token0, token1, tickLowerBound, tickUpperBound);
 
         PoolKey memory poolKey = PoolKey({
             currency0: config.currency0,
@@ -37,8 +37,8 @@ contract CreateLiquidityPosition is UniswapV4Helpers {
         (, int24 currentTick, , ) = _getPoolState(poolKey);
 
         uint128 liquidity = _getLiquidityForAmounts(
-            tokenA,
-            tokenB,
+            token0,
+            token1,
             currentTick,
             tickLowerBound,
             tickUpperBound,
@@ -49,8 +49,8 @@ contract CreateLiquidityPosition is UniswapV4Helpers {
 
         vm.startBroadcast(caller);
 
-        _approvePermit2(caller, tokenA, config.posm);
-        _approvePermit2(caller, tokenB, config.posm);
+        _approvePermit2(caller, token0, config.posm);
+        _approvePermit2(caller, token1, config.posm);
 
         IPositionManager(POSM_ETHEREUM).mint(
             PositionConfig({ poolKey: poolKey, tickLower: tickLowerBound, tickUpper: tickUpperBound }),
