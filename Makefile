@@ -146,7 +146,8 @@ print-usdc-musd-position-state-ethereum: print-position-state
 # Liquidity Position helpers
 create-liquidity-position:
 	FOUNDRY_PROFILE=production PRIVATE_KEY=$(PRIVATE_KEY) \
-	UNISWAP_HOOK=$(UNISWAP_HOOK) TOKEN_0=$(TOKEN_0) TOKEN_1=$(TOKEN_1) TICK_LOWER_BOUND=$(TICK_LOWER_BOUND) TICK_UPPER_BOUND=$(TICK_UPPER_BOUND) \
+	UNISWAP_HOOK=$(UNISWAP_HOOK) TICK_LOWER_BOUND=$(TICK_LOWER_BOUND) TICK_UPPER_BOUND=$(TICK_UPPER_BOUND) \
+	TOKEN_0=$(TOKEN_0) TOKEN_1=$(TOKEN_1) AMOUNT_0=$(AMOUNT_0) AMOUNT_1=$(AMOUNT_1) \
 	forge script script/dev/CreateLiquidityPosition.s.sol:CreateLiquidityPosition --rpc-url $(RPC_URL) \
 	--skip test --broadcast --slow --non-interactive -v
 
@@ -184,9 +185,30 @@ create-usdc-musd-liquidity-position-ethereum: TICK_LOWER_BOUND=0
 create-usdc-musd-liquidity-position-ethereum: TICK_UPPER_BOUND=1
 create-usdc-musd-liquidity-position-ethereum: create-liquidity-position
 
+create-liquidity-position-fireblocks:
+	FOUNDRY_PROFILE=production  \
+	FIREBLOCKS_API_KEY=$(FIREBLOCKS_API_KEY) FIREBLOCKS_API_PRIVATE_KEY_PATH=./fireblocks/api_private.key \
+	FIREBLOCKS_SENDER=$(FIREBLOCKS_SENDER) \
+	UNISWAP_HOOK=$(UNISWAP_HOOK) TICK_LOWER_BOUND=$(TICK_LOWER_BOUND) TICK_UPPER_BOUND=$(TICK_UPPER_BOUND) \
+	TOKEN_0=$(TOKEN_0) TOKEN_1=$(TOKEN_1) AMOUNT_0=$(AMOUNT_0) AMOUNT_1=$(AMOUNT_1) \
+	fireblocks-json-rpc --vaultAccountIds [$(FIREBLOCKS_VAULT_ACCOUNT_ID)] --http --rpcUrl $(RPC_URL) -- \
+	forge script script/dev/CreateLiquidityPosition.s.sol:CreateLiquidityPosition --rpc-url {} \
+	--skip test --sender $(FIREBLOCKS_SENDER)  --broadcast --slow --non-interactive --unlocked -v
+
+create-usdc-musd-liquidity-position-ethereum-fireblocks: RPC_URL=$(MAINNET_RPC_URL)
+create-usdc-musd-liquidity-position-ethereum-fireblocks: UNISWAP_HOOK="0x0000000000000000000000000000000000000000" # Pool without hook
+create-usdc-musd-liquidity-position-ethereum-fireblocks: TOKEN_0="0xA0b86991c6218b36c1d19D4a2e9Eb0cE3606eB48" # USDC
+create-usdc-musd-liquidity-position-ethereum-fireblocks: TOKEN_1="0xacA92E438df0B2401fF60dA7E4337B687a2435DA" # MUSD
+create-usdc-musd-liquidity-position-ethereum-fireblocks: AMOUNT_0=2000000 # 2 USDC (6 decimals)
+create-usdc-musd-liquidity-position-ethereum-fireblocks: AMOUNT_1=2000000 # 2 MUSD (6 decimals)
+create-usdc-musd-liquidity-position-ethereum-fireblocks: TICK_LOWER_BOUND=0
+create-usdc-musd-liquidity-position-ethereum-fireblocks: TICK_UPPER_BOUND=1
+create-usdc-musd-liquidity-position-ethereum-fireblocks: create-liquidity-position-fireblocks
+
 modify-liquidity-position:
 	FOUNDRY_PROFILE=production PRIVATE_KEY=$(PRIVATE_KEY) \
 	TOKEN_ID=$(TOKEN_ID) DECREASE_LIQUIDITY=$(DECREASE_LIQUIDITY) \
+	AMOUNT_0=$(AMOUNT_0) AMOUNT_1=$(AMOUNT_1) \
 	forge script script/dev/ModifyLiquidityPosition.s.sol:ModifyLiquidityPosition --rpc-url $(RPC_URL) \
 	--skip test --broadcast --slow --non-interactive -v
 

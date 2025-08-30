@@ -28,3 +28,14 @@ soljson-latest.js
 
 # Gas report
 gasreport.ansi
+
+# Git Secret
+!.gitsecret/
+.gitsecret/keys/random_seed
+
+# Fireblocks
+!fireblocks/
+!fireblocks/.env.fireblock.secret
+!fireblocks/*.key.secret
+fireblocks/.env.fireblocks
+fireblocks/*.key

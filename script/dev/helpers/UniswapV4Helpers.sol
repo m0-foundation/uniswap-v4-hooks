@@ -84,8 +84,8 @@ contract UniswapV4Helpers is Deploy {
         int24 tickLower,
         int24 tickUpper,
         uint128 liquidity
-    ) internal pure returns (uint256 liquidityA, uint256 liquidityB) {
-        (liquidityA, liquidityB) = LiquidityAmounts.getAmountsForLiquidity(
+    ) internal pure returns (uint256 liquidity0, uint256 liquidity1) {
+        (liquidity0, liquidity1) = LiquidityAmounts.getAmountsForLiquidity(
             sqrtPriceX96,
             TickMath.getSqrtPriceAtTick(tickLower),
             TickMath.getSqrtPriceAtTick(tickUpper),
@@ -94,20 +94,19 @@ contract UniswapV4Helpers is Deploy {
     }
 
     function _getLiquidityForAmounts(
-        address token0,
-        address token1,
+        uint256 amount0,
+        uint256 amount1,
         int24 currentTick,
         int24 tickLower,
-        int24 tickUpper,
-        address caller
-    ) internal returns (uint128) {
+        int24 tickUpper
+    ) internal pure returns (uint128) {
         return
             LiquidityAmounts.getLiquidityForAmounts(
                 TickMath.getSqrtPriceAtTick(currentTick),
                 TickMath.getSqrtPriceAtTick(tickLower),
                 TickMath.getSqrtPriceAtTick(tickUpper),
-                _liquidityAmountPrompt(token0, caller),
-                _liquidityAmountPrompt(token1, caller)
+                amount0,
+                amount1
             );
     }
 
@@ -177,7 +176,7 @@ contract UniswapV4Helpers is Deploy {
         uint128 liquidity = _getPoolLiquidity(poolKey);
         (uint160 sqrtPriceX96, int24 currentTick, , ) = _getPoolState(poolKey);
 
-        (uint256 liquidityA, uint256 liquidityB) = _getAmountsForLiquidity(
+        (uint256 liquidity0, uint256 liquidity1) = _getAmountsForLiquidity(
             sqrtPriceX96,
             tickLower,
             tickUpper,
@@ -190,8 +189,8 @@ contract UniswapV4Helpers is Deploy {
         console.log("Liquidity between:");
         console.log("Lower tick: %s", tickLower);
         console.log("Upper tick: %s", tickUpper);
-        console.log("%s liquidity: %s", token0Symbol, liquidityA);
-        console.log("%s liquidity: %s", token1Symbol, liquidityB);
+        console.log("%s liquidity: %s", token0Symbol, liquidity0);
+        console.log("%s liquidity: %s", token1Symbol, liquidity1);
     }
 
     function _printPositionState(
@@ -206,7 +205,7 @@ contract UniswapV4Helpers is Deploy {
         string memory token1Symbol = IERC20(token1).symbol();
 
         uint128 liquidity = _getPositionLiquidity(tokenId);
-        (uint256 liquidityA, uint256 liquidityB) = _getAmountsForLiquidity(
+        (uint256 liquidity0, uint256 liquidity1) = _getAmountsForLiquidity(
             sqrtPriceX96,
             tickLower,
             tickUpper,
@@ -215,7 +214,7 @@ contract UniswapV4Helpers is Deploy {
 
         console.log("Position Tick Lower : %s", tickLower);
         console.log("Position Tick Upper : %s", tickUpper);
-        console.log("%s liquidity: %s", token0Symbol, liquidityA);
-        console.log("%s liquidity: %s", token1Symbol, liquidityB);
+        console.log("%s liquidity: %s", token0Symbol, liquidity0);
+        console.log("%s liquidity: %s", token1Symbol, liquidity1);
     }
 }

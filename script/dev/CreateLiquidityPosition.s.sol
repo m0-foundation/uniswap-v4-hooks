@@ -17,10 +17,11 @@ contract CreateLiquidityPosition is UniswapV4Helpers {
     using LiquidityOperationsLib for IPositionManager;
 
     function run() public {
-        address caller = vm.rememberKey(vm.envUint("PRIVATE_KEY"));
+        address caller = _getCaller();
 
         address token0 = vm.envAddress("TOKEN_0");
         address token1 = vm.envAddress("TOKEN_1");
+
         int24 tickLowerBound = int24(vm.envInt("TICK_LOWER_BOUND"));
         int24 tickUpperBound = int24(vm.envInt("TICK_UPPER_BOUND"));
 
@@ -37,12 +38,11 @@ contract CreateLiquidityPosition is UniswapV4Helpers {
         (, int24 currentTick, , ) = _getPoolState(poolKey);
 
         uint128 liquidity = _getLiquidityForAmounts(
-            token0,
-            token1,
+            vm.envUint("AMOUNT_0"),
+            vm.envUint("AMOUNT_1"),
             currentTick,
             tickLowerBound,
-            tickUpperBound,
-            caller
+            tickUpperBound
         );
 
         if (liquidity == 0) revert("Zero liquidity amount.");
@@ -53,12 +53,17 @@ contract CreateLiquidityPosition is UniswapV4Helpers {
         _approvePermit2(caller, token1, config.posm);
 
         IPositionManager(POSM_ETHEREUM).mint(
-            PositionConfig({ poolKey: poolKey, tickLower: tickLowerBound, tickUpper: tickUpperBound }),
+            PositionConfig({ poolKey: poolKey, tickLower: config.tickLowerBound, tickUpper: config.tickUpperBound }),
             liquidity,
             caller,
             ""
         );
 
         vm.stopBroadcast();
+    }
+
+    function _getCaller() internal returns (address) {
+        address fireblocksSender = vm.envOr("FIREBLOCKS_SENDER", address(0));
+        return fireblocksSender == address(0) ? vm.rememberKey(vm.envUint("PRIVATE_KEY")) : fireblocksSender;
     }
 }

@@ -43,7 +43,13 @@ contract ModifyLiquidityPosition is UniswapV4Helpers {
             tickUpper: tickUpper
         });
 
-        uint128 liquidity = _getLiquidityForAmounts(token0, token1, currentTick, tickLower, tickUpper, caller);
+        uint128 liquidity = _getLiquidityForAmounts(
+            vm.envUint("AMOUNT_0"),
+            vm.envUint("AMOUNT_1"),
+            currentTick,
+            tickLower,
+            tickUpper
+        );
 
         if (liquidity == 0) revert("Zero liquidity amount.");
 
