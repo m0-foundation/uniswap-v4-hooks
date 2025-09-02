@@ -48,6 +48,11 @@ contract UniswapV4Helpers is Deploy {
 
     /* ============ Getter Functions ============ */
 
+    function _getCaller() internal returns (address) {
+        address fireblocksSender = vm.envOr("FIREBLOCKS_SENDER", address(0));
+        return fireblocksSender == address(0) ? vm.rememberKey(vm.envUint("PRIVATE_KEY")) : fireblocksSender;
+    }
+
     function _liquidityAmountPrompt(address token, address account) internal returns (uint256 amount) {
         uint256 balance = IERC20(token).balanceOf(account);
         string memory symbol = IERC20(token).symbol();
