@@ -14,12 +14,15 @@ contract PrintPoolState is UniswapV4Helpers {
     function run() public view {
         address hook = vm.envAddress("UNISWAP_HOOK");
 
+        int24 tickLowerBound = int24(vm.envInt("TICK_LOWER_BOUND"));
+        int24 tickUpperBound = int24(vm.envInt("TICK_UPPER_BOUND"));
+
         DeployConfig memory config = _getDeployConfig(
             block.chainid,
             vm.envAddress("TOKEN_0"),
             vm.envAddress("TOKEN_1"),
-            int24(vm.envInt("TICK_LOWER_BOUND")),
-            int24(vm.envInt("TICK_UPPER_BOUND"))
+            tickLowerBound,
+            tickUpperBound
         );
 
         PoolKey memory poolKey = PoolKey({
@@ -34,6 +37,6 @@ contract PrintPoolState is UniswapV4Helpers {
         address token1 = Currency.unwrap(poolKey.currency1);
 
         console.log("Pool state and liquidity.");
-        _printPoolState(poolKey, token0, token1, config.tickLowerBound, config.tickUpperBound);
+        _printPoolState(poolKey, token0, token1, tickLowerBound, tickUpperBound);
     }
 }

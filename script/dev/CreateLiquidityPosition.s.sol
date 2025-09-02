@@ -53,7 +53,7 @@ contract CreateLiquidityPosition is UniswapV4Helpers {
         _approvePermit2(caller, token1, config.posm);
 
         IPositionManager(POSM_ETHEREUM).mint(
-            PositionConfig({ poolKey: poolKey, tickLower: config.tickLowerBound, tickUpper: config.tickUpperBound }),
+            PositionConfig({ poolKey: poolKey, tickLower: tickLowerBound, tickUpper: tickUpperBound }),
             liquidity,
             caller,
             ""

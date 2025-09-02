@@ -28,12 +28,15 @@ contract Swap is PredicateHelpers, UniswapV4Helpers {
 
         bool withPredicateMessage = vm.envBool("WITH_PREDICATE_MESSAGE");
 
+        int24 tickLowerBound = int24(vm.envInt("TICK_LOWER_BOUND"));
+        int24 tickUpperBound = int24(vm.envInt("TICK_UPPER_BOUND"));
+
         DeployConfig memory config = _getDeployConfig(
             block.chainid,
             vm.envAddress("TOKEN_0"),
             vm.envAddress("TOKEN_1"),
-            int24(vm.envInt("TICK_LOWER_BOUND")),
-            int24(vm.envInt("TICK_UPPER_BOUND"))
+            tickLowerBound,
+            tickUpperBound
         );
 
         PoolKey memory poolKey = PoolKey({
@@ -51,7 +54,7 @@ contract Swap is PredicateHelpers, UniswapV4Helpers {
         uint256 swapAmount = _swapAmount(zeroForOne, token0, token1, caller);
 
         console.log("Pool state and liquidity before swap.");
-        _printPoolState(poolKey, token0, token1, config.tickLowerBound, config.tickUpperBound);
+        _printPoolState(poolKey, token0, token1, tickLowerBound, tickUpperBound);
 
         vm.startBroadcast(caller);
 
@@ -61,7 +64,7 @@ contract Swap is PredicateHelpers, UniswapV4Helpers {
         vm.stopBroadcast();
 
         console.log("Pool state and liquidity after swap.");
-        _printPoolState(poolKey, token0, token1, config.tickLowerBound, config.tickUpperBound);
+        _printPoolState(poolKey, token0, token1, tickLowerBound, tickUpperBound);
     }
 
     function _swapAmount(

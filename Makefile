@@ -99,8 +99,8 @@ print-usdc-musd-pool-state-local: RPC_URL=$(LOCALHOST_RPC_URL)
 print-usdc-musd-pool-state-local: UNISWAP_HOOK="0x0000000000000000000000000000000000000000" # Pool without hook
 print-usdc-musd-pool-state-local: TOKEN_0="0xA0b86991c6218b36c1d19D4a2e9Eb0cE3606eB48" # USDC
 print-usdc-musd-pool-state-local: TOKEN_1="0xacA92E438df0B2401fF60dA7E4337B687a2435DA" # MUSD
-print-usdc-musd-pool-state-local: TICK_LOWER_BOUND=0
-print-usdc-musd-pool-state-local: TICK_UPPER_BOUND=1
+print-usdc-musd-pool-state-local: TICK_LOWER_BOUND=-1
+print-usdc-musd-pool-state-local: TICK_UPPER_BOUND=0
 print-usdc-musd-pool-state-local: print-pool-state
 
 ## Ethereum Mainnet
@@ -116,8 +116,8 @@ print-usdc-musd-pool-state-ethereum: RPC_URL=$(MAINNET_RPC_URL)
 print-usdc-musd-pool-state-ethereum: UNISWAP_HOOK="0x0000000000000000000000000000000000000000" # Pool without hook
 print-usdc-musd-pool-state-ethereum: TOKEN_0="0xA0b86991c6218b36c1d19D4a2e9Eb0cE3606eB48" # USDC
 print-usdc-musd-pool-state-ethereum: TOKEN_1="0xacA92E438df0B2401fF60dA7E4337B687a2435DA" # MUSD
-print-usdc-musd-pool-state-ethereum: TICK_LOWER_BOUND=0
-print-usdc-musd-pool-state-ethereum: TICK_UPPER_BOUND=1
+print-usdc-musd-pool-state-ethereum: TICK_LOWER_BOUND=-1
+print-usdc-musd-pool-state-ethereum: TICK_UPPER_BOUND=0
 print-usdc-musd-pool-state-ethereum: print-pool-state
 
 print-position-state:
@@ -164,8 +164,8 @@ create-usdc-musd-liquidity-position-local: RPC_URL=$(LOCALHOST_RPC_URL)
 create-usdc-musd-liquidity-position-local: UNISWAP_HOOK="0x0000000000000000000000000000000000000000" # Pool without hook
 create-usdc-musd-liquidity-position-local: TOKEN_0="0xA0b86991c6218b36c1d19D4a2e9Eb0cE3606eB48" # USDC
 create-usdc-musd-liquidity-position-local: TOKEN_1="0xacA92E438df0B2401fF60dA7E4337B687a2435DA" # MUSD
-create-usdc-musd-liquidity-position-local: TICK_LOWER_BOUND=0
-create-usdc-musd-liquidity-position-local: TICK_UPPER_BOUND=1
+create-usdc-musd-liquidity-position-local: TICK_LOWER_BOUND=-1
+create-usdc-musd-liquidity-position-local: TICK_UPPER_BOUND=0
 create-usdc-musd-liquidity-position-local: create-liquidity-position
 
 ## Ethereum Mainnet
@@ -181,8 +181,8 @@ create-usdc-musd-liquidity-position-ethereum: RPC_URL=$(MAINNET_RPC_URL)
 create-usdc-musd-liquidity-position-ethereum: UNISWAP_HOOK="0x0000000000000000000000000000000000000000" # Pool without hook
 create-usdc-musd-liquidity-position-ethereum: TOKEN_0="0xA0b86991c6218b36c1d19D4a2e9Eb0cE3606eB48" # USDC
 create-usdc-musd-liquidity-position-ethereum: TOKEN_1="0xacA92E438df0B2401fF60dA7E4337B687a2435DA" # MUSD
-create-usdc-musd-liquidity-position-ethereum: TICK_LOWER_BOUND=0
-create-usdc-musd-liquidity-position-ethereum: TICK_UPPER_BOUND=1
+create-usdc-musd-liquidity-position-ethereum: TICK_LOWER_BOUND=-1
+create-usdc-musd-liquidity-position-ethereum: TICK_UPPER_BOUND=0
 create-usdc-musd-liquidity-position-ethereum: create-liquidity-position
 
 create-liquidity-position-fireblocks:
@@ -201,8 +201,8 @@ create-usdc-musd-liquidity-position-ethereum-fireblocks: TOKEN_0="0xA0b86991c621
 create-usdc-musd-liquidity-position-ethereum-fireblocks: TOKEN_1="0xacA92E438df0B2401fF60dA7E4337B687a2435DA" # MUSD
 create-usdc-musd-liquidity-position-ethereum-fireblocks: AMOUNT_0=2000000 # 2 USDC (6 decimals)
 create-usdc-musd-liquidity-position-ethereum-fireblocks: AMOUNT_1=2000000 # 2 MUSD (6 decimals)
-create-usdc-musd-liquidity-position-ethereum-fireblocks: TICK_LOWER_BOUND=0
-create-usdc-musd-liquidity-position-ethereum-fireblocks: TICK_UPPER_BOUND=1
+create-usdc-musd-liquidity-position-ethereum-fireblocks: TICK_LOWER_BOUND=-1
+create-usdc-musd-liquidity-position-ethereum-fireblocks: TICK_UPPER_BOUND=0
 create-usdc-musd-liquidity-position-ethereum-fireblocks: create-liquidity-position-fireblocks
 
 modify-liquidity-position:
@@ -257,8 +257,8 @@ swap-usdc-to-musd-local: RPC_URL=$(LOCALHOST_RPC_URL)
 swap-usdc-to-musd-local: UNISWAP_HOOK="0x0000000000000000000000000000000000000000" # Pool without hook
 swap-usdc-to-musd-local: TOKEN_0="0xA0b86991c6218b36c1d19D4a2e9Eb0cE3606eB48" # USDC
 swap-usdc-to-musd-local: TOKEN_1="0xacA92E438df0B2401fF60dA7E4337B687a2435DA" # MUSD
-swap-usdc-to-musd-local: TICK_LOWER_BOUND=0
-swap-usdc-to-musd-local: TICK_UPPER_BOUND=1
+swap-usdc-to-musd-local: TICK_LOWER_BOUND=-1
+swap-usdc-to-musd-local: TICK_UPPER_BOUND=0
 swap-usdc-to-musd-local: SLIPPAGE=1 # Slippage in BPS (0.01%)
 swap-usdc-to-musd-local: ZERO_FOR_ONE=true
 swap-usdc-to-musd-local: WITH_PREDICATE_MESSAGE=false
@@ -268,8 +268,8 @@ swap-musd-to-usdc-local: RPC_URL=$(LOCALHOST_RPC_URL)
 swap-musd-to-usdc-local: UNISWAP_HOOK="0x0000000000000000000000000000000000000000" # Pool without hook
 swap-musd-to-usdc-local: TOKEN_0="0xA0b86991c6218b36c1d19D4a2e9Eb0cE3606eB48" # USDC
 swap-musd-to-usdc-local: TOKEN_1="0xacA92E438df0B2401fF60dA7E4337B687a2435DA" # MUSD
-swap-musd-to-usdc-local: TICK_LOWER_BOUND=0
-swap-musd-to-usdc-local: TICK_UPPER_BOUND=1
+swap-musd-to-usdc-local: TICK_LOWER_BOUND=-1
+swap-musd-to-usdc-local: TICK_UPPER_BOUND=0
 swap-musd-to-usdc-local: SLIPPAGE=1 # Slippage in BPS (0.01%)
 swap-musd-to-usdc-local: ZERO_FOR_ONE=false
 swap-musd-to-usdc-local: WITH_PREDICATE_MESSAGE=false
@@ -291,8 +291,8 @@ swap-usdc-to-musd-ethereum: RPC_URL=$(MAINNET_RPC_URL)
 swap-usdc-to-musd-ethereum: UNISWAP_HOOK="0x0000000000000000000000000000000000000000" # Pool without hook
 swap-usdc-to-musd-ethereum: TOKEN_0="0xA0b86991c6218b36c1d19D4a2e9Eb0cE3606eB48" # USDC
 swap-usdc-to-musd-ethereum: TOKEN_1="0xacA92E438df0B2401fF60dA7E4337B687a2435DA" # MUSD
-swap-usdc-to-musd-ethereum: TICK_LOWER_BOUND=0
-swap-usdc-to-musd-ethereum: TICK_UPPER_BOUND=1
+swap-usdc-to-musd-ethereum: TICK_LOWER_BOUND=-1
+swap-usdc-to-musd-ethereum: TICK_UPPER_BOUND=0
 swap-usdc-to-musd-ethereum: SLIPPAGE=1 # Slippage in BPS (0.01%)
 swap-usdc-to-musd-ethereum: ZERO_FOR_ONE=true
 swap-usdc-to-musd-ethereum: WITH_PREDICATE_MESSAGE=false
@@ -302,8 +302,8 @@ swap-musd-to-usdc-ethereum: RPC_URL=$(MAINNET_RPC_URL)
 swap-musd-to-usdc-ethereum: UNISWAP_HOOK="0x0000000000000000000000000000000000000000" # Pool without hook
 swap-musd-to-usdc-ethereum: TOKEN_0="0xA0b86991c6218b36c1d19D4a2e9Eb0cE3606eB48" # USDC
 swap-musd-to-usdc-ethereum: TOKEN_1="0xacA92E438df0B2401fF60dA7E4337B687a2435DA" # MUSD
-swap-musd-to-usdc-ethereum: TICK_LOWER_BOUND=0
-swap-musd-to-usdc-ethereum: TICK_UPPER_BOUND=1
+swap-musd-to-usdc-ethereum: TICK_LOWER_BOUND=-1
+swap-musd-to-usdc-ethereum: TICK_UPPER_BOUND=0
 swap-musd-to-usdc-ethereum: SLIPPAGE=1 # Slippage in BPS (0.01%)
 swap-musd-to-usdc-ethereum: ZERO_FOR_ONE=false
 swap-musd-to-usdc-ethereum: WITH_PREDICATE_MESSAGE=false
