@@ -16,8 +16,8 @@ contract DeployTickRangeHookAndPool is Deploy {
 
         DeployConfig memory config = _getDeployConfig(
             block.chainid,
-            vm.envAddress("TOKEN_A"),
-            vm.envAddress("TOKEN_B"),
+            vm.envAddress("TOKEN_0"),
+            vm.envAddress("TOKEN_1"),
             int24(vm.envInt("TICK_LOWER_BOUND")),
             int24(vm.envInt("TICK_UPPER_BOUND"))
         );
