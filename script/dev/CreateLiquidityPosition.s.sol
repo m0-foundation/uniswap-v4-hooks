@@ -61,9 +61,4 @@ contract CreateLiquidityPosition is UniswapV4Helpers {
 
         vm.stopBroadcast();
     }
-
-    function _getCaller() internal returns (address) {
-        address fireblocksSender = vm.envOr("FIREBLOCKS_SENDER", address(0));
-        return fireblocksSender == address(0) ? vm.rememberKey(vm.envUint("PRIVATE_KEY")) : fireblocksSender;
-    }
 }
