@@ -21,7 +21,7 @@ contract ModifyLiquidityPosition is UniswapV4Helpers {
     using LiquidityOperationsLib for IPositionManager;
 
     function run() public {
-        address caller = vm.rememberKey(vm.envUint("PRIVATE_KEY"));
+        address caller = _getCaller();
         uint256 tokenId = vm.envUint("TOKEN_ID");
 
         console.log("Pool and position state before LP modification.");
