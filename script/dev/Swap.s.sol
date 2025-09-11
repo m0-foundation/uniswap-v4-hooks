@@ -23,7 +23,7 @@ import { UniswapV4Helpers } from "./helpers/UniswapV4Helpers.sol";
 
 contract Swap is PredicateHelpers, UniswapV4Helpers {
     function run() public {
-        address caller = vm.rememberKey(vm.envUint("PRIVATE_KEY"));
+        address caller = _getCaller();
         address hook = vm.envAddress("UNISWAP_HOOK");
 
         bool withPredicateMessage = vm.envBool("WITH_PREDICATE_MESSAGE");

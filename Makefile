@@ -330,6 +330,38 @@ swap-musd-to-usdc-ethereum: ZERO_FOR_ONE=false
 swap-musd-to-usdc-ethereum: WITH_PREDICATE_MESSAGE=false
 swap-musd-to-usdc-ethereum: swap
 
+swap-fireblocks:
+	FOUNDRY_PROFILE=production \
+	FIREBLOCKS_API_KEY=$(FIREBLOCKS_API_KEY) FIREBLOCKS_API_PRIVATE_KEY_PATH=./fireblocks/api_private.key \
+	FIREBLOCKS_SENDER=$(FIREBLOCKS_SENDER) FIREBLOCKS_VAULT_ACCOUNT_IDS=$(FIREBLOCKS_VAULT_ACCOUNT_ID) \
+	UNISWAP_HOOK=$(UNISWAP_HOOK) WITH_PREDICATE_MESSAGE=$(WITH_PREDICATE_MESSAGE) SLIPPAGE=$(SLIPPAGE) ZERO_FOR_ONE=$(ZERO_FOR_ONE) \
+	TOKEN_0=$(TOKEN_0) TOKEN_1=$(TOKEN_1) TICK_LOWER_BOUND=$(TICK_LOWER_BOUND) TICK_UPPER_BOUND=$(TICK_UPPER_BOUND) \
+	fireblocks-json-rpc --http --rpcUrl $(RPC_URL) -- \
+	forge script script/dev/Swap.s.sol:Swap --rpc-url {} \
+	--skip test --sender $(FIREBLOCKS_SENDER)  --broadcast --slow --non-interactive --unlocked -v
+
+swap-usdc-to-musd-ethereum-fireblocks: RPC_URL=$(MAINNET_RPC_URL)
+swap-usdc-to-musd-ethereum-fireblocks: UNISWAP_HOOK="0x0000000000000000000000000000000000000000" # Pool without hook
+swap-usdc-to-musd-ethereum-fireblocks: TOKEN_0="0xA0b86991c6218b36c1d19D4a2e9Eb0cE3606eB48" # USDC
+swap-usdc-to-musd-ethereum-fireblocks: TOKEN_1="0xacA92E438df0B2401fF60dA7E4337B687a2435DA" # MUSD
+swap-usdc-to-musd-ethereum-fireblocks: TICK_LOWER_BOUND=-1
+swap-usdc-to-musd-ethereum-fireblocks: TICK_UPPER_BOUND=0
+swap-usdc-to-musd-ethereum-fireblocks: SLIPPAGE=1 # Slippage in BPS (0.01%)
+swap-usdc-to-musd-ethereum-fireblocks: ZERO_FOR_ONE=true
+swap-usdc-to-musd-ethereum-fireblocks: WITH_PREDICATE_MESSAGE=false
+swap-usdc-to-musd-ethereum-fireblocks: swap-fireblocks
+
+swap-musd-to-usdc-ethereum-fireblocks: RPC_URL=$(MAINNET_RPC_URL)
+swap-musd-to-usdc-ethereum-fireblocks: UNISWAP_HOOK="0x0000000000000000000000000000000000000000" # Pool without hook
+swap-musd-to-usdc-ethereum-fireblocks: TOKEN_0="0xA0b86991c6218b36c1d19D4a2e9Eb0cE3606eB48" # USDC
+swap-musd-to-usdc-ethereum-fireblocks: TOKEN_1="0xacA92E438df0B2401fF60dA7E4337B687a2435DA" # MUSD
+swap-musd-to-usdc-ethereum-fireblocks: TICK_LOWER_BOUND=-1
+swap-musd-to-usdc-ethereum-fireblocks: TICK_UPPER_BOUND=0
+swap-musd-to-usdc-ethereum-fireblocks: SLIPPAGE=1 # Slippage in BPS (0.01%)
+swap-musd-to-usdc-ethereum-fireblocks: ZERO_FOR_ONE=false
+swap-musd-to-usdc-ethereum-fireblocks: WITH_PREDICATE_MESSAGE=false
+swap-musd-to-usdc-ethereum-fireblocks: swap-fireblocks
+
 # Flashswaps Wrapped M to swap into UsualM
 ## Local
 flashswap-local :; forge script script/dev/FlashSwap.s.sol:FlashSwap --rpc-url localhost --broadcast -vvv
